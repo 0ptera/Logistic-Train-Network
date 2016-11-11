@@ -1,23 +1,30 @@
 require "lib"
 
-update_interval = 60
+MINDELIVERYSIZE = "min-delivery-size"
+
+
+update_interval = 10
 min_delivery_size = 10
-debug_log = false -- prints debug messages in game
-use_tanker = false
+delivery_timeout = 18000 --duration in ticks deliveries can take before assuming the train was lost (default 18000 = 5min)
+schedule_creation_min_time = 600 --min duration in ticks before a schedule of the same shipment is created again
+log_level = 1 -- 3: prints everything, 2: prints all Scheduler messages, 1 prints only important messages, 0: off
+
 
 -- Events
 
 script.on_init(function()
-	if global.LogisticTrainStops ~= nil then
-		script.on_event(defines.events.on_tick, tickTrainStops) --subscribe ticker when train stops exist
-	end  
+  onLoad()
 end)
 
 script.on_load(function()
+  onLoad()
+end)
+
+function onLoad ()
 	if global.LogisticTrainStops ~= nil then
 		script.on_event(defines.events.on_tick, tickTrainStops) --subscribe ticker when train stops exist
-	end  
-end)
+	end
+end
 
 script.on_configuration_changed(function()
   global.Dispatcher = global.Dispatcher or {}
@@ -25,14 +32,7 @@ script.on_configuration_changed(function()
   global.Dispatcher.Storage = global.Dispatcher.Storage or {}
   global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
   
-  global.LogisticTrainStops = global.LogisticTrainStops or {}
-  
-  --check for RailTanker
-  if game.item_prototypes["rail-tanker"] then 
-    use_tanker=true 
-    printmsg("Rail Tanker found, enabling fluids.")
-  end
-  
+  global.LogisticTrainStops = global.LogisticTrainStops or {} 
 end)
 
 
@@ -132,7 +132,7 @@ function CreateStop(logisticTrainStop)
   end
   if count == 1 then
     script.on_event(defines.events.on_tick, tickTrainStops) --subscribe ticker on first created train stop
-    if debug_log then printmsg("on_tick subscribed") end
+    if log_level >= 3 then printmsg("on_tick subscribed") end
   end
 end
 
@@ -148,7 +148,7 @@ function RemoveStop(logisticTrainStop)
   end
   if count == 0 then
     script.on_event(defines.events.on_tick, nil) --unsubscribe ticker on last removed train stop
-    if debug_log then printmsg("on_tick unsubscribed") end
+    if  log_level >= 3 then printmsg("on_tick unsubscribed") end
   end
 end
 
@@ -160,13 +160,13 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stopID == event.train.station.unit_number then
         stop.parkedTrain = event.train
         stop.parkedTrainID = trainID
-        if debug_log then printmsg(trainID.." arrived at ".. stop.entity.backer_name) end
+        if log_level >= 3 then printmsg(trainID.." arrived at ".. stop.entity.backer_name) end
         UpdateStopOutput(stop)
         
         if stop.isDepot then          
           global.Dispatcher.availableTrains[trainID] = event.train
           -- assume delivery is complete
-          global.Dispatcher.Deliveries[trainID] = {}
+          global.Dispatcher.Deliveries[trainID] = nil
           -- reset schedule
           local schedule = {current = 1, records = {}}
           schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "circuit", {type="virtual",name="signal-green"}, "=", 1)          
@@ -185,7 +185,7 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stop.parkedTrainID == trainID then
         stop.parkedTrain = nil
         stop.parkedTrainID = nil
-        if debug_log then printmsg(trainID.." left ".. stop.entity.backer_name) end
+        if log_level >= 3 then printmsg(trainID.." left ".. stop.entity.backer_name) end
         
         if stop.isDepot then
           global.Dispatcher.availableTrains[trainID] = nil
@@ -206,6 +206,18 @@ function tickTrainStops(event)
 if global.LogisticTrainStops ~= nil and game.tick % update_interval == 0 then
   global.Dispatcher.Storage = {} --reset storage
   requests = {} --collect requests
+  
+    -- Dispatcher: clean up deliveries in case train was destroyed or removed
+  for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
+    if not delivery.train or not delivery.train.valid then
+      global.Dispatcher.Deliveries[trainID] = nil
+    elseif game.tick-delivery.started > delivery_timeout then
+      if log_level >= 1 then printmsg("Delivery: ".. delivery.count .."  ".. delivery.item.." from "..delivery.from.." to "..delivery.to.." running for "..game.tick-delivery.started.." ticks deleted after time out.") end
+      global.Dispatcher.Deliveries[trainID] = nil
+    end
+  end
+
+    
   for stopID, stop in pairs(global.LogisticTrainStops) do          
     -- update depots by station name
     if string.lower(stop.entity.backer_name) == "depot" then
@@ -218,23 +230,28 @@ if global.LogisticTrainStops ~= nil and game.tick % update_interval == 0 then
     global.Dispatcher.Storage[stop.entity.backer_name] = GetCircuitValues(stop.input)
   
     if global.Dispatcher.Storage[stop.entity.backer_name] then
+      minDelivery = min_delivery_size
       for item, count in pairs (global.Dispatcher.Storage[stop.entity.backer_name]) do
-        --printmsg(stop.entity.backer_name.." storage ".. item .."  "..count)        
-        for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
-          if delivery.item == item and delivery.to == stop.entity.backer_name then
-            count = count + delivery.count
+        if item == "virtual,"..MINDELIVERYSIZE then
+          --if log_level >= 3 then printmsg("min delivery size to "..stop.entity.backer_name.." set to "..count) end
+          minDelivery = count
+        else
+          for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
+            if delivery.item == item and delivery.to == stop.entity.backer_name then
+              count = count + delivery.count
+            end
           end
-        end
-        if count < min_delivery_size * -1 then
-          requests[stop.entity.backer_name] = requests[stop.entity.backer_name] or {}
-          requests[stop.entity.backer_name][item] = count*-1
+          if count < minDelivery * -1 then
+            requests[stop.entity.backer_name] = requests[stop.entity.backer_name] or {}
+            requests[stop.entity.backer_name][item] = count*-1
+          end
         end
       end  
     end  
 
   end --end update per stop
-          
-  -- Dispatcher
+
+  -- Dispatcher: handle requests
   if requests then
   for requestStation, req in pairs (requests) do
     if req then
@@ -244,6 +261,18 @@ if global.LogisticTrainStops ~= nil and game.tick % update_interval == 0 then
         printmsg("Error: could not parse item "..item)
         return
       end
+      
+      -- skip if shipment was just created
+      skip = false
+      for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
+        if delivery.to == requestStation and delivery.item == item and game.tick-delivery.started < schedule_creation_min_time then
+          skip = true
+            if log_level >= 3 then printmsg("Skipped creating delivery: "..item.." to "..requestStation) end
+          break
+        end
+      end      
+      if not skip then
+     
       -- get train with fitting cargo type (item/fluid) and inventory size
       local train = GetFreeTrain(itype, iname, count)      
       if train then
@@ -252,10 +281,10 @@ if global.LogisticTrainStops ~= nil and game.tick % update_interval == 0 then
         local pickupStation = GetStationItemMax(item, 1)        
         if pickupStation then
           deliverySize = math.min(deliverySize, pickupStation.count)
-          if debug_log then printmsg("Creating Delivery: ".. deliverySize .."  ".. item.." from "..pickupStation.name.." to "..requestStation) end
+          if log_level >= 2 then printmsg("Creating Delivery: ".. deliverySize .."  ".. item.." from "..pickupStation.name.." to "..requestStation) end
           
           -- use Rail Tanker fake items instead of fluids 
-          if use_tanker and itype == "fluid" then
+          if game.item_prototypes["rail-tanker"] and itype == "fluid" then
             if game.item_prototypes[iname .. "-in-tanker"] then
               iname = iname .. "-in-tanker"
               itype = "item"
@@ -276,13 +305,14 @@ if global.LogisticTrainStops ~= nil and game.tick % update_interval == 0 then
           -- send green to selectedTrain (needs output connected to station)          
           depot.output.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-green"}, count = 1 }}}
           -- store delivery
-          global.Dispatcher.Deliveries[train.id] = {item=item, count=deliverySize, from=pickupStation.name, to=requestStation}
+          global.Dispatcher.Deliveries[train.id] = {train=selectedTrain, started=game.tick, item=item, count=deliverySize, from=pickupStation.name, to=requestStation}
         end
       end
-    end
-    end
-  end
-  end
+      end --if not skip then
+    end --for item, count in pairs (req) do
+    end --if req then
+  end --for requestStation, req in pairs (requests) do
+  end --if requests then
 end  
 end
 
@@ -316,12 +346,12 @@ function GetFreeTrain(type, name, count)
     if DispTrain.valid then
       -- get total inventory of train for requested item type
       for _,wagon in pairs (DispTrain.cargo_wagons) do
+        -- base wagons
         if type == "item" and wagon.name == "cargo-wagon" then
           inventorySize = inventorySize + 40 * stackSize
         end
-        -- TODO add fluid cargo wagons here
-        
-        if use_tanker and type == "fluid" and wagon.name == "rail-tanker" then
+        -- RailTanker
+        if game.item_prototypes["rail-tanker"] and type == "fluid" and wagon.name == "rail-tanker" then
           inventorySize = inventorySize + 2500
         end
       end
@@ -346,14 +376,14 @@ function GetCircuitValues(entity)
   local items = {} 
   if greenWire then
     for _, v in pairs (greenWire.signals) do
-      if v.signal.type == "item" or v.signal.type == "fluid" then
+      if v.signal.type == "item" or v.signal.type == "fluid" or (v.signal.type == "virtual" and v.signal.name == MINDELIVERYSIZE) then
         items[v.signal.type..","..v.signal.name] = v.count
       end
     end
   end
   if redWire then
     for _, v in pairs (redWire.signals) do 
-      if v.signal.type == "item" or v.signal.type == "fluid" then
+      if v.signal.type == "item" or v.signal.type == "fluid" or (v.signal.type == "virtual" and v.signal.name == MINDELIVERYSIZE) then
         if items[v.signal.type..","..v.signal.name] ~= nil then
           items[v.signal.type..","..v.signal.name] = items[v.signal.type..","..v.signal.name] + v.count
         else
