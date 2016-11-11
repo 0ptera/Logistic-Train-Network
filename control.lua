@@ -1,8 +1,11 @@
 require "lib"
+require "dbg"
+
+-- todo: Remove
+inspect = require('inspect')
 
 update_interval = 60
 min_delivery_size = 10
-debug_log = false -- prints debug messages in game
 use_tanker = false
 
 -- Events
@@ -10,13 +13,13 @@ use_tanker = false
 script.on_init(function()
 	if global.LogisticTrainStops ~= nil then
 		script.on_event(defines.events.on_tick, tickTrainStops) --subscribe ticker when train stops exist
-	end  
+    end
 end)
 
 script.on_load(function()
 	if global.LogisticTrainStops ~= nil then
 		script.on_event(defines.events.on_tick, tickTrainStops) --subscribe ticker when train stops exist
-	end  
+	end
 end)
 
 script.on_configuration_changed(function()
@@ -26,6 +29,8 @@ script.on_configuration_changed(function()
   global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
   
   global.LogisticTrainStops = global.LogisticTrainStops or {}
+  
+  global.debugger = false
   
   --check for RailTanker
   if game.item_prototypes["rail-tanker"] then 
@@ -132,7 +137,7 @@ function CreateStop(logisticTrainStop)
   end
   if count == 1 then
     script.on_event(defines.events.on_tick, tickTrainStops) --subscribe ticker on first created train stop
-    if debug_log then printmsg("on_tick subscribed") end
+    dgp.print("on_tick subscribed")
   end
 end
 
@@ -148,7 +153,7 @@ function RemoveStop(logisticTrainStop)
   end
   if count == 0 then
     script.on_event(defines.events.on_tick, nil) --unsubscribe ticker on last removed train stop
-    if debug_log then printmsg("on_tick unsubscribed") end
+    dbg.print("on_tick unsubscribed")
   end
 end
 
@@ -160,7 +165,7 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stopID == event.train.station.unit_number then
         stop.parkedTrain = event.train
         stop.parkedTrainID = trainID
-        if debug_log then printmsg(trainID.." arrived at ".. stop.entity.backer_name) end
+        dbg.print(trainID.." arrived at ".. stop.entity.backer_name)
         UpdateStopOutput(stop)
         
         if stop.isDepot then          
@@ -185,7 +190,7 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stop.parkedTrainID == trainID then
         stop.parkedTrain = nil
         stop.parkedTrainID = nil
-        if debug_log then printmsg(trainID.." left ".. stop.entity.backer_name) end
+        dbg.print(trainID.." left ".. stop.entity.backer_name)
         
         if stop.isDepot then
           global.Dispatcher.availableTrains[trainID] = nil
@@ -205,7 +210,7 @@ end)
 function tickTrainStops(event)
 if global.LogisticTrainStops ~= nil and game.tick % update_interval == 0 then
   global.Dispatcher.Storage = {} --reset storage
-  requests = {} --collect requests
+  local requests = {} --collect requests
   for stopID, stop in pairs(global.LogisticTrainStops) do          
     -- update depots by station name
     if string.lower(stop.entity.backer_name) == "depot" then
@@ -239,7 +244,7 @@ if global.LogisticTrainStops ~= nil and game.tick % update_interval == 0 then
   for requestStation, req in pairs (requests) do
     if req then
     for item, count in pairs (req) do
-      itype, iname = item:match("([^,]+),([^,]+)")
+      local itype, iname = item:match("([^,]+),([^,]+)")
       if not (itype and iname) then
         printmsg("Error: could not parse item "..item)
         return
@@ -252,7 +257,7 @@ if global.LogisticTrainStops ~= nil and game.tick % update_interval == 0 then
         local pickupStation = GetStationItemMax(item, 1)        
         if pickupStation then
           deliverySize = math.min(deliverySize, pickupStation.count)
-          if debug_log then printmsg("Creating Delivery: ".. deliverySize .."  ".. item.." from "..pickupStation.name.." to "..requestStation) end
+          dbg.print("Creating Delivery: ".. deliverySize .."  ".. item.." from "..pickupStation.name.." to "..requestStation)
           
           -- use Rail Tanker fake items instead of fluids 
           if use_tanker and itype == "fluid" then
@@ -329,6 +334,7 @@ function GetFreeTrain(type, name, count)
       if inventorySize >= count then
         -- train is sufficient for delivery, stop searching
         train = {id=DispTrainKey, inventorySize=inventorySize}
+        dbg.show_train(train, "Assigned")
         return train
       elseif inventorySize > largestInventory then
         -- keep looking for bigger train
@@ -337,6 +343,7 @@ function GetFreeTrain(type, name, count)
       end
     end
   end
+  dbg.show_train(train, "Assigned")
   return train
 end
 
@@ -430,3 +437,20 @@ function UpdateStopOutput(trainStop)
   params = {parameters=signals}
   trainStop.output.get_control_behavior().parameters = params	
 end
+
+
+
+remote.add_interface("LogTrains",
+  {
+    help = function()
+      game.player.print("-----  Logistic_Trains: Remote functions  -----")
+      game.player.print("|  help()  - This help")
+      game.player.print("|  debug() - switch debug-functionality on/off")
+      game.player.print("")
+    end,
+    
+    debug = function()
+      __switchDebug()
+    end,
+  }
+)
