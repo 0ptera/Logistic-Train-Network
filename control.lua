@@ -1,4 +1,8 @@
 require "lib"
+require "dbg"
+
+-- todo: Remove
+inspect = require('inspect')
 
 MINDELIVERYSIZE = "min-delivery-size"
 
@@ -8,7 +12,6 @@ min_delivery_size = 10
 delivery_timeout = 18000 --duration in ticks deliveries can take before assuming the train was lost (default 18000 = 5min)
 schedule_creation_min_time = 600 --min duration in ticks before a schedule of the same shipment is created again
 log_level = 1 -- 3: prints everything, 2: prints all Scheduler messages, 1 prints only important messages, 0: off
-
 
 -- Events
 
@@ -199,13 +202,14 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       end
     end
   end
-  
+
+
 end)
 
 function tickTrainStops(event)
 if global.LogisticTrainStops ~= nil and game.tick % update_interval == 0 then
   global.Dispatcher.Storage = {} --reset storage
-  requests = {} --collect requests
+  local requests = {} --collect requests
   
     -- Dispatcher: clean up deliveries in case train was destroyed or removed
   for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
@@ -256,7 +260,7 @@ if global.LogisticTrainStops ~= nil and game.tick % update_interval == 0 then
   for requestStation, req in pairs (requests) do
     if req then
     for item, count in pairs (req) do
-      itype, iname = item:match("([^,]+),([^,]+)")
+      local itype, iname = item:match("([^,]+),([^,]+)")
       if not (itype and iname) then
         printmsg("Error: could not parse item "..item)
         return
@@ -359,6 +363,7 @@ function GetFreeTrain(type, name, count)
       if inventorySize >= count then
         -- train is sufficient for delivery, stop searching
         train = {id=DispTrainKey, inventorySize=inventorySize}
+        dbg.show_train(train, "Assigned")
         return train
       elseif inventorySize > largestInventory then
         -- keep looking for bigger train
@@ -367,6 +372,7 @@ function GetFreeTrain(type, name, count)
       end
     end
   end
+  dbg.show_train(train, "Assigned")
   return train
 end
 
@@ -460,3 +466,20 @@ function UpdateStopOutput(trainStop)
   params = {parameters=signals}
   trainStop.output.get_control_behavior().parameters = params	
 end
+
+
+
+remote.add_interface("LogTrains",
+  {
+    help = function()
+      game.player.print("-----  Logistic_Trains: Remote functions  -----")
+      game.player.print("|  help()  - This help")
+      game.player.print("|  debug() - switch debug-functionality on/off")
+      game.player.print("")
+    end,
+    
+    debug = function()
+      __switchDebug()
+    end,
+  }
+)

@@ -15,9 +15,7 @@ function copyPrototype(type, name, newName)
 end
 
 function printmsg(msg)
-  for i,player in pairs(game.players) do
-    player.print(msg)
-  end
+  game.print(msg)
 end
 
 return copyPrototype, printmsg
