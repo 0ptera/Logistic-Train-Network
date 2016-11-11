@@ -1,7 +1,9 @@
 require "lib"
 
 update_interval = 60
-min_delivery_size = 1000
+min_delivery_size = 10
+debug_log = false -- prints debug messages in game
+use_tanker = false
 
 -- Events
 
@@ -24,6 +26,13 @@ script.on_configuration_changed(function()
   global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
   
   global.LogisticTrainStops = global.LogisticTrainStops or {}
+  
+  --check for RailTanker
+  if game.item_prototypes["rail-tanker"] then 
+    use_tanker=true 
+    printmsg("Rail Tanker found, enabling fluids.")
+  end
+  
 end)
 
 
@@ -123,7 +132,7 @@ function CreateStop(logisticTrainStop)
   end
   if count == 1 then
     script.on_event(defines.events.on_tick, tickTrainStops) --subscribe ticker on first created train stop
-    printmsg("on_tick subscribed")
+    if debug_log then printmsg("on_tick subscribed") end
   end
 end
 
@@ -139,7 +148,7 @@ function RemoveStop(logisticTrainStop)
   end
   if count == 0 then
     script.on_event(defines.events.on_tick, nil) --unsubscribe ticker on last removed train stop
-    printmsg("on_tick unsubscribed")
+    if debug_log then printmsg("on_tick unsubscribed") end
   end
 end
 
@@ -151,7 +160,7 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stopID == event.train.station.unit_number then
         stop.parkedTrain = event.train
         stop.parkedTrainID = trainID
-        printmsg(trainID.." arrived at ".. stop.entity.backer_name)
+        if debug_log then printmsg(trainID.." arrived at ".. stop.entity.backer_name) end
         UpdateStopOutput(stop)
         
         if stop.isDepot then          
@@ -176,7 +185,7 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stop.parkedTrainID == trainID then
         stop.parkedTrain = nil
         stop.parkedTrainID = nil
-        printmsg(trainID.." left ".. stop.entity.backer_name)
+        if debug_log then printmsg(trainID.." left ".. stop.entity.backer_name) end
         
         if stop.isDepot then
           global.Dispatcher.availableTrains[trainID] = nil
@@ -230,24 +239,44 @@ if global.LogisticTrainStops ~= nil and game.tick % update_interval == 0 then
   for requestStation, req in pairs (requests) do
     if req then
     for item, count in pairs (req) do
-      local TrainID = GetFreeTrain()      
-      if TrainID then
-         --find best supplier
-        local pickupStation = GetStationItemMax(item, count)
+      itype, iname = item:match("([^,]+),([^,]+)")
+      if not (itype and iname) then
+        printmsg("Error: could not parse item "..item)
+        return
+      end
+      -- get train with fitting cargo type (item/fluid) and inventory size
+      local train = GetFreeTrain(itype, iname, count)      
+      if train then
+        local deliverySize = math.min(count, train.inventorySize)
+         -- find best supplier
+        local pickupStation = GetStationItemMax(item, 1)        
         if pickupStation then
+          deliverySize = math.min(deliverySize, pickupStation.count)
+          if debug_log then printmsg("Creating Delivery: ".. deliverySize .."  ".. item.." from "..pickupStation.name.." to "..requestStation) end
+          
+          -- use Rail Tanker fake items instead of fluids 
+          if use_tanker and itype == "fluid" then
+            if game.item_prototypes[iname .. "-in-tanker"] then
+              iname = iname .. "-in-tanker"
+              itype = "item"
+            else
+              printmsg("Error: couldn't get RailTanker fake item")
+            end
+          end
+          
           -- generate schedule
-          printmsg("Creating Delivery: ".. count .."  ".. item.." from "..pickupStation.." to "..requestStation)
-          local train = global.Dispatcher.availableTrains[TrainID]
-          local depot = global.LogisticTrainStops[train.station.unit_number]
+          local ItemSignalID = {type=itype, name=iname}
+          local selectedTrain = global.Dispatcher.availableTrains[train.id]
+          local depot = global.LogisticTrainStops[selectedTrain.station.unit_number]
           local schedule = {current = 1, records = {}}
           schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "circuit", {type="virtual",name="signal-green"}, "=", 1)      
-          schedule.records[2] = NewScheduleRecord(pickupStation, "item_count", {type="item",name=item}, ">", count-1) 
-          schedule.records[3] = NewScheduleRecord(requestStation, "item_count", {type="item",name=item}, "=", 0) 
-          train.schedule = schedule   
-          -- send green to train (needs output connected to station)          
+          schedule.records[2] = NewScheduleRecord(pickupStation.name, "item_count", ItemSignalID, ">", deliverySize-1) 
+          schedule.records[3] = NewScheduleRecord(requestStation, "item_count", ItemSignalID, "=", 0) 
+          selectedTrain.schedule = schedule   
+          -- send green to selectedTrain (needs output connected to station)          
           depot.output.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-green"}, count = 1 }}}
           -- store delivery
-          global.Dispatcher.Deliveries[TrainID] = {item=item, count=count, from=pickupStation, to=requestStation}
+          global.Dispatcher.Deliveries[train.id] = {item=item, count=deliverySize, from=pickupStation.name, to=requestStation}
         end
       end
     end
@@ -269,19 +298,46 @@ function GetStationItemMax(item, min_count)
       if k == item and v > currentMax then
         --printmsg("found ".. v .."  ".. k.." at "..station)
         currentMax = v
-        currentStation = station
+        currentStation = {name=station, count=v}
       end
     end
   end
   return currentStation
 end
 
-function GetFreeTrain()
+function GetFreeTrain(type, name, count)
+  local train = nil
+  local largestInventory = 0
+  if type == "item" then
+    stackSize = game.item_prototypes[name].stack_size
+  end
   for DispTrainKey, DispTrain in pairs (global.Dispatcher.availableTrains) do
+    local inventorySize = 0
     if DispTrain.valid then
-      return DispTrainKey
+      -- get total inventory of train for requested item type
+      for _,wagon in pairs (DispTrain.cargo_wagons) do
+        if type == "item" and wagon.name == "cargo-wagon" then
+          inventorySize = inventorySize + 40 * stackSize
+        end
+        -- TODO add fluid cargo wagons here
+        
+        if use_tanker and type == "fluid" and wagon.name == "rail-tanker" then
+          inventorySize = inventorySize + 2500
+        end
+      end
+      
+      if inventorySize >= count then
+        -- train is sufficient for delivery, stop searching
+        train = {id=DispTrainKey, inventorySize=inventorySize}
+        return train
+      elseif inventorySize > largestInventory then
+        -- keep looking for bigger train
+        largestInventory = inventorySize
+        train = {id=DispTrainKey, inventorySize=inventorySize}
+      end
     end
   end
+  return train
 end
 
 function GetCircuitValues(entity) 
@@ -290,18 +346,18 @@ function GetCircuitValues(entity)
   local items = {} 
   if greenWire then
     for _, v in pairs (greenWire.signals) do
-      if v.signal.type == "item" then
-        items[v.signal.name] = v.count
+      if v.signal.type == "item" or v.signal.type == "fluid" then
+        items[v.signal.type..","..v.signal.name] = v.count
       end
     end
   end
   if redWire then
     for _, v in pairs (redWire.signals) do 
-      if v.signal.type == "item" then
-        if items[v.signal.name] ~= nil then
-          items[v.signal.name] = items[v.signal.name] + v.count
+      if v.signal.type == "item" or v.signal.type == "fluid" then
+        if items[v.signal.type..","..v.signal.name] ~= nil then
+          items[v.signal.type..","..v.signal.name] = items[v.signal.type..","..v.signal.name] + v.count
         else
-          items[v.signal.name] = v.count
+          items[v.signal.type..","..v.signal.name] = v.count
         end
       end
     end
@@ -329,28 +385,48 @@ end
 
 function UpdateStopOutput(trainStop)
   local signals = {}
-  if trainStop.parkedTrain and trainStop.isDepot then
-    table.insert(signals, {index = 1, signal = {type="virtual",name="signal-blue"}, count = 1 })
-  elseif trainStop.parkedTrain then
-    local conditions = trainStop.parkedTrain.schedule.records[trainStop.parkedTrain.schedule.current].wait_conditions
-    if conditions ~= nil then 
-      local i = 0
-      for _, c in pairs(conditions) do
-        if c.condition and c.condition.comparator and c.condition.first_signal and c.condition.constant then
-          i=i+1
-          if c.condition.comparator == ">" then --train expects to be loaded with x of this item
-            table.insert(signals, {index = i, signal = c.condition.first_signal, count = c.condition.constant + 1 })
-          elseif (c.condition.comparator == "<" and c.condition.constant == 1) or
-                 (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
-            table.insert(signals, {index = i, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_item_count(c.condition.first_signal.name) * -1 })
-          else --signal invalid
-             table.insert(signals, {index = i, signal = {type="virtual",name="signal-red"}, count = 1 })
-          end      
-        end
+  if trainStop.parkedTrain then
+    -- get train composition
+    carriages = {}
+    for _,carriage in pairs (trainStop.parkedTrain.carriages) do
+      if carriages[carriage.name] ~= nil then
+        carriages[carriage.name] = carriages[carriage.name] + 1
+      else
+        carriages[carriage.name] = 1
       end
     end
-    --printmsg(trainStop.id.." current schedule position:"..trainStop.parkedTrain.schedule.current.." found "..i.." signals")
+    i = 1
+    for k ,v in pairs (carriages) do      
+      table.insert(signals, {index = i, signal = {type="virtual",name="LTV-"..k}, count = v })
+      i=i+1
+    end
+    
+    
+    if trainStop.isDepot then
+      -- Update Depot
+      table.insert(signals, {index = i, signal = {type="virtual",name="signal-blue"}, count = 1 })      
+    else    
+      -- Update normal stations
+      local conditions = trainStop.parkedTrain.schedule.records[trainStop.parkedTrain.schedule.current].wait_conditions
+      if conditions ~= nil then 
+        for _, c in pairs(conditions) do
+          if c.condition and c.condition.comparator and c.condition.first_signal and c.condition.constant then
+            if c.condition.comparator == ">" then --train expects to be loaded with x of this item
+              table.insert(signals, {index = i, signal = c.condition.first_signal, count = c.condition.constant + 1 })
+            elseif (c.condition.comparator == "<" and c.condition.constant == 1) or
+                   (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
+              table.insert(signals, {index = i, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_item_count(c.condition.first_signal.name) * -1 })
+            else --signal invalid
+               table.insert(signals, {index = i, signal = {type="virtual",name="signal-red"}, count = 1 })
+            end  
+            i=i+1            
+          end
+        end
+      end       
+    end
+    
   end
+  -- will reset if called with no parked train
   params = {parameters=signals}
   trainStop.output.get_control_behavior().parameters = params	
 end
