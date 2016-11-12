@@ -1,4 +1,4 @@
-MOD_NAME = "Logistic_Trains"
+MOD_NAME = "LogisticTrainNetwork"
 
 require "lib"
 require("prototypes.logistic_train_stop")
