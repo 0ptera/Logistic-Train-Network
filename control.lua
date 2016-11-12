@@ -3,11 +3,12 @@ require "lib"
 MINDELIVERYSIZE = "min-delivery-size"
 
 
-update_interval = 10
+station_update_interval = 20
+dispatcher_update_interval = 60
 min_delivery_size = 10
 delivery_timeout = 18000 --duration in ticks deliveries can take before assuming the train was lost (default 18000 = 5min)
 schedule_creation_min_time = 600 --min duration in ticks before a schedule of the same shipment is created again
-log_level = 1 -- 3: prints everything, 2: prints all Scheduler messages, 1 prints only important messages, 0: off
+log_level = 3 -- 4: prints everything, 3: prints extended messages, 2: prints all Scheduler messages, 1 prints only important messages, 0: off
 
 
 -- Events
@@ -70,7 +71,7 @@ end)
 
 function CreateStop(logisticTrainStop)
   if global.LogisticTrainStops[logisticTrainStop.unit_number] then
-    printmsg("Error: Duplicated unit_number "..logisticTrainStop.unit_number)
+    printmsg("[LT] Error: Duplicated unit_number "..logisticTrainStop.unit_number)
     return
   end
   
@@ -92,7 +93,7 @@ function CreateStop(logisticTrainStop)
     posOut = {logisticTrainStop.position.x-1, logisticTrainStop.position.y-1}
     rot = 0
   else --invalid orientation
-    printmsg("invalid Train Stop Orientation "..logisticTrainStop.direction)
+    printmsg("[LT] Error: invalid Train Stop Orientation "..logisticTrainStop.direction)
     return
   end
   local input = logisticTrainStop.surface.create_entity
@@ -132,7 +133,7 @@ function CreateStop(logisticTrainStop)
   end
   if count == 1 then
     script.on_event(defines.events.on_tick, tickTrainStops) --subscribe ticker on first created train stop
-    if log_level >= 3 then printmsg("on_tick subscribed") end
+    if log_level >= 4 then printmsg("on_tick subscribed") end
   end
 end
 
@@ -148,7 +149,7 @@ function RemoveStop(logisticTrainStop)
   end
   if count == 0 then
     script.on_event(defines.events.on_tick, nil) --unsubscribe ticker on last removed train stop
-    if  log_level >= 3 then printmsg("on_tick unsubscribed") end
+    if  log_level >= 4 then printmsg("on_tick unsubscribed") end
   end
 end
 
@@ -160,7 +161,7 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stopID == event.train.station.unit_number then
         stop.parkedTrain = event.train
         stop.parkedTrainID = trainID
-        if log_level >= 3 then printmsg(trainID.." arrived at ".. stop.entity.backer_name) end
+        if log_level >= 3 then printmsg("[LT] "..trainID.." arrived at ".. stop.entity.backer_name) end
         UpdateStopOutput(stop)
         
         if stop.isDepot then          
@@ -185,7 +186,7 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stop.parkedTrainID == trainID then
         stop.parkedTrain = nil
         stop.parkedTrainID = nil
-        if log_level >= 3 then printmsg(trainID.." left ".. stop.entity.backer_name) end
+        if log_level >= 3 then printmsg("[LT] "..trainID.." left ".. stop.entity.backer_name) end
         
         if stop.isDepot then
           global.Dispatcher.availableTrains[trainID] = nil
@@ -203,141 +204,175 @@ script.on_event(defines.events.on_train_changed_state, function(event)
 end)
 
 function tickTrainStops(event)
-if global.LogisticTrainStops ~= nil and game.tick % update_interval == 0 then
-  global.Dispatcher.Storage = {} --reset storage
-  requests = {} --collect requests
-  
-    -- Dispatcher: clean up deliveries in case train was destroyed or removed
-  for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
-    if not delivery.train or not delivery.train.valid then
-      global.Dispatcher.Deliveries[trainID] = nil
-    elseif game.tick-delivery.started > delivery_timeout then
-      if log_level >= 1 then printmsg("Delivery: ".. delivery.count .."  ".. delivery.item.." from "..delivery.from.." to "..delivery.to.." running for "..game.tick-delivery.started.." ticks deleted after time out.") end
-      global.Dispatcher.Deliveries[trainID] = nil
-    end
-  end
-
-    
-  for stopID, stop in pairs(global.LogisticTrainStops) do          
-    -- update depots by station name
-    if string.lower(stop.entity.backer_name) == "depot" then
-      stop.isDepot = true
-    else
-      stop.isDepot = false
-    end
-      
-    -- update input signals of stop
-    global.Dispatcher.Storage[stop.entity.backer_name] = GetCircuitValues(stop.input)
-  
-    if global.Dispatcher.Storage[stop.entity.backer_name] then
-      minDelivery = min_delivery_size
-      for item, count in pairs (global.Dispatcher.Storage[stop.entity.backer_name]) do
-        if item == "virtual,"..MINDELIVERYSIZE then
-          --if log_level >= 3 then printmsg("min delivery size to "..stop.entity.backer_name.." set to "..count) end
-          minDelivery = count
-        else
-          for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
-            if delivery.item == item and delivery.to == stop.entity.backer_name then
-              count = count + delivery.count
+  -- Station update
+  if global.LogisticTrainStops ~= nil and game.tick % station_update_interval == 0 then
+    for stopID, stop in pairs(global.LogisticTrainStops) do                
+      if string.lower(stop.entity.backer_name) == "depot" then
+        stop.isDepot = true
+      else
+        stop.isDepot = false
+      end
+        
+      -- update input signals of stop
+      local circuitValues = GetCircuitValues(stop.input)
+      local requested = {}
+      local provided = {}
+      if circuitValues then
+        minDelivery = min_delivery_size
+        for item, count in pairs (circuitValues) do
+          if item == "virtual,"..MINDELIVERYSIZE then -- overwrite default min-delivery-size
+            minDelivery = count
+            circuitValues[item] = nil
+          else
+            for trainID, delivery in pairs (global.Dispatcher.Deliveries) do -- calculate items + deliveries
+              if delivery.item == item and delivery.to == stop.entity.backer_name then
+                 count = count + delivery.count                 
+                 circuitValues[item] = count              
+              end
             end
-          end
-          if count < minDelivery * -1 then
-            requests[stop.entity.backer_name] = requests[stop.entity.backer_name] or {}
-            requests[stop.entity.backer_name][item] = count*-1
-          end
+            if count < 0 then
+              requested[item] = count * -1
+            else
+              provided[item] = count
+            end
+          end  
         end
+        global.Dispatcher.Storage[stopID] = global.Dispatcher.Storage[stopID] or {}
+        global.Dispatcher.Storage[stopID].lastUpdate = game.tick
+        global.Dispatcher.Storage[stopID].minDelivery = minDelivery
+        global.Dispatcher.Storage[stopID].provided = provided
+        global.Dispatcher.Storage[stopID].requested = requested
       end  
+    end
+  end -- Station Update 
+
+  -- Dispatcher update
+  if global.LogisticTrainStops ~= nil and game.tick % dispatcher_update_interval == 0 then
+    -- clean up deliveries in case train was destroyed or removed
+    for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
+      if not delivery.train or not delivery.train.valid then
+        global.Dispatcher.Deliveries[trainID] = nil
+      elseif game.tick-delivery.started > delivery_timeout then
+        if log_level >= 1 then printmsg("[LT] Delivery: ".. delivery.count .."  ".. delivery.item.." from "..delivery.from.." to "..delivery.to.." running for "..game.tick-delivery.started.." ticks deleted after time out.") end
+        global.Dispatcher.Deliveries[trainID] = nil
+      end
     end  
 
-  end --end update per stop
-
-  -- Dispatcher: handle requests
-  if requests then
-  for requestStation, req in pairs (requests) do
-    if req then
-    for item, count in pairs (req) do
-      itype, iname = item:match("([^,]+),([^,]+)")
-      if not (itype and iname) then
-        printmsg("Error: could not parse item "..item)
-        return
-      end
-      
-      -- skip if shipment was just created
-      skip = false
-      for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
-        if delivery.to == requestStation and delivery.item == item and game.tick-delivery.started < schedule_creation_min_time then
-          skip = true
-            if log_level >= 3 then printmsg("Skipped creating delivery: "..item.." to "..requestStation) end
-          break
+    -- update storage and requests
+    for stopID, storage in pairs (global.Dispatcher.Storage) do
+      if storage.lastUpdate and storage.lastUpdate > (game.tick - dispatcher_update_interval * 10) -- remove stops without data
+        and global.LogisticTrainStops[stopID] and global.LogisticTrainStops[stopID].entity.backer_name and storage.requested and storage.minDelivery then 
+        RequestHandler(global.LogisticTrainStops[stopID].entity.backer_name ,storage.requested, storage.minDelivery)         
+      else
+        if global.LogisticTrainStops[stopID] and global.LogisticTrainStops[stopID].entity.backer_name then
+          if log_level >= 3 then printmsg("[LT] Removed old storage data: "..global.LogisticTrainStops[stopID].entity.backer_name) end
+        else
+          if log_level >= 3 then printmsg("[LT] Removed old storage data: invalid stopID") end
         end
-      end      
-      if not skip then
-     
-      -- get train with fitting cargo type (item/fluid) and inventory size
-      local train = GetFreeTrain(itype, iname, count)      
-      if train then
-        local deliverySize = math.min(count, train.inventorySize)
-         -- find best supplier
-        local pickupStation = GetStationItemMax(item, 1)        
-        if pickupStation then
-          deliverySize = math.min(deliverySize, pickupStation.count)
-          if log_level >= 2 then printmsg("Creating Delivery: ".. deliverySize .."  ".. item.." from "..pickupStation.name.." to "..requestStation) end
-          
-          -- use Rail Tanker fake items instead of fluids 
-          if game.item_prototypes["rail-tanker"] and itype == "fluid" then
-            if game.item_prototypes[iname .. "-in-tanker"] then
-              iname = iname .. "-in-tanker"
-              itype = "item"
-            else
-              printmsg("Error: couldn't get RailTanker fake item")
-            end
-          end
-          
-          -- generate schedule
-          local ItemSignalID = {type=itype, name=iname}
-          local selectedTrain = global.Dispatcher.availableTrains[train.id]
-          local depot = global.LogisticTrainStops[selectedTrain.station.unit_number]
-          local schedule = {current = 1, records = {}}
-          schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "circuit", {type="virtual",name="signal-green"}, "=", 1)      
-          schedule.records[2] = NewScheduleRecord(pickupStation.name, "item_count", ItemSignalID, ">", deliverySize-1) 
-          schedule.records[3] = NewScheduleRecord(requestStation, "item_count", ItemSignalID, "=", 0) 
-          selectedTrain.schedule = schedule   
-          -- send green to selectedTrain (needs output connected to station)          
-          depot.output.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-green"}, count = 1 }}}
-          -- store delivery
-          global.Dispatcher.Deliveries[train.id] = {train=selectedTrain, started=game.tick, item=item, count=deliverySize, from=pickupStation.name, to=requestStation}
-        end
+        global.Dispatcher.Storage[stopID] = nil      
       end
-      end --if not skip then
-    end --for item, count in pairs (req) do
-    end --if req then
-  end --for requestStation, req in pairs (requests) do
-  end --if requests then
-end  
+    end   
+    
+  end -- Dispatcher Update
 end
 
 -- Logic
+
+--Handle Requests for a given station
+function RequestHandler(requestStation, requests, minDelivery)
+  for item, count in pairs (requests) do
+        
+    itype, iname = item:match("([^,]+),([^,]+)")
+    if not (itype and iname) then
+      printmsg("[LT](RequestHandler) Error: could not parse item "..item)
+      return
+    end
+    
+    -- skip if shipment was just created
+    -- skip = false
+    -- for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
+      -- if delivery.to == requestStation and delivery.item == item and game.tick-delivery.started < schedule_creation_min_time then
+        -- skip = true
+          -- if log_level >= 3 then printmsg("Skipped creating delivery: "..item.." to "..requestStation) end
+        -- break
+      -- end
+    -- end      
+    -- if not skip then
+   
+    -- get train with fitting cargo type (item/fluid) and inventory size
+    local train = GetFreeTrain(itype, iname, count)      
+    if not train then      
+      return
+    end
+        
+    local deliverySize = math.min(count, train.inventorySize)
+    if deliverySize < minDelivery then -- don't deliver anything below delivery size
+      if log_level >= 4 then printmsg("[LT](RequestHandler) Rejected Delivery: delivery size ".. deliverySize.." < selected min delivery size "..minDelivery) end
+      return
+    end
+
+     -- find best supplier
+    local pickupStation = GetStationItemMax(item, 1)        
+    if not pickupStation then
+      if log_level >= 2 then printmsg("[LT](RequestHandler) Rejected Delivery: station supplying "..item.." not found") end
+      return
+    end
+    
+    deliverySize = math.min(deliverySize, pickupStation.count)
+    if log_level >= 2 then printmsg("[LT](RequestHandler) Creating Delivery: ".. deliverySize .."  ".. item.." from "..pickupStation.name.." to "..requestStation) end
+    
+    -- use Rail Tanker fake items instead of fluids 
+    if game.item_prototypes["rail-tanker"] and itype == "fluid" then
+      if game.item_prototypes[iname .. "-in-tanker"] then
+        iname = iname .. "-in-tanker"
+        itype = "item"
+      else
+        printmsg("[LT] Error: couldn't get RailTanker fake item")
+      end
+    end
+          
+    -- generate schedule
+    local ItemSignalID = {type=itype, name=iname}
+    local selectedTrain = global.Dispatcher.availableTrains[train.id]
+    local depot = global.LogisticTrainStops[selectedTrain.station.unit_number]
+    local schedule = {current = 1, records = {}}
+    schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "circuit", {type="virtual",name="signal-green"}, "=", 1)      
+    schedule.records[2] = NewScheduleRecord(pickupStation.name, "item_count", ItemSignalID, ">", deliverySize-1) 
+    schedule.records[3] = NewScheduleRecord(requestStation, "item_count", ItemSignalID, "=", 0) 
+    selectedTrain.schedule = schedule   
+    -- send green to selectedTrain (needs output connected to station)          
+    depot.output.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-green"}, count = 1 }}}
+    -- store delivery
+    global.Dispatcher.Deliveries[train.id] = {train=selectedTrain, started=game.tick, item=item, count=deliverySize, from=pickupStation.name, to=requestStation}
+  end
+end
 
 --return name of station with highest count of item or nil
 function GetStationItemMax(item, min_count) 
   local currentStation = nil
   local currentMax = min_count
-  for station, itemlist in pairs (global.Dispatcher.Storage) do
-    --printmsg("checking ".. station .." for ".. item)
-    for k, v in pairs (itemlist) do
+  for stopID, storage in pairs (global.Dispatcher.Storage) do    
+    for k, v in pairs (storage.provided) do
       if k == item and v > currentMax then
-        --printmsg("found ".. v .."  ".. k.." at "..station)
-        currentMax = v
-        currentStation = {name=station, count=v}
+        local ltStop = global.LogisticTrainStops[stopID]
+        if ltStop then
+          if log_level >= 4 then printmsg("[LT](GetStationItemMax) found ".. v .."  ".. k.." at "..ltStop.entity.backer_name) end
+          currentMax = v
+          currentStation = {name=ltStop.entity.backer_name, count=v}
+        else
+          if log_level >= 1 then printmsg("[LT](GetStationItemMax) Error: "..stopID.." no such unit_number") end
+        end
       end
     end
   end
   return currentStation
 end
 
+-- return available train with smallest suitable inventory or largest available inventory
 function GetFreeTrain(type, name, count)
   local train = nil
   local largestInventory = 0
+  local smallestInventory = 0
   if type == "item" then
     stackSize = game.item_prototypes[name].stack_size
   end
@@ -357,11 +392,13 @@ function GetFreeTrain(type, name, count)
       end
       
       if inventorySize >= count then
-        -- train is sufficient for delivery, stop searching
-        train = {id=DispTrainKey, inventorySize=inventorySize}
-        return train
+        -- train is sufficient for delivery
+        if inventorySize < smallestInventory or smallestInventory == 0 then
+          smallestInventory = inventorySize
+          train = {id=DispTrainKey, inventorySize=inventorySize}
+        end
       elseif inventorySize > largestInventory then
-        -- keep looking for bigger train
+        -- store biggest available train
         largestInventory = inventorySize
         train = {id=DispTrainKey, inventorySize=inventorySize}
       end
