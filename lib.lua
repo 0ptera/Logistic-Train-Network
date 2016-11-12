@@ -15,8 +15,11 @@ function copyPrototype(type, name, newName)
 end
 
 function printmsg(msg)
-  for i,player in pairs(game.players) do
-    player.print(msg)
+  if global.log_output.console then
+    game.print(msg)
+  end
+  if global.log_output.log then
+    log("[LT] " .. msg)
   end
 end
 
