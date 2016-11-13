@@ -280,37 +280,41 @@ end
 
 -- Logic
 
---Handle Requests for a given station
+--Parse Requests for a given station
 function RequestHandler(requestStation, requests, minDelivery)
   for item, count in pairs (requests) do
-        
+
+    if count < minDelivery then -- don't deliver anything below delivery size
+      goto continueParseRequests
+    end
+
     itype, iname = item:match("([^,]+),([^,]+)")
     if not (itype and iname) then
       printmsg("Error(RequestHandler): could not parse item "..item)
-      return
+      goto continueParseRequests
     end   
-   
+
     -- get train with fitting cargo type (item/fluid) and inventory size
     local train = GetFreeTrain(itype, iname, count)      
     if not train then   
       if global.log_level >= 4 then printmsg("No train to transport "..count.." ".. item.." found in Depot") end
-      return
+      goto continueParseRequests
     end
         
     local deliverySize = math.min(count, train.inventorySize)
-    if deliverySize < minDelivery then -- don't deliver anything below delivery size
-      if global.log_level >= 4 then printmsg("Rejected Delivery: delivery size ".. deliverySize.." < selected min delivery size "..minDelivery) end
-      return
+    if deliverySize < minDelivery then -- train inventory size could drop below minDelivery
+      --if global.log_level >= 4 then printmsg("Rejected Delivery: delivery size ".. deliverySize.." < selected min delivery size "..minDelivery) end
+      goto continueParseRequests
     end
 
      -- find best supplier
     local pickupStation = GetStationItemMax(item, 1)        
     if not pickupStation then
       if global.log_level >= 2 then printmsg("Warning: no station supplying "..item.." found") end
-      return
+      goto continueParseRequests
     end
-    
     deliverySize = math.min(deliverySize, pickupStation.count)
+
     if global.log_level >= 2 then printmsg("Creating Delivery: ".. deliverySize .."  ".. item.." from "..pickupStation.name.." to "..requestStation) end
     
     -- use Rail Tanker fake items instead of fluids 
@@ -336,6 +340,7 @@ function RequestHandler(requestStation, requests, minDelivery)
     depot.output.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-green"}, count = 1 }}}
     -- store delivery
     global.Dispatcher.Deliveries[train.id] = {train=selectedTrain, started=game.tick, item=item, count=deliverySize, from=pickupStation.name, to=requestStation}
+    ::continueParseRequests:: -- use goto since lua doesn't know continue
   end
 end
 
@@ -393,7 +398,7 @@ function GetFreeTrain(type, name, count)
           smallestInventory = inventorySize
           train = {id=DispTrainKey, inventorySize=inventorySize}
         end
-      elseif inventorySize > 0 and inventorySize > largestInventory then
+      elseif inventorySize > 0 and (inventorySize > largestInventory or largestInventory == 0) then
         -- store biggest available train
         largestInventory = inventorySize
         train = {id=DispTrainKey, inventorySize=inventorySize}
@@ -432,6 +437,7 @@ function NewScheduleRecord(stationName, condType, condSignal, condComp, condCons
   local cond = {comparator = condComp, first_signal = condSignal, constant = condConst}
   local record = {station = stationName, wait_conditions = {}}
   record.wait_conditions[1] = {type = condType, compare_type = "and", condition = cond }
+  record.wait_conditions[2] = {type = "inactivity", compare_type = "and", ticks = 60 } -- prevent trains leaving too early
   return record
 end
 
