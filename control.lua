@@ -1,4 +1,4 @@
-require "lib"
+--require "lib"
 require "interface"
 
 
@@ -76,7 +76,7 @@ end)
 
 function CreateStop(logisticTrainStop)
   if global.LogisticTrainStops[logisticTrainStop.unit_number] then
-    printmsg("[LT] Error: Duplicated unit_number "..logisticTrainStop.unit_number)
+    if global.log_level >= 1 then printmsg("Error(CreateStop): Duplicated unit_number "..logisticTrainStop.unit_number) end
     return
   end
   
@@ -98,7 +98,7 @@ function CreateStop(logisticTrainStop)
     posOut = {logisticTrainStop.position.x-1, logisticTrainStop.position.y-1}
     rot = 0
   else --invalid orientation
-    printmsg("[LT] Error: invalid Train Stop Orientation "..logisticTrainStop.direction)
+    if global.log_level >= 1 then printmsg("Error(CreateStop): invalid Train Stop Orientation "..logisticTrainStop.direction) end
     return
   end
   local input = logisticTrainStop.surface.create_entity
@@ -166,7 +166,7 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stopID == event.train.station.unit_number then
         stop.parkedTrain = event.train
         stop.parkedTrainID = trainID
-        if global.log_level >= 3 then printmsg("[LT] "..trainID.." arrived at ".. stop.entity.backer_name) end
+        if global.log_level >= 3 then printmsg(trainID.." arrived at ".. stop.entity.backer_name) end
         UpdateStopOutput(stop)
         
         if stop.isDepot then          
@@ -191,7 +191,7 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stop.parkedTrainID == trainID then
         stop.parkedTrain = nil
         stop.parkedTrainID = nil
-        if global.log_level >= 3 then printmsg("[LT] "..trainID.." left ".. stop.entity.backer_name) end
+        if global.log_level >= 3 then printmsg(trainID.." left ".. stop.entity.backer_name) end
         
         if stop.isDepot then
           global.Dispatcher.availableTrains[trainID] = nil
@@ -258,7 +258,7 @@ function tickTrainStops(event)
       if not delivery.train or not delivery.train.valid then
         global.Dispatcher.Deliveries[trainID] = nil
       elseif game.tick-delivery.started > delivery_timeout then
-        if global.log_level >= 1 then printmsg("[LT] Delivery: ".. delivery.count .."  ".. delivery.item.." from "..delivery.from.." to "..delivery.to.." running for "..game.tick-delivery.started.." ticks deleted after time out.") end
+        if global.log_level >= 1 then printmsg("Delivery: ".. delivery.count .."  ".. delivery.item.." from "..delivery.from.." to "..delivery.to.." running for "..game.tick-delivery.started.." ticks deleted after time out.") end
         global.Dispatcher.Deliveries[trainID] = nil
       end
     end  
@@ -270,9 +270,9 @@ function tickTrainStops(event)
         RequestHandler(global.LogisticTrainStops[stopID].entity.backer_name ,storage.requested, storage.minDelivery)         
       else
         if global.LogisticTrainStops[stopID] and global.LogisticTrainStops[stopID].entity.backer_name then
-          if global.log_level >= 3 then printmsg("[LT] Removed old storage data: "..global.LogisticTrainStops[stopID].entity.backer_name) end
+          if global.log_level >= 3 then printmsg("Removed old storage data: "..global.LogisticTrainStops[stopID].entity.backer_name) end
         else
-          if global.log_level >= 3 then printmsg("[LT] Removed old storage data: invalid stopID") end
+          if global.log_level >= 3 then printmsg("Removed old storage data: invalid stopID") end
         end
         global.Dispatcher.Storage[stopID] = nil      
       end
@@ -289,7 +289,7 @@ function RequestHandler(requestStation, requests, minDelivery)
         
     itype, iname = item:match("([^,]+),([^,]+)")
     if not (itype and iname) then
-      printmsg("[LT](RequestHandler) Error: could not parse item "..item)
+      printmsg("Error(RequestHandler): could not parse item "..item)
       return
     end
     
@@ -312,19 +312,19 @@ function RequestHandler(requestStation, requests, minDelivery)
         
     local deliverySize = math.min(count, train.inventorySize)
     if deliverySize < minDelivery then -- don't deliver anything below delivery size
-      if global.log_level >= 4 then printmsg("[LT](RequestHandler) Rejected Delivery: delivery size ".. deliverySize.." < selected min delivery size "..minDelivery) end
+      if global.log_level >= 4 then printmsg("Rejected Delivery: delivery size ".. deliverySize.." < selected min delivery size "..minDelivery) end
       return
     end
 
      -- find best supplier
     local pickupStation = GetStationItemMax(item, 1)        
     if not pickupStation then
-      if global.log_level >= 2 then printmsg("[LT](RequestHandler) Rejected Delivery: station supplying "..item.." not found") end
+      if global.log_level >= 2 then printmsg("Rejected Delivery: station supplying "..item.." not found") end
       return
     end
     
     deliverySize = math.min(deliverySize, pickupStation.count)
-    if global.log_level >= 2 then printmsg("[LT](RequestHandler) Creating Delivery: ".. deliverySize .."  ".. item.." from "..pickupStation.name.." to "..requestStation) end
+    if global.log_level >= 2 then printmsg("Creating Delivery: ".. deliverySize .."  ".. item.." from "..pickupStation.name.." to "..requestStation) end
     
     -- use Rail Tanker fake items instead of fluids 
     if game.item_prototypes["rail-tanker"] and itype == "fluid" then
@@ -332,7 +332,7 @@ function RequestHandler(requestStation, requests, minDelivery)
         iname = iname .. "-in-tanker"
         itype = "item"
       else
-        printmsg("[LT] Error: couldn't get RailTanker fake item")
+        printmsg("Error(RequestHandler): couldn't get RailTanker fake item")
       end
     end
           
@@ -361,11 +361,11 @@ function GetStationItemMax(item, min_count)
       if k == item and v > currentMax then
         local ltStop = global.LogisticTrainStops[stopID]
         if ltStop then
-          if global.log_level >= 4 then printmsg("[LT](GetStationItemMax) found ".. v .."  ".. k.." at "..ltStop.entity.backer_name) end
+          if global.log_level >= 4 then printmsg("found ".. v .."  ".. k.." at "..ltStop.entity.backer_name) end
           currentMax = v
           currentStation = {name=ltStop.entity.backer_name, count=v}
         else
-          if global.log_level >= 1 then printmsg("[LT](GetStationItemMax) Error: "..stopID.." no such unit_number") end
+          if global.log_level >= 1 then printmsg("Error(GetStationItemMax): "..stopID.." no such unit_number") end
         end
       end
     end
