@@ -1,5 +1,9 @@
 MOD_NAME = "LogisticTrainNetwork"
 
-require "lib"
-require("prototypes.logistic_train_stop")
-require("prototypes.signals")
+require ("lib")
+require ("config")
+require ("prototypes.technology")
+require ("prototypes.recipes")
+require ("prototypes.items")
+require ("prototypes.entities")
+require ("prototypes.signals")

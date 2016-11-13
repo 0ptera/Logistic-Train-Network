@@ -1,17 +1,9 @@
 --require "lib"
+require "config"
 require "interface"
 
 
 MINDELIVERYSIZE = "min-delivery-size"
-
-
-station_update_interval = 20
-dispatcher_update_interval = 60
-min_delivery_size = 10
-delivery_timeout = 18000 --duration in ticks deliveries can take before assuming the train was lost (default 18000 = 5min)
-schedule_creation_min_time = 600 --min duration in ticks before a schedule of the same shipment is created again
-
-
 
 -- Events
 
@@ -25,8 +17,13 @@ end)
 
 function onLoad ()
 	if global.LogisticTrainStops ~= nil then
-		script.on_event(defines.events.on_tick, tickTrainStops) --subscribe ticker when train stops exist
+		script.on_event(defines.events.on_tick, tickTrainStops) --subscribe ticker when train stops exist    
+    for stopID, stop in pairs(global.LogisticTrainStops) do --outputs are not stored in save
+      UpdateStopOutput(stop)
+    end
 	end
+  
+
 end
 
 script.on_configuration_changed(function()
@@ -291,22 +288,12 @@ function RequestHandler(requestStation, requests, minDelivery)
     if not (itype and iname) then
       printmsg("Error(RequestHandler): could not parse item "..item)
       return
-    end
-    
-    -- skip if shipment was just created
-    -- skip = false
-    -- for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
-      -- if delivery.to == requestStation and delivery.item == item and game.tick-delivery.started < schedule_creation_min_time then
-        -- skip = true
-          -- if global.log_level >= 3 then printmsg("Skipped creating delivery: "..item.." to "..requestStation) end
-        -- break
-      -- end
-    -- end      
-    -- if not skip then
+    end   
    
     -- get train with fitting cargo type (item/fluid) and inventory size
     local train = GetFreeTrain(itype, iname, count)      
-    if not train then      
+    if not train then   
+      if global.log_level >= 4 then printmsg("No train to transport "..count.." ".. item.." found in Depot") end
       return
     end
         
@@ -319,7 +306,7 @@ function RequestHandler(requestStation, requests, minDelivery)
      -- find best supplier
     local pickupStation = GetStationItemMax(item, 1)        
     if not pickupStation then
-      if global.log_level >= 2 then printmsg("Rejected Delivery: station supplying "..item.." not found") end
+      if global.log_level >= 2 then printmsg("Warning: no station supplying "..item.." found") end
       return
     end
     
@@ -386,13 +373,17 @@ function GetFreeTrain(type, name, count)
     if DispTrain.valid then
       -- get total inventory of train for requested item type
       for _,wagon in pairs (DispTrain.cargo_wagons) do
-        -- base wagons
-        if type == "item" and wagon.name == "cargo-wagon" then
-          inventorySize = inventorySize + 40 * stackSize
-        end
         -- RailTanker
         if game.item_prototypes["rail-tanker"] and type == "fluid" and wagon.name == "rail-tanker" then
           inventorySize = inventorySize + 2500
+        -- normal cargo wagons
+        elseif type == "item" and wagon.name ~= "rail-tanker" then
+          local slots = #wagon.get_inventory(defines.inventory.cargo_wagon)
+          if slots then
+            inventorySize = inventorySize + slots * stackSize
+          else
+            if global.log_level >= 1 then printmsg("Error(GetFreeTrain): Could not read inventory size of ".. wagon.name) end
+          end
         end
       end
       
@@ -402,7 +393,7 @@ function GetFreeTrain(type, name, count)
           smallestInventory = inventorySize
           train = {id=DispTrainKey, inventorySize=inventorySize}
         end
-      elseif inventorySize > largestInventory then
+      elseif inventorySize > 0 and inventorySize > largestInventory then
         -- store biggest available train
         largestInventory = inventorySize
         train = {id=DispTrainKey, inventorySize=inventorySize}
@@ -469,7 +460,7 @@ function UpdateStopOutput(trainStop)
     end
     i = 1
     for k ,v in pairs (carriages) do      
-      table.insert(signals, {index = i, signal = {type="virtual",name="LTV-"..k}, count = v })
+      table.insert(signals, {index = i, signal = {type="virtual",name="LTN-"..k}, count = v })
       i=i+1
     end
     

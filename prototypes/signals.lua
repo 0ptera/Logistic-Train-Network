@@ -1,17 +1,17 @@
 data:extend({
   {
     type = "item-subgroup",
-    name = "LogisticTrains-signal",
+    name = "LTN-signal",
     group = "signals",
-    order = "z[LogisticTrains-signal]"
+    order = "z[LTN-signal]"
   },
 
   {
     type = "virtual-signal",
     name = "min-delivery-size",
     icon = "__"..MOD_NAME.."__/graphics/icons/shipment-size.png",
-    subgroup = "LogisticTrains-signal",
-    order = "z[LogisticTrains-signal]-ac"
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-ac[min-delivery-size]"
   }
 
 })
