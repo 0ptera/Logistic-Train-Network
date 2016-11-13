@@ -1,4 +1,6 @@
 require "lib"
+require "interface"
+
 
 MINDELIVERYSIZE = "min-delivery-size"
 
@@ -8,7 +10,7 @@ dispatcher_update_interval = 60
 min_delivery_size = 10
 delivery_timeout = 18000 --duration in ticks deliveries can take before assuming the train was lost (default 18000 = 5min)
 schedule_creation_min_time = 600 --min duration in ticks before a schedule of the same shipment is created again
-log_level = 3 -- 4: prints everything, 3: prints extended messages, 2: prints all Scheduler messages, 1 prints only important messages, 0: off
+
 
 
 -- Events
@@ -33,7 +35,10 @@ script.on_configuration_changed(function()
   global.Dispatcher.Storage = global.Dispatcher.Storage or {}
   global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
   
-  global.LogisticTrainStops = global.LogisticTrainStops or {} 
+  global.LogisticTrainStops = global.LogisticTrainStops or {}
+
+  global.log_level = global.log_level or 3 -- 4: prints everything, 3: prints extended messages, 2: prints all Scheduler messages, 1 prints only important messages, 0: off
+  global.log_output = global.log_output or {console = 'console'} -- console or log or both
 end)
 
 
@@ -133,7 +138,7 @@ function CreateStop(logisticTrainStop)
   end
   if count == 1 then
     script.on_event(defines.events.on_tick, tickTrainStops) --subscribe ticker on first created train stop
-    if log_level >= 4 then printmsg("on_tick subscribed") end
+    if global.log_level >= 4 then printmsg("on_tick subscribed") end
   end
 end
 
@@ -149,7 +154,7 @@ function RemoveStop(logisticTrainStop)
   end
   if count == 0 then
     script.on_event(defines.events.on_tick, nil) --unsubscribe ticker on last removed train stop
-    if  log_level >= 4 then printmsg("on_tick unsubscribed") end
+    if  global.log_level >= 4 then printmsg("on_tick unsubscribed") end
   end
 end
 
@@ -161,7 +166,7 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stopID == event.train.station.unit_number then
         stop.parkedTrain = event.train
         stop.parkedTrainID = trainID
-        if log_level >= 3 then printmsg("[LT] "..trainID.." arrived at ".. stop.entity.backer_name) end
+        if global.log_level >= 3 then printmsg("[LT] "..trainID.." arrived at ".. stop.entity.backer_name) end
         UpdateStopOutput(stop)
         
         if stop.isDepot then          
@@ -186,7 +191,7 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stop.parkedTrainID == trainID then
         stop.parkedTrain = nil
         stop.parkedTrainID = nil
-        if log_level >= 3 then printmsg("[LT] "..trainID.." left ".. stop.entity.backer_name) end
+        if global.log_level >= 3 then printmsg("[LT] "..trainID.." left ".. stop.entity.backer_name) end
         
         if stop.isDepot then
           global.Dispatcher.availableTrains[trainID] = nil
@@ -253,7 +258,7 @@ function tickTrainStops(event)
       if not delivery.train or not delivery.train.valid then
         global.Dispatcher.Deliveries[trainID] = nil
       elseif game.tick-delivery.started > delivery_timeout then
-        if log_level >= 1 then printmsg("[LT] Delivery: ".. delivery.count .."  ".. delivery.item.." from "..delivery.from.." to "..delivery.to.." running for "..game.tick-delivery.started.." ticks deleted after time out.") end
+        if global.log_level >= 1 then printmsg("[LT] Delivery: ".. delivery.count .."  ".. delivery.item.." from "..delivery.from.." to "..delivery.to.." running for "..game.tick-delivery.started.." ticks deleted after time out.") end
         global.Dispatcher.Deliveries[trainID] = nil
       end
     end  
@@ -265,9 +270,9 @@ function tickTrainStops(event)
         RequestHandler(global.LogisticTrainStops[stopID].entity.backer_name ,storage.requested, storage.minDelivery)         
       else
         if global.LogisticTrainStops[stopID] and global.LogisticTrainStops[stopID].entity.backer_name then
-          if log_level >= 3 then printmsg("[LT] Removed old storage data: "..global.LogisticTrainStops[stopID].entity.backer_name) end
+          if global.log_level >= 3 then printmsg("[LT] Removed old storage data: "..global.LogisticTrainStops[stopID].entity.backer_name) end
         else
-          if log_level >= 3 then printmsg("[LT] Removed old storage data: invalid stopID") end
+          if global.log_level >= 3 then printmsg("[LT] Removed old storage data: invalid stopID") end
         end
         global.Dispatcher.Storage[stopID] = nil      
       end
@@ -293,7 +298,7 @@ function RequestHandler(requestStation, requests, minDelivery)
     -- for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
       -- if delivery.to == requestStation and delivery.item == item and game.tick-delivery.started < schedule_creation_min_time then
         -- skip = true
-          -- if log_level >= 3 then printmsg("Skipped creating delivery: "..item.." to "..requestStation) end
+          -- if global.log_level >= 3 then printmsg("Skipped creating delivery: "..item.." to "..requestStation) end
         -- break
       -- end
     -- end      
@@ -307,19 +312,19 @@ function RequestHandler(requestStation, requests, minDelivery)
         
     local deliverySize = math.min(count, train.inventorySize)
     if deliverySize < minDelivery then -- don't deliver anything below delivery size
-      if log_level >= 4 then printmsg("[LT](RequestHandler) Rejected Delivery: delivery size ".. deliverySize.." < selected min delivery size "..minDelivery) end
+      if global.log_level >= 4 then printmsg("[LT](RequestHandler) Rejected Delivery: delivery size ".. deliverySize.." < selected min delivery size "..minDelivery) end
       return
     end
 
      -- find best supplier
     local pickupStation = GetStationItemMax(item, 1)        
     if not pickupStation then
-      if log_level >= 2 then printmsg("[LT](RequestHandler) Rejected Delivery: station supplying "..item.." not found") end
+      if global.log_level >= 2 then printmsg("[LT](RequestHandler) Rejected Delivery: station supplying "..item.." not found") end
       return
     end
     
     deliverySize = math.min(deliverySize, pickupStation.count)
-    if log_level >= 2 then printmsg("[LT](RequestHandler) Creating Delivery: ".. deliverySize .."  ".. item.." from "..pickupStation.name.." to "..requestStation) end
+    if global.log_level >= 2 then printmsg("[LT](RequestHandler) Creating Delivery: ".. deliverySize .."  ".. item.." from "..pickupStation.name.." to "..requestStation) end
     
     -- use Rail Tanker fake items instead of fluids 
     if game.item_prototypes["rail-tanker"] and itype == "fluid" then
@@ -356,11 +361,11 @@ function GetStationItemMax(item, min_count)
       if k == item and v > currentMax then
         local ltStop = global.LogisticTrainStops[stopID]
         if ltStop then
-          if log_level >= 4 then printmsg("[LT](GetStationItemMax) found ".. v .."  ".. k.." at "..ltStop.entity.backer_name) end
+          if global.log_level >= 4 then printmsg("[LT](GetStationItemMax) found ".. v .."  ".. k.." at "..ltStop.entity.backer_name) end
           currentMax = v
           currentStation = {name=ltStop.entity.backer_name, count=v}
         else
-          if log_level >= 1 then printmsg("[LT](GetStationItemMax) Error: "..stopID.." no such unit_number") end
+          if global.log_level >= 1 then printmsg("[LT](GetStationItemMax) Error: "..stopID.." no such unit_number") end
         end
       end
     end
