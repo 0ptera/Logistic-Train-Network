@@ -1,0 +1,11 @@
+{
+  "name": "LogisticTrainNetwork",
+  "version": "0.3.3",
+  "title": "Logistic Train Network",
+  "author": "Optera",
+  "contact": "https://forums.factorio.com/memberlist.php?mode=viewprofile&u=21729",
+  "homepage": "https://forums.factorio.com/viewtopic.php?f=97&t=36976",
+  "description": "Train stops form a logistic network like roboports.",
+  "factorio_version": "0.14",
+	"dependencies": ["?RailTanker >= 1.4.0"]
+}
