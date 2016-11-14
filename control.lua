@@ -2,8 +2,9 @@
 require "config"
 require "interface"
 
-
+-- signal names
 MINDELIVERYSIZE = "min-delivery-size"
+MAXTRAINLENGTH = "max-train-length"
 
 -- Events
 
@@ -163,7 +164,7 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stopID == event.train.station.unit_number then
         stop.parkedTrain = event.train
         stop.parkedTrainID = trainID
-        if global.log_level >= 3 then printmsg(trainID.." arrived at ".. stop.entity.backer_name) end
+        if global.log_level >= 3 then printmsg("TrainID "..trainID.." arrived at ".. stop.entity.backer_name) end
         UpdateStopOutput(stop)
         
         if stop.isDepot then          
@@ -188,7 +189,7 @@ script.on_event(defines.events.on_train_changed_state, function(event)
       if stop.parkedTrainID == trainID then
         stop.parkedTrain = nil
         stop.parkedTrainID = nil
-        if global.log_level >= 3 then printmsg(trainID.." left ".. stop.entity.backer_name) end
+        if global.log_level >= 3 then printmsg("TrainID "..trainID.." left ".. stop.entity.backer_name) end
         
         if stop.isDepot then
           global.Dispatcher.availableTrains[trainID] = nil
@@ -221,10 +222,14 @@ function tickTrainStops(event)
       local provided = {}
       if circuitValues then
         minDelivery = min_delivery_size
+        maxTraincars = 0
         for item, count in pairs (circuitValues) do
-          if item == "virtual,"..MINDELIVERYSIZE then -- overwrite default min-delivery-size
+          if item == "virtual,"..MINDELIVERYSIZE and count > 0 then -- overwrite default min-delivery-size
             minDelivery = count
             circuitValues[item] = nil
+          elseif item == "virtual,"..MAXTRAINLENGTH and count > 0 then -- set max-train-length
+            maxTraincars = count
+            circuitValues[item] = nil            
           else
             for trainID, delivery in pairs (global.Dispatcher.Deliveries) do -- calculate items + deliveries
               if delivery.item == item and delivery.to == stop.entity.backer_name then
@@ -242,6 +247,7 @@ function tickTrainStops(event)
         global.Dispatcher.Storage[stopID] = global.Dispatcher.Storage[stopID] or {}
         global.Dispatcher.Storage[stopID].lastUpdate = game.tick
         global.Dispatcher.Storage[stopID].minDelivery = minDelivery
+        global.Dispatcher.Storage[stopID].maxTraincars = maxTraincars
         global.Dispatcher.Storage[stopID].provided = provided
         global.Dispatcher.Storage[stopID].requested = requested
       end  
@@ -264,7 +270,7 @@ function tickTrainStops(event)
     for stopID, storage in pairs (global.Dispatcher.Storage) do
       if storage.lastUpdate and storage.lastUpdate > (game.tick - dispatcher_update_interval * 10) -- remove stops without data
         and global.LogisticTrainStops[stopID] and global.LogisticTrainStops[stopID].entity.backer_name and storage.requested and storage.minDelivery then 
-        RequestHandler(global.LogisticTrainStops[stopID].entity.backer_name ,storage.requested, storage.minDelivery)         
+        RequestHandler(global.LogisticTrainStops[stopID].entity.backer_name ,storage.requested, storage.minDelivery, storage.maxTraincars)         
       else
         if global.LogisticTrainStops[stopID] and global.LogisticTrainStops[stopID].entity.backer_name then
           if global.log_level >= 3 then printmsg("Removed old storage data: "..global.LogisticTrainStops[stopID].entity.backer_name) end
@@ -281,39 +287,43 @@ end
 -- Logic
 
 --Parse Requests for a given station
-function RequestHandler(requestStation, requests, minDelivery)
+function RequestHandler(requestStation, requests, minDelivery, maxTraincars)
   for item, count in pairs (requests) do
 
     if count < minDelivery then -- don't deliver anything below delivery size
       goto continueParseRequests
     end
-
+       
     itype, iname = item:match("([^,]+),([^,]+)")
     if not (itype and iname) then
-      printmsg("Error(RequestHandler): could not parse item "..item)
+      if global.log_level >= 1 then printmsg("Error(RequestHandler): could not parse item "..item) end
       goto continueParseRequests
     end   
 
-    -- get train with fitting cargo type (item/fluid) and inventory size
-    local train = GetFreeTrain(itype, iname, count)      
-    if not train then   
-      if global.log_level >= 4 then printmsg("No train to transport "..count.." ".. item.." found in Depot") end
-      goto continueParseRequests
-    end
-        
-    local deliverySize = math.min(count, train.inventorySize)
-    if deliverySize < minDelivery then -- train inventory size could drop below minDelivery
-      --if global.log_level >= 4 then printmsg("Rejected Delivery: delivery size ".. deliverySize.." < selected min delivery size "..minDelivery) end
-      goto continueParseRequests
-    end
-
-     -- find best supplier
+    -- find best supplier
     local pickupStation = GetStationItemMax(item, 1)        
     if not pickupStation then
       if global.log_level >= 2 then printmsg("Warning: no station supplying "..item.." found") end
       goto continueParseRequests
     end
-    deliverySize = math.min(deliverySize, pickupStation.count)
+    deliverySize = math.min(count, pickupStation.count)
+        --maxTraincars = math.min(maxTraincars, pickupStation.maxTraincars)
+    if pickupStation.maxTraincars > 0 and (maxTraincars <= 0 or (maxTraincars > 0 and pickupStation.maxTraincars < maxTraincars)) then
+      maxTraincars = pickupStation.maxTraincars
+    end
+          
+    -- get train with fitting cargo type (item/fluid) and inventory size
+    local train = GetFreeTrain(itype, iname, deliverySize, minDelivery, maxTraincars)      
+    if not train then   
+      if global.log_level >= 4 then printmsg("No train with length "..maxTraincars.." to transport "..deliverySize.." ".. item.." found in Depot") end
+      goto continueParseRequests
+    end        
+    local deliverySize = math.min(deliverySize, train.inventorySize)
+    
+    -- if deliverySize < minDelivery then -- train inventory size could drop below minDelivery
+      -- --if global.log_level >= 4 then printmsg("Rejected Delivery: delivery size ".. deliverySize.." < selected min delivery size "..minDelivery) end
+      -- goto continueParseRequests
+    -- end
 
     if global.log_level >= 2 then printmsg("Creating Delivery: ".. deliverySize .."  ".. item.." from "..pickupStation.name.." to "..requestStation) end
     
@@ -340,33 +350,35 @@ function RequestHandler(requestStation, requests, minDelivery)
     depot.output.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-green"}, count = 1 }}}
     -- store delivery
     global.Dispatcher.Deliveries[train.id] = {train=selectedTrain, started=game.tick, item=item, count=deliverySize, from=pickupStation.name, to=requestStation}
+    global.Dispatcher.availableTrains[train.id] = nil
     ::continueParseRequests:: -- use goto since lua doesn't know continue
   end
 end
 
 --return name of station with highest count of item or nil
-function GetStationItemMax(item, min_count) 
+function GetStationItemMax(item, min_count ) 
   local currentStation = nil
   local currentMax = min_count
   for stopID, storage in pairs (global.Dispatcher.Storage) do    
-    for k, v in pairs (storage.provided) do
+    for k, v in pairs (storage.provided) do      
       if k == item and v > currentMax then
         local ltStop = global.LogisticTrainStops[stopID]
         if ltStop then
           if global.log_level >= 4 then printmsg("found ".. v .."  ".. k.." at "..ltStop.entity.backer_name) end
           currentMax = v
-          currentStation = {name=ltStop.entity.backer_name, count=v}
+          currentStation = {name=ltStop.entity.backer_name, count=v, maxTraincars=global.Dispatcher.Storage[stopID].maxTraincars}
         else
           if global.log_level >= 1 then printmsg("Error(GetStationItemMax): "..stopID.." no such unit_number") end
         end
       end
-    end
+    end --for k, v in pairs (storage.provided) do      
   end
   return currentStation
 end
 
--- return available train with smallest suitable inventory or largest available inventory
-function GetFreeTrain(type, name, count)
+-- return available train with smallest suitable inventory or largest available inventory 
+-- inventory has to be between minSize and maxSize if set
+function GetFreeTrain(type, name, count, minSize, maxTraincars)
   local train = nil
   local largestInventory = 0
   local smallestInventory = 0
@@ -392,16 +404,19 @@ function GetFreeTrain(type, name, count)
         end
       end
       
-      if inventorySize >= count then
-        -- train is sufficient for delivery
-        if inventorySize < smallestInventory or smallestInventory == 0 then
-          smallestInventory = inventorySize
+      if (minSize == nil or minSize <= 0 or inventorySize >= minSize) -- cargo space sufficient
+      and (maxTraincars == nil or maxTraincars <= 0 or #DispTrain.carriages <= maxTraincars) then -- train length fits
+        if inventorySize >= count then
+          -- train can be used for delivery
+          if inventorySize < smallestInventory or smallestInventory == 0 then
+            smallestInventory = inventorySize
+            train = {id=DispTrainKey, inventorySize=inventorySize}
+          end
+        elseif inventorySize > 0 and (inventorySize > largestInventory or largestInventory == 0) then
+          -- store biggest available train
+          largestInventory = inventorySize
           train = {id=DispTrainKey, inventorySize=inventorySize}
         end
-      elseif inventorySize > 0 and (inventorySize > largestInventory or largestInventory == 0) then
-        -- store biggest available train
-        largestInventory = inventorySize
-        train = {id=DispTrainKey, inventorySize=inventorySize}
       end
     end
   end
@@ -414,14 +429,16 @@ function GetCircuitValues(entity)
   local items = {} 
   if greenWire then
     for _, v in pairs (greenWire.signals) do
-      if v.signal.type == "item" or v.signal.type == "fluid" or (v.signal.type == "virtual" and v.signal.name == MINDELIVERYSIZE) then
+      if v.signal.type == "item" or v.signal.type == "fluid" 
+      or (v.signal.type == "virtual" and (v.signal.name == MINDELIVERYSIZE or v.signal.name == MAXTRAINLENGTH)) then
         items[v.signal.type..","..v.signal.name] = v.count
       end
     end
   end
   if redWire then
     for _, v in pairs (redWire.signals) do 
-      if v.signal.type == "item" or v.signal.type == "fluid" or (v.signal.type == "virtual" and v.signal.name == MINDELIVERYSIZE) then
+      if v.signal.type == "item" or v.signal.type == "fluid" 
+      or (v.signal.type == "virtual" and (v.signal.name == MINDELIVERYSIZE or v.signal.name == MAXTRAINLENGTH)) then
         if items[v.signal.type..","..v.signal.name] ~= nil then
           items[v.signal.type..","..v.signal.name] = items[v.signal.type..","..v.signal.name] + v.count
         else
