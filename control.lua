@@ -35,7 +35,7 @@ script.on_configuration_changed(function()
   
   global.LogisticTrainStops = global.LogisticTrainStops or {}
 
-  global.log_level = global.log_level or 3 -- 4: prints everything, 3: prints extended messages, 2: prints all Scheduler messages, 1 prints only important messages, 0: off
+  global.log_level = global.log_level or 2 -- 4: prints everything, 3: prints extended messages, 2: prints all Scheduler messages, 1 prints only important messages, 0: off
   global.log_output = global.log_output or {console = 'console'} -- console or log or both
 end)
 
@@ -97,6 +97,7 @@ function CreateStop(logisticTrainStop)
     rot = 0
   else --invalid orientation
     if global.log_level >= 1 then printmsg("Error(CreateStop): invalid Train Stop Orientation "..logisticTrainStop.direction) end
+    logisticTrainStop.destroy()
     return
   end
   local input = logisticTrainStop.surface.create_entity
@@ -471,7 +472,7 @@ end
 
 function UpdateStopOutput(trainStop)
   local signals = {}
-  if trainStop.parkedTrain then
+  if trainStop.parkedTrain and trainStop.parkedTrain.valid then
     -- get train composition
     carriages = {}
     for _,carriage in pairs (trainStop.parkedTrain.carriages) do
