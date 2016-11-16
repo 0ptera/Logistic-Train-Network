@@ -28,15 +28,39 @@ function onLoad ()
 end
 
 script.on_configuration_changed(function()
+  -- initialize
+  global.log_level = global.log_level or 2 -- 4: prints everything, 3: prints extended messages, 2: prints all Scheduler messages, 1 prints only important messages, 0: off
+  global.log_output = global.log_output or {console = 'console'} -- console or log or both
+  
   global.Dispatcher = global.Dispatcher or {}
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
   global.Dispatcher.Storage = global.Dispatcher.Storage or {}
   global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
   
   global.LogisticTrainStops = global.LogisticTrainStops or {}
+  
+  -- clean invalid data
+  local count = 0
+  for trainID, stop in pairs (global.LogisticTrainStops) do
+    if not (stop.entity and stop.entity.valid) 
+    or not (stop.input and stop.input.valid)
+    or not (stop.output and stop.output.valid) then
+      global.LogisticTrainStops[trainID] = nil
+      count = count+1
+    elseif stop.parkedTrain and not stop.parkedTrain.valid then
+      global.LogisticTrainStops[trainID].parkedTrain = nil
+      global.Dispatcher.availableTrains[trainID] = nil
+      count = count+1
+    end
+  end
+  for trainID, train in pairs (global.Dispatcher.availableTrains) do
+    if not train.valid or not global.LogisticTrainStops[trainID] or not global.LogisticTrainStops[trainID].parkedTrain or not global.LogisticTrainStops[trainID].parkedTrain.valid then
+      global.Dispatcher.availableTrains[trainID] = nil
+      count = count+1
+    end
+  end  
+  if global.log_level >= 3 then printmsg("Removed "..count.." invalid references") end  
 
-  global.log_level = global.log_level or 2 -- 4: prints everything, 3: prints extended messages, 2: prints all Scheduler messages, 1 prints only important messages, 0: off
-  global.log_output = global.log_output or {console = 'console'} -- console or log or both
 end)
 
 
@@ -160,6 +184,10 @@ end
 
 script.on_event(defines.events.on_train_changed_state, function(event)
   local trainID = GetTrainID(event.train)
+  if not trainID then --train has no locomotive
+    return
+  end
+  
   if event.train.state == defines.train_state.wait_station and event.train.station ~= nil and event.train.station.name == "logistic-train-stop" then -- add train to station
     for stopID, stop in pairs(global.LogisticTrainStops) do
       if stopID == event.train.station.unit_number then
