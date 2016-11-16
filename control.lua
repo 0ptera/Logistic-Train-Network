@@ -2,7 +2,7 @@
 require "config"
 require "interface"
 
--- signal names
+MOD_NAME = "LogisticTrainNetwork"
 MINDELIVERYSIZE = "min-delivery-size"
 MAXTRAINLENGTH = "max-train-length"
 
@@ -27,7 +27,7 @@ function onLoad ()
 
 end
 
-script.on_configuration_changed(function()
+script.on_configuration_changed(function(data)
   -- initialize
   global.log_level = global.log_level or 2 -- 4: prints everything, 3: prints extended messages, 2: prints all Scheduler messages, 1 prints only important messages, 0: off
   global.log_output = global.log_output or {console = 'console'} -- console or log or both
@@ -39,17 +39,43 @@ script.on_configuration_changed(function()
   
   global.LogisticTrainStops = global.LogisticTrainStops or {}
   
+  -- migrate from old versions  
+  if data.mod_changes ~=nil and data.mod_changes[MOD_NAME] ~= nil and data.mod_changes[MOD_NAME].old_version ~= nil then
+    printmsg("Logistic Train Network updated from "..data.mod_changes[MOD_NAME].old_version.." to "..data.mod_changes[MOD_NAME].new_version)
+    if data.mod_changes[MOD_NAME].old_version <= "0.3.7" then -- add lamp control to old versions
+      for stopID, stop in pairs (global.LogisticTrainStops) do
+        local lampctrl = stop.entity.surface.create_entity
+        {
+          name = "logistic-train-stop-lamp-control",
+          position = stop.input.position,
+          force = stop.entity.force
+        }  
+        lampctrl.operable = false -- disable gui
+        lampctrl.minable = false
+        lampctrl.destructible = false -- don't bother checking if alive
+        lampctrl.connect_neighbour({target_entity=stop.input, wire=defines.wire_type.green})
+        lampctrl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}}
+        global.LogisticTrainStops[stopID].lampControl = lampctrl
+        global.LogisticTrainStops[stopID].input.operable = false
+        global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().use_colors = true
+        global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().circuit_condition = {condition = {comperator=">",first_signal={type="virtual",name="signal-anything"}}}
+      end
+    end
+  end
+  
   -- clean invalid data
   local count = 0
-  for trainID, stop in pairs (global.LogisticTrainStops) do
+  for stopID, stop in pairs (global.LogisticTrainStops) do
     if not (stop.entity and stop.entity.valid) 
     or not (stop.input and stop.input.valid)
-    or not (stop.output and stop.output.valid) then
-      global.LogisticTrainStops[trainID] = nil
+    or not (stop.output and stop.output.valid) 
+    or not (stop.lampControl and stop.lampControl.valid) then
+      global.LogisticTrainStops[stopID] = nil
       count = count+1
-    elseif stop.parkedTrain and not stop.parkedTrain.valid then
-      global.LogisticTrainStops[trainID].parkedTrain = nil
-      global.Dispatcher.availableTrains[trainID] = nil
+    elseif stop.parkedTrain and not stop.parkedTrain.valid then      
+      global.Dispatcher.availableTrains[global.LogisticTrainStops[stopID].parkedTrainID] = nil
+      global.LogisticTrainStops[stopID].parkedTrain = nil
+      global.LogisticTrainStops[stopID].parkedTrainID = nil
       count = count+1
     end
   end
@@ -59,7 +85,6 @@ script.on_configuration_changed(function()
       count = count+1
     end
   end
-  
   if global.log_level >= 3 then printmsg("Removed "..count.." invalid references") end  
 
 end)
@@ -125,6 +150,18 @@ function CreateStop(logisticTrainStop)
     logisticTrainStop.destroy()
     return
   end
+
+  local lampctrl = logisticTrainStop.surface.create_entity
+  {
+    name = "logistic-train-stop-lamp-control",
+    position = posIn,
+    force = logisticTrainStop.force
+  }  
+  lampctrl.operable = false -- disable gui
+  lampctrl.minable = false
+  lampctrl.destructible = false -- don't bother checking if alive
+  lampctrl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}}
+
   local input = logisticTrainStop.surface.create_entity
   {
     name = "logistic-train-stop-input",
@@ -132,10 +169,12 @@ function CreateStop(logisticTrainStop)
     position = posIn,
     force = logisticTrainStop.force
   }  
-  input.operable = true -- disable gui
+  input.operable = false -- disable gui
   input.minable = false
   input.destructible = false -- don't bother checking if alive  
-  --input.connect_neighbour({target_entity=logisticTrainStop, wire=defines.wire_type.green})
+  input.connect_neighbour({target_entity=lampctrl, wire=defines.wire_type.green})
+  input.get_or_create_control_behavior().use_colors = true
+  input.get_or_create_control_behavior().circuit_condition = {condition = {comperator=">",first_signal={type="virtual",name="signal-anything"}}}
   
   local output = logisticTrainStop.surface.create_entity
   {
@@ -153,6 +192,7 @@ function CreateStop(logisticTrainStop)
     entity = logisticTrainStop,
     input = input,
     output = output,
+    lampControl = lampctrl,
     isDepot = false,
     parkedTrain = nil,
     parkedTrainID = nil
@@ -197,7 +237,6 @@ script.on_event(defines.events.on_train_changed_state, function(event)
         stop.parkedTrain = event.train
         stop.parkedTrainID = trainID
         if global.log_level >= 3 then printmsg("TrainID "..trainID.." arrived at ".. stop.entity.backer_name) end
-        UpdateStopOutput(stop)
         
         if stop.isDepot then          
           global.Dispatcher.availableTrains[trainID] = event.train
@@ -206,10 +245,9 @@ script.on_event(defines.events.on_train_changed_state, function(event)
           -- reset schedule
           local schedule = {current = 1, records = {}}
           schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "circuit", {type="virtual",name="signal-green"}, "=", 1)          
-          event.train.schedule = schedule
-          
-          -- TODO set lamp to blue
-          
+          event.train.schedule = schedule          
+          -- set lamp to blue
+          stop.lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-blue"}, count = 1 }}}
         end
         
         UpdateStopOutput(stop)
@@ -225,9 +263,8 @@ script.on_event(defines.events.on_train_changed_state, function(event)
         
         if stop.isDepot then
           global.Dispatcher.availableTrains[trainID] = nil
-          
-          -- TODO set lamp to nothing
-          
+          -- set lamp to green
+          stop.lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-green"}, count = 1 }}}
         end
         
         UpdateStopOutput(stop)
@@ -255,18 +292,21 @@ function tickTrainStops(event)
       if circuitValues then
         minDelivery = min_delivery_size
         maxTraincars = 0
+        colorCount = 0
+        colorDelivery = 0       
         for item, count in pairs (circuitValues) do
           if item == "virtual,"..MINDELIVERYSIZE and count > 0 then -- overwrite default min-delivery-size
             minDelivery = count
-            circuitValues[item] = nil
           elseif item == "virtual,"..MAXTRAINLENGTH and count > 0 then -- set max-train-length
-            maxTraincars = count
-            circuitValues[item] = nil            
+            maxTraincars = count          
+          elseif item == "virtual,signal-red" or item == "virtual,signal-green" or item == "virtual,signal-blue" or item == "virtual,signal-yellow" or item == "virtual,signal-pink" or item == "virtual,signal-cyan" or item == "virtual,signal-white" or item == "virtual,signal-grey" or item == "virtual,signal-black"then
+            colorCount = colorCount + count
           else
             for trainID, delivery in pairs (global.Dispatcher.Deliveries) do -- calculate items + deliveries
               if delivery.item == item and delivery.to == stop.entity.backer_name then
                  count = count + delivery.count                 
-                 circuitValues[item] = count              
+                 circuitValues[item] = count
+                 colorDelivery = colorDelivery + 1
               end
             end
             if count < 0 then
@@ -276,12 +316,26 @@ function tickTrainStops(event)
             end
           end  
         end
-        global.Dispatcher.Storage[stopID] = global.Dispatcher.Storage[stopID] or {}
-        global.Dispatcher.Storage[stopID].lastUpdate = game.tick
-        global.Dispatcher.Storage[stopID].minDelivery = minDelivery
-        global.Dispatcher.Storage[stopID].maxTraincars = maxTraincars
-        global.Dispatcher.Storage[stopID].provided = provided
-        global.Dispatcher.Storage[stopID].requested = requested
+        if colorCount == 1 then
+          global.Dispatcher.Storage[stopID] = global.Dispatcher.Storage[stopID] or {}
+          global.Dispatcher.Storage[stopID].lastUpdate = game.tick
+          global.Dispatcher.Storage[stopID].minDelivery = minDelivery
+          global.Dispatcher.Storage[stopID].maxTraincars = maxTraincars
+          global.Dispatcher.Storage[stopID].provided = provided
+          global.Dispatcher.Storage[stopID].requested = requested
+          if colorDelivery > 0 then
+            stop.lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-yellow"}, count = 1 }}}
+          else
+            if stop.isDepot and stop.parkedTrain then
+              stop.lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-blue"}, count = 1 }}}
+            else
+              stop.lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-green"}, count = 1 }}}
+            end
+          end
+        else
+          -- more than 1 color signal: wiring error
+          stop.lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-red"}, count = 1 }}}
+        end
       end  
     end
   end -- Station Update 
@@ -472,22 +526,22 @@ function GetCircuitValues(entity)
   local items = {} 
   if greenWire then
     for _, v in pairs (greenWire.signals) do
-      if v.signal.type == "item" or v.signal.type == "fluid" 
-      or (v.signal.type == "virtual" and (v.signal.name == MINDELIVERYSIZE or v.signal.name == MAXTRAINLENGTH)) then
+      -- if v.signal.type == "item" or v.signal.type == "fluid" 
+      -- or (v.signal.type == "virtual" and (v.signal.name == MINDELIVERYSIZE or v.signal.name == MAXTRAINLENGTH)) then
         items[v.signal.type..","..v.signal.name] = v.count
-      end
+      --end
     end
   end
   if redWire then
     for _, v in pairs (redWire.signals) do 
-      if v.signal.type == "item" or v.signal.type == "fluid" 
-      or (v.signal.type == "virtual" and (v.signal.name == MINDELIVERYSIZE or v.signal.name == MAXTRAINLENGTH)) then
+      -- if v.signal.type == "item" or v.signal.type == "fluid" 
+      -- or (v.signal.type == "virtual" and (v.signal.name == MINDELIVERYSIZE or v.signal.name == MAXTRAINLENGTH)) then
         if items[v.signal.type..","..v.signal.name] ~= nil then
           items[v.signal.type..","..v.signal.name] = items[v.signal.type..","..v.signal.name] + v.count
         else
           items[v.signal.type..","..v.signal.name] = v.count
         end
-      end
+      -- end
     end
   end
   return items
