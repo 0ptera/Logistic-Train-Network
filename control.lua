@@ -54,11 +54,12 @@ script.on_configuration_changed(function()
     end
   end
   for trainID, train in pairs (global.Dispatcher.availableTrains) do
-    if not train.valid or not global.LogisticTrainStops[trainID] or not global.LogisticTrainStops[trainID].parkedTrain or not global.LogisticTrainStops[trainID].parkedTrain.valid then
+    if not train.valid then
       global.Dispatcher.availableTrains[trainID] = nil
       count = count+1
     end
-  end  
+  end
+  
   if global.log_level >= 3 then printmsg("Removed "..count.." invalid references") end  
 
 end)
@@ -104,21 +105,21 @@ function CreateStop(logisticTrainStop)
   
   --printmsg("Stop created at "..logisticTrainStop.position.x.."/"..logisticTrainStop.position.y..", orientation "..logisticTrainStop.direction)
   if logisticTrainStop.direction == 0 then --SN
-    posIn = {logisticTrainStop.position.x, logisticTrainStop.position.y}
-    posOut = {logisticTrainStop.position.x, logisticTrainStop.position.y-1}
-    rot = 2
-  elseif logisticTrainStop.direction == 2 then --EW
-    posIn = {logisticTrainStop.position.x-1, logisticTrainStop.position.y}
-    posOut = {logisticTrainStop.position.x, logisticTrainStop.position.y}
-    rot = 4
-  elseif logisticTrainStop.direction == 4 then --NS
-    posIn = {logisticTrainStop.position.x-1, logisticTrainStop.position.y-1}
-    posOut = {logisticTrainStop.position.x-1, logisticTrainStop.position.y}
-    rot = 6
-  elseif logisticTrainStop.direction == 6 then --WE
     posIn = {logisticTrainStop.position.x, logisticTrainStop.position.y-1}
     posOut = {logisticTrainStop.position.x-1, logisticTrainStop.position.y-1}
     rot = 0
+  elseif logisticTrainStop.direction == 2 then --EW
+    posIn = {logisticTrainStop.position.x, logisticTrainStop.position.y}
+    posOut = {logisticTrainStop.position.x, logisticTrainStop.position.y-1}
+    rot = 2
+  elseif logisticTrainStop.direction == 4 then --NS
+    posIn = {logisticTrainStop.position.x-1, logisticTrainStop.position.y}
+    posOut = {logisticTrainStop.position.x, logisticTrainStop.position.y}
+    rot = 4
+  elseif logisticTrainStop.direction == 6 then --WE
+    posIn = {logisticTrainStop.position.x-1, logisticTrainStop.position.y-1}
+    posOut = {logisticTrainStop.position.x-1, logisticTrainStop.position.y}
+    rot = 6
   else --invalid orientation
     if global.log_level >= 1 then printmsg("Error(CreateStop): invalid Train Stop Orientation "..logisticTrainStop.direction) end
     logisticTrainStop.destroy()
@@ -131,10 +132,11 @@ function CreateStop(logisticTrainStop)
     position = posIn,
     force = logisticTrainStop.force
   }  
-  input.operable = false -- disable gui
+  input.operable = true -- disable gui
   input.minable = false
   input.destructible = false -- don't bother checking if alive  
-    
+  --input.connect_neighbour({target_entity=logisticTrainStop, wire=defines.wire_type.green})
+  
   local output = logisticTrainStop.surface.create_entity
   {
     name = "logistic-train-stop-output",
@@ -145,6 +147,7 @@ function CreateStop(logisticTrainStop)
   output.operable = false -- disable gui
   output.minable = false
   output.destructible = false -- don't bother checking if alive
+  output.connect_neighbour({target_entity=logisticTrainStop, wire=defines.wire_type.green})
   
   global.LogisticTrainStops[logisticTrainStop.unit_number] = {
     entity = logisticTrainStop,
@@ -343,8 +346,12 @@ function RequestHandler(requestStation, requests, minDelivery, maxTraincars)
           
     -- get train with fitting cargo type (item/fluid) and inventory size
     local train = GetFreeTrain(itype, iname, deliverySize, minDelivery, maxTraincars)      
-    if not train then   
-      if global.log_level >= 4 then printmsg("No train with length "..maxTraincars.." to transport "..deliverySize.." ".. item.." found in Depot") end
+    if not train then
+      if maxTraincars > 0 then
+        if global.log_level >= 4 then printmsg("No train with length "..maxTraincars.." to transport "..deliverySize.." ".. item.." found in Depot") end
+      else
+        if global.log_level >= 4 then printmsg("No train to transport "..deliverySize.." ".. item.." found in Depot") end
+      end
       goto continueParseRequests
     end        
     local deliverySize = math.min(deliverySize, train.inventorySize)
@@ -369,17 +376,23 @@ function RequestHandler(requestStation, requests, minDelivery, maxTraincars)
     -- generate schedule
     local ItemSignalID = {type=itype, name=iname}
     local selectedTrain = global.Dispatcher.availableTrains[train.id]
-    local depot = global.LogisticTrainStops[selectedTrain.station.unit_number]
-    local schedule = {current = 1, records = {}}
-    schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "circuit", {type="virtual",name="signal-green"}, "=", 1)      
-    schedule.records[2] = NewScheduleRecord(pickupStation.name, "item_count", ItemSignalID, ">", deliverySize-1) 
-    schedule.records[3] = NewScheduleRecord(requestStation, "item_count", ItemSignalID, "=", 0) 
-    selectedTrain.schedule = schedule   
-    -- send green to selectedTrain (needs output connected to station)          
-    depot.output.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-green"}, count = 1 }}}
-    -- store delivery
-    global.Dispatcher.Deliveries[train.id] = {train=selectedTrain, started=game.tick, item=item, count=deliverySize, from=pickupStation.name, to=requestStation}
-    global.Dispatcher.availableTrains[train.id] = nil
+    if selectedTrain and selectedTrain.valid 
+    and selectedTrain.station and selectedTrain.station.valid 
+    and global.LogisticTrainStops[selectedTrain.station.unit_number].isDepot then --make sure depot and train where not removed
+      local depot = global.LogisticTrainStops[selectedTrain.station.unit_number]
+      local schedule = {current = 1, records = {}}
+      schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "circuit", {type="virtual",name="signal-green"}, "=", 1)      
+      schedule.records[2] = NewScheduleRecord(pickupStation.name, "item_count", ItemSignalID, ">", deliverySize-1) 
+      schedule.records[3] = NewScheduleRecord(requestStation, "item_count", ItemSignalID, "=", 0) 
+      selectedTrain.schedule = schedule   
+      -- send green to selectedTrain (needs output connected to station)          
+      depot.output.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-green"}, count = 1 }}}
+      -- store delivery
+      global.Dispatcher.Deliveries[train.id] = {train=selectedTrain, started=game.tick, item=item, count=deliverySize, from=pickupStation.name, to=requestStation}
+      global.Dispatcher.availableTrains[train.id] = nil
+    else
+      global.Dispatcher.availableTrains[train.id] = nil
+    end
     ::continueParseRequests:: -- use goto since lua doesn't know continue
   end
 end
@@ -406,7 +419,8 @@ function GetStationItemMax(item, min_count )
 end
 
 -- return available train with smallest suitable inventory or largest available inventory 
--- inventory has to be between minSize and maxSize if set
+-- inventory has to be bigger than minSize
+-- if maxTraincars is set, number of locos + wagons has to be smaller  
 function GetFreeTrain(type, name, count, minSize, maxTraincars)
   local train = nil
   local largestInventory = 0
@@ -445,10 +459,11 @@ function GetFreeTrain(type, name, count, minSize, maxTraincars)
           -- store biggest available train
           largestInventory = inventorySize
           train = {id=DispTrainKey, inventorySize=inventorySize}
+          printmsg("biggest found train: inventory: "..inventorySize.." length: ".. #DispTrain.carriages)
         end
       end
     end
-  end
+  end  
   return train
 end
 
