@@ -459,7 +459,6 @@ function GetFreeTrain(type, name, count, minSize, maxTraincars)
           -- store biggest available train
           largestInventory = inventorySize
           train = {id=DispTrainKey, inventorySize=inventorySize}
-          printmsg("biggest found train: inventory: "..inventorySize.." length: ".. #DispTrain.carriages)
         end
       end
     end
