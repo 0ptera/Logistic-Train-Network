@@ -1,0 +1,63 @@
+0.3.9
+- changed messages for trains leaving/arriving at stops to use backer name instead of ID
+- reworked signalling of deliveries
+- delivery size now gets updated after leaving provider station
+- added grey signal as short circuit test signal to output
+- added lamp error status pink: could not read from parked train schedule
+
+0.3.8
+- added color coded status to lamps
+
+0.3.7
+- removed debug message
+
+0.3.6
+- moved recipe to it's own technology dependent on automated rail
+- new sprite color and icons
+- rearranged input/output
+- automatically connect output to stop when creating the stop
+- added data cleanup on config change
+- fixed error when destroying depot while assigning schedule
+- fixed blueprints
+
+0.3.5
+- fixed: Error while running the on_load: LuaTrain API call when LuaTrain was invalid.
+
+0.3.4
+- removed maximum delivery size control signal
+- added maximum train length control signal
+
+0.3.3
+- fixed RequestHandler skipping out of request handling
+- fixed Trains below request size but above min delivery size would not be used
+- added 1s inactivity rule to all generated stops (allow trains to refuel anywhere)
+
+0.3.2
+- detect inventory size of modded cargo wagons (non fluid)
+- fixed, stops not sending train composition when loading a game
+
+0.3.1
+- added remote calls to change log level and log output by ssilk
+
+0.3.0
+- re-release under new name
+
+0.2.0
+- multiple bugfixes
+- code cleanup
+- more hopefully useful log messages
+- min-delivery-size now takes priority, no delivery will be made if stations min-delivery-size > train inventory
+
+0.1.1
+- added min-delivery-size signal
+- fixed rail tanker not triggering correctly on loading game
+- added loglevel setting
+
+0.1.0
+- Dispatcher checks inventory size of trains, (trains no longer wait to have more than their inventory size)
+- added fluid support with RailTanker
+- added virtual signals showing number of each locomotive and wagon type of parked trains, including those added by other mods
+- added en localisation
+
+0.0.3
+- initial alpha release
