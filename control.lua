@@ -324,8 +324,15 @@ end)
 
 function tickTrainStops(event)
   -- Station update
-  if global.LogisticTrainStops ~= nil and game.tick % station_update_interval == 0 then
-    for stopID, stop in pairs(global.LogisticTrainStops) do    
+  local tick = game.tick
+  if global.LogisticTrainStops ~= nil and tick % station_update_interval == 0 then
+    for stopID, stop in pairs(global.LogisticTrainStops) do 
+      -- remove invalid trains
+      if stop.parkedTrain and not stop.parkedTrain.valid then
+        global.LogisticTrainStops[stopID].parkedTrain = nil
+        global.LogisticTrainStops[stopID].parkedTrainID = nil
+      end
+      
       -- check if it's a depot
       if string.lower(stop.entity.backer_name) == "depot" then
         -- update input signals of depot
@@ -351,7 +358,7 @@ function tickTrainStops(event)
             global.LogisticTrainStops[stopID].errorCode = 0
             
             global.Dispatcher.Storage[stopID] = global.Dispatcher.Storage[stopID] or {}
-            global.Dispatcher.Storage[stopID].lastUpdate = game.tick
+            global.Dispatcher.Storage[stopID].lastUpdate = tick
             global.Dispatcher.Storage[stopID].maxTraincars = maxTraincars
             if stop.parkedTrain then
               setLamp(stopID, "blue")              
@@ -379,8 +386,7 @@ function tickTrainStops(event)
             else
               for trainID, delivery in pairs (global.Dispatcher.Deliveries) do -- calculate items + deliveries
                 if delivery.item == item and delivery.to == stop.entity.backer_name then
-                   count = count + delivery.count                 
-                   circuitValues[item] = count
+                   count = count + delivery.count                                    
                 end
               end
               if count < 0 then
@@ -401,7 +407,7 @@ function tickTrainStops(event)
             global.LogisticTrainStops[stopID].errorCode = 0
 
             global.Dispatcher.Storage[stopID] = global.Dispatcher.Storage[stopID] or {}
-            global.Dispatcher.Storage[stopID].lastUpdate = game.tick
+            global.Dispatcher.Storage[stopID].lastUpdate = tick
             global.Dispatcher.Storage[stopID].minDelivery = minDelivery
             global.Dispatcher.Storage[stopID].maxTraincars = maxTraincars
             global.Dispatcher.Storage[stopID].provided = provided
@@ -419,12 +425,12 @@ function tickTrainStops(event)
   end -- Station Update 
 
   -- Dispatcher update
-  if global.LogisticTrainStops ~= nil and game.tick % dispatcher_update_interval == 0 then
+  if global.LogisticTrainStops ~= nil and tick % dispatcher_update_interval == 0 then
     -- clean up deliveries in case train was destroyed or removed
     for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
       if not delivery.train or not delivery.train.valid then
         removeDelivery(trainID)
-      elseif game.tick-delivery.started > delivery_timeout then
+      elseif tick-delivery.started > delivery_timeout then
         if global.log_level >= 1 then printmsg("Delivery: ".. delivery.count .."  ".. delivery.item.." from "..delivery.from.." to "..delivery.to.." running for "..game.tick-delivery.started.." ticks deleted after time out.") end
         removeDelivery(trainID)
       end
@@ -432,8 +438,9 @@ function tickTrainStops(event)
 
     -- update storage and requests
     for stopID, storage in pairs (global.Dispatcher.Storage) do
-      if storage.lastUpdate and storage.lastUpdate > (game.tick - dispatcher_update_interval * 10) -- remove stops without data
+      if storage.lastUpdate and storage.lastUpdate > (tick - dispatcher_update_interval * 10)
         and global.LogisticTrainStops[stopID] and global.LogisticTrainStops[stopID].entity.backer_name and storage.requested and storage.minDelivery then 
+        --TODO split RequestHandler in BuildOrders/requestStation, MergeOrders/requestStation and BuildSchedules
         RequestHandler(global.LogisticTrainStops[stopID], storage.requested, storage.minDelivery, storage.maxTraincars)         
       else
         if global.LogisticTrainStops[stopID] and global.LogisticTrainStops[stopID].entity.backer_name then
