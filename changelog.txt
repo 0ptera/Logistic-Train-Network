@@ -1,3 +1,11 @@
+0.3.11
+- moved "no station supplying item" warning to log level 3
+- fixed Error on starting a fresh map
+- migrating from older versions should work better now
+- fixed "attempt to index field 'Deliveries' (a nil value)"
+- fixed built stops not setting their outputs immediately
+- code cleanup
+
 0.3.10
 - added additional check for removed trains to on_tick
 - reduced default update intervals
