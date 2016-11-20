@@ -1,3 +1,6 @@
+0.3.12
+- removed inactivity rule from providing and requesting stations
+
 0.3.11
 - moved "no station supplying item" warning to log level 3
 - fixed Error on starting a fresh map

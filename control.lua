@@ -722,7 +722,9 @@ function NewScheduleRecord(stationName, condType, condSignal, condComp, condCons
   local cond = {comparator = condComp, first_signal = condSignal, constant = condConst}
   local record = {station = stationName, wait_conditions = {}}
   record.wait_conditions[1] = {type = condType, compare_type = "and", condition = cond }
-  record.wait_conditions[2] = {type = "inactivity", compare_type = "and", ticks = 60 } -- prevent trains leaving too early
+  if condType == "circuit" then
+    record.wait_conditions[2] = {type = "inactivity", compare_type = "and", ticks = 60 } -- prevent trains leaving too early
+  end
   return record
 end
 
