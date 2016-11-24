@@ -1,5 +1,10 @@
+0.4.0
+- added merged deliveries
+- requests are handled in the order they come up
+- fixed possible bug where a too small train would be picked
+
 0.3.12
-- removed inactivity rule from providing and requesting stations
+- removed schedule inactivity rule from providing and requesting stations
 
 0.3.11
 - moved "no station supplying item" warning to log level 3
