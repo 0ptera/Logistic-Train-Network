@@ -38,7 +38,7 @@ script.on_configuration_changed(function(data)
 end)
 
 function initialize()
-  global.log_level = global.log_level or 2 -- 4: prints everything, 3: prints extended messages, 2: prints all Scheduler messages, 1 prints only important messages, 0: off
+  global.log_level = global.log_level or 2 -- 4: prints everything, 3: prints extended messages, 2: prints Scheduler messages, 1 prints only important messages, 0: off
   global.log_output = global.log_output or {console = 'console'} -- console or log or both
   
   global.Dispatcher = global.Dispatcher or {}
@@ -139,7 +139,10 @@ script.on_event(defines.events.on_train_changed_state, function(event)
         --global.LogisticTrainStops[stopID].parkedTrainID = trainID
         if global.log_level >= 3 then printmsg("Train "..trainName.." arrived at ".. stop.entity.backer_name) end
         
-        if stop.isDepot then          
+        if stop.isDepot then
+          -- remove delivery
+          removeDelivery(trainID)
+          -- make train available for new deliveries
           global.Dispatcher.availableTrains[trainID] = event.train
           -- reset schedule
           local schedule = {current = 1, records = {}}
@@ -274,18 +277,18 @@ function CleanUpOrders()
     local to = global.Dispatcher.Orders[i].to
     local from = global.Dispatcher.Orders[i].from
 
-    if not (validStops[to] and validStops[from])            -- clean out orders with invalid stops
+    if not (validStops[to] and validStops[from]) -- clean out orders with invalid stops
       or global.Dispatcher.Orders[i].age < game.tick - (2 * dispatcher_update_interval) -- no updates mean requests are fulfilled
-      or global.Dispatcher.Orders[i].shipment == nil then   -- remove orders with nil shipments (remnants from ProcessOrders)
+      or global.Dispatcher.Orders[i].shipment == nil or global.Dispatcher.Orders[i].shipmentCount < 1 then -- remove orders with nil shipments (remnants from Merge & ProcessOrders)
       table.remove(global.Dispatcher.Orders, i)
     end
+        
   end
 end
 
 function BuildOrders(requestStationName, requests, minDelivery, maxTraincars)
   local orders = {}
   local match = string.match
-  local min = math.min  
   for item, count in pairs (requests) do
 
     local itype, iname = match(item, "([^,]+),([^,]+)")
@@ -305,18 +308,22 @@ function BuildOrders(requestStationName, requests, minDelivery, maxTraincars)
     end
     
     -- find best supplier
-    local pickupStation = GetStationItemMax(item, 1)        
+    local pickupStation = GetStationItemMax(item, minDelivery)        
     if not pickupStation then
       if global.log_level >= 3 then printmsg("Notice: no station supplying "..item.." found") end
       goto skipRequest
     end
-    deliverySize = min(count, pickupStation.count)
+    if pickupStation.count < count then
+      deliverySize = pickupStation.count
+    else
+      deliverySize = count
+    end
         
     if pickupStation.maxTraincars > 0 and (maxTraincars <= 0 or (maxTraincars > 0 and pickupStation.maxTraincars < maxTraincars)) then
       maxTraincars = pickupStation.maxTraincars
     end
 
-    orders[#orders+1] = {to = requestStationName, from = pickupStation.entity.backer_name, age = game.tick, minDelivery = minDelivery, maxTraincars = maxTraincars, shipment = {[itype] = {[iname] = count}}}
+    orders[#orders+1] = {to = requestStationName, from = pickupStation.entity.backer_name, age = game.tick, minDelivery = minDelivery, maxTraincars = maxTraincars, shipment = {[itype] = {[iname] = deliverySize}}}
     
     ::skipRequest:: -- use goto since lua doesn't know continue
   end   
@@ -328,19 +335,34 @@ function MergeOrders(newOrders)
   for i=1, #newOrders do
     local insertnew = true
     for j=1, #currentOrders do
-      if newOrders[i].to == currentOrders[j].to and newOrders[i].from == currentOrders[j].from then      
+      if newOrders[i].to == currentOrders[j].to then   
         for newType, items in pairs (newOrders[i].shipment) do
         if currentOrders[j].shipment[newType] then --merge only same types
           for newItem, newCount in pairs (items) do
-            if newType == "fluid" and currentOrders[j].shipment[newType][newItem] then
-              -- update amount for existing fluid, create new order otherwise
-              currentOrders[j].shipment[newType][newItem] = newCount
-              insertnew = false
-            else            
-              -- always update/add items
-              currentOrders[j].shipment[newType][newItem] = newCount
-              insertnew = false
-            end
+            if newOrders[i].from == currentOrders[j].from then
+              if currentOrders[j].shipment[newType][newItem] then
+                --update amount for existing items/fluids
+                currentOrders[j].shipment[newType][newItem] = newCount
+                insertnew = false
+              elseif newType == "item" then 
+                -- add item to order
+                currentOrders[j].shipmentCount = currentOrders[j].shipmentCount + 1
+                currentOrders[j].shipment[newType][newItem] = newCount
+                insertnew = false
+              end
+            else
+              if currentOrders[j].shipment[newType][newItem] then
+              -- remove item from existing order and create a new one
+                currentOrders[j].shipmentCount = currentOrders[j].shipmentCount - 1
+                if currentOrders[j].shipmentCount > 0 then
+                  currentOrders[j].shipment[newType][newItem] = nil
+                  if global.log_level >= 4 then  printmsg("removed "..newItem.."from "..currentOrders[j].from..">>"..currentOrders[j].to.." remaining shipmentCount: "..currentOrders[j].shipmentCount) end
+                else
+                  currentOrders[j].shipment = nil
+                  if global.log_level >= 4 then  printmsg("removed shipment from "..currentOrders[j].from..">>"..currentOrders[j].to.." remaining shipmentCount: "..currentOrders[j].shipmentCount) end
+                end
+              end
+            end            
           end
           -- update metadata in case it was changed
           currentOrders[j].age = newOrders[i].age
@@ -348,11 +370,12 @@ function MergeOrders(newOrders)
           currentOrders[j].minDelivery = newOrders[i].minDelivery           
         end
         end
-      end
+      end -- same requester
     end
     if insertnew then
-      -- create as new order
-      currentOrders[#currentOrders +1] = newOrders[i]      
+      -- create as new order      
+      currentOrders[#currentOrders +1] = newOrders[i]   
+      currentOrders[#currentOrders].shipmentCount = 1      
     end
   end --for newOrders
   global.Dispatcher.Orders = currentOrders
@@ -361,35 +384,47 @@ end
 function ProcessOrders()
   local ceil = math.ceil
   for orderIndex=1, #global.Dispatcher.Orders do
-    if global.log_level >= 4 then printmsg("processing "..orderIndex.."/"..#global.Dispatcher.Orders.." Orders") end
+    if global.log_level >= 3 then printmsg("processing "..orderIndex.."/"..#global.Dispatcher.Orders.." Orders") end
     local order = global.Dispatcher.Orders[orderIndex]
     local totalStacks = 0
     local totalCount = 0
     local loadingList = {}
     
-    for itype, items in pairs (order.shipment) do    
-    for name, count in pairs (items) do      
-      -- calculate stacks needed, type is guaranteed to stay the same per order
-      if itype == "item" then
-        local addstacks = ceil(count / game.item_prototypes[name].stack_size)
-        totalStacks = totalStacks + addstacks
-        totalCount = totalCount + count
-        loadingList[#loadingList+1] = {type=itype, name=name, count=count, stacks=addstacks}
-      elseif itype == "fluid" and global.useRailTanker then
-        totalCount = totalCount + count
-        totalStacks = totalCount
-        loadingList[#loadingList+1] = {type=itype, name=name, count=count, stacks=1}
-      else
-        -- either rail tanker was removed after the order was created or order got corrupted
-        if global.log_level >= 1 then printmsg("Error(ProcessOrders): "..itype.."is no valid type") end
-        global.Dispatcher.Orders[orderIndex].shipment = nil --mark order for delete
-        goto skipOrder
-      end        
+    if order.shipment and order.shipmentCount > 0 then
+    for itype, items in pairs (order.shipment) do
+      if items then
+      for name, count in pairs (items) do      
+        -- calculate stacks needed, type is guaranteed to stay the same per order
+        if itype == "item" then
+          local addstacks = ceil(count / game.item_prototypes[name].stack_size)
+          totalStacks = totalStacks + addstacks
+          totalCount = totalCount + count
+          loadingList[#loadingList+1] = {type=itype, name=name, count=count, stacks=addstacks}
+        elseif itype == "fluid" and global.useRailTanker then
+          totalCount = totalCount + count
+          totalStacks = totalCount
+          loadingList[#loadingList+1] = {type=itype, name=name, count=count, stacks=1}
+        else
+          -- either rail tanker was removed after the order was created or order got corrupted
+          if global.log_level >= 1 then printmsg("Error(ProcessOrders): "..itype.."is no valid type") end
+          global.Dispatcher.Orders[orderIndex].shipment = nil --mark order for delete
+          goto skipOrder
+        end        
 
-    end
+      end
+      end
+    end -- for shipment.items
+    else
+      if global.log_level >= 3 then  printmsg("skipped empty shipment") end
+      goto skipOrder
     end
 
-    if global.log_level >= 4 then
+    if loadingList == nil or #loadingList < 1 then
+      if global.log_level >= 3 then  printmsg("couldn't create loadingList") end
+      goto skipOrder
+    end
+    
+    if global.log_level >= 3 then
     for i=1 ,#loadingList do
        printmsg("loading List: "..loadingList[i].type.." "..loadingList[i].name.." "..loadingList[i].count.." "..loadingList[i].stacks)
     end
@@ -406,7 +441,7 @@ function ProcessOrders()
       goto skipOrder
     end
 
-    if global.log_level >= 4 then printmsg("Train with "..train.inventorySize.."/"..totalStacks.." found in Depot") end
+    if global.log_level >= 3 then printmsg("Train with "..train.inventorySize.."/"..totalStacks.." found in Depot") end
     order.shipment = nil
     if train.inventorySize < totalStacks then
       -- recalculate partial shipment    
@@ -492,14 +527,19 @@ end
 function GetStationItemMax(item, min_count ) 
   local currentStation = nil
   local currentMax = min_count
+  if use_Best_Effort then -- Best effort will ship below requested size
+    currentMax = 1
+  end
   for stopID, storage in pairs (global.Dispatcher.Storage) do    
     for k, v in pairs (storage.provided) do      
       if k == item and v > currentMax then
         local ltStop = global.LogisticTrainStops[stopID]
         if ltStop then
-          if global.log_level >= 4 then printmsg("found ".. v .."  ".. k.." at "..ltStop.entity.backer_name) end
+          if global.log_level >= 4 then printmsg("(GetStationItemMax): found ".. v .."/"..currentMax.." ".. k.." at "..ltStop.entity.backer_name) end
           currentMax = v
           currentStation = {entity=ltStop.entity, count=v, maxTraincars=global.Dispatcher.Storage[stopID].maxTraincars}
+          -- subtract min_count from storage.provided so we don't request the same items multiple times
+          global.Dispatcher.Storage[stopID].provided[k] = v - min_count
         else
           if global.log_level >= 1 then printmsg("Error(GetStationItemMax): "..stopID.." no such unit_number") end
         end
@@ -779,11 +819,9 @@ function UpdateStop(stopID)
         else
           for trainID, delivery in pairs (global.Dispatcher.Deliveries) do -- calculate items +- deliveries            
             if delivery.shipment[item] then
-              if delivery.to == stop.entity.backer_name then              
-                --printmsg(delivery.to..": "..item.." "..count.."+"..delivery.shipment[item])
+              if delivery.to == stop.entity.backer_name then                              
                 count = count + delivery.shipment[item]                
               elseif delivery.from == stop.entity.backer_name then
-                --printmsg(delivery.from..": "..item.." "..count.."-"..delivery.shipment[item])
                 count = count - delivery.shipment[item]
                 --make sure we don't turn it into a request
                 if count < 0 then count = 0 end

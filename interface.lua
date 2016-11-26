@@ -47,6 +47,11 @@ remote.add_interface("LTN",
 
 
 function printmsg(msg)
+  if global.log_output.lastMessage == msg then
+    -- don't spam the same message
+    return
+  end
+  global.log_output.lastMessage = msg
   if global.log_output.console then
     game.print("[LTN] " .. msg)
   end
