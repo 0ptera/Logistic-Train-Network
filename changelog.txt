@@ -1,7 +1,12 @@
+0.4.2
+- improved update of requested/provided items, partial fulfilled requests are correctly updated
+- changed log level description
+
 0.4.1
 - fixed multiple trains claim the same resources
 - fixed creating multiple deliveries to satisfy the same request
 - suppressed spam of identical messages
+- added use_Best_Effort switch to config
 
 0.4.0
 - added merged deliveries

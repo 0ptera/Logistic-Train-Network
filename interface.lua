@@ -5,7 +5,7 @@ remote.add_interface("LTN",
             game.player.print("-----  LogisticTrainNetwork: Remote functions  -----")
             game.player.print("|  remote.call('LTN', 'help')  - This help")
             game.player.print("|  remote.call('LTN', 'log_level', level)  - Set Log-Level to level n.")
-            game.player.print("|     4: prints everything, 3: prints extended messages, 2: prints all Scheduler messages, 1 prints only important messages, 0: off")
+            game.player.print("|     4: everything, 3: scheduler messages, 2: basic messages, 1 errors only, 0: off")
             game.player.print("|  remote.call('LTN', 'log_output', 'console,log') - A set: 'console,log' or 'log' or 'console'")
             game.player.print("|  remote.call('LTN', 'log_status') - show current log status")
             game.player.print("")
