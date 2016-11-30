@@ -1,3 +1,6 @@
+0.4.3
+- requested/provided items are calculated from parked train inventory instead of delivery size
+
 0.4.2
 - improved update of requested/provided items, partial fulfilled requests are correctly updated
 - changed log level description

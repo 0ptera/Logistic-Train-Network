@@ -790,6 +790,8 @@ end
 
 function UpdateStop(stopID)
   local stop = global.LogisticTrainStops[stopID]
+  local match = string.match
+  local lower = string.lower
   
   -- remove invalid stops
   if not (stop.entity and stop.entity.valid) or
@@ -809,7 +811,7 @@ function UpdateStop(stopID)
   end
 
   -- check if it's a depot
-  if string.lower(stop.entity.backer_name) == "depot" then
+  if lower(stop.entity.backer_name) == "depot" then
     -- update input signals of depot
     local circuitValues = GetCircuitValues(stop.input)
     if circuitValues then
@@ -858,18 +860,40 @@ function UpdateStop(stopID)
           maxTraincars = count          
         elseif item == "virtual,signal-red" or item == "virtual,signal-green" or item == "virtual,signal-blue" or item == "virtual,signal-yellow" or item == "virtual,signal-pink" or item == "virtual,signal-cyan" or item == "virtual,signal-white" or item == "virtual,signal-grey" or item == "virtual,signal-black" then
           colorCount = colorCount + 1
-        else
-          for trainID, delivery in pairs (global.Dispatcher.Deliveries) do -- calculate items +- deliveries            
-            if delivery.shipment[item] then
-              if delivery.to == stop.entity.backer_name then                              
-                count = count + delivery.shipment[item]                
-              elseif delivery.from == stop.entity.backer_name then
-                count = count - delivery.shipment[item]
-                --make sure we don't turn it into a request
-                if count < 0 then count = 0 end
+        else          
+          for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
+            if stop.parkedTrain and stop.parkedTrainID == trainID then
+              -- calculate items +- train inventory
+              local itype, iname = match(item, "([^,]+),([^,]+)")
+              if itype and (itype == "item" or itype == "fluid") and iname then
+                --use RT fake item
+                if itype == "fluid" then
+                  iname = iname .. "-in-tanker"
+                end
+                
+                local traincount = stop.parkedTrain.get_item_count(iname)
+                if delivery.to == stop.entity.backer_name then                              
+                  count = count + traincount             
+                elseif delivery.from == stop.entity.backer_name then
+                  count = count - traincount
+                  if count < 0 then count = 0 end
+                end
               end
+                  
+            else
+              -- calculate items +- deliveries
+              if delivery.shipment[item] then
+                if delivery.to == stop.entity.backer_name then                              
+                  count = count + delivery.shipment[item]                
+                elseif delivery.from == stop.entity.backer_name then
+                  count = count - delivery.shipment[item]
+                  --make sure we don't turn it into a request
+                  if count < 0 then count = 0 end
+                end
+              end
+              
             end
-          end
+          end -- for delivery
           if count < 0 then
             requested[item] = count * -1
           else
