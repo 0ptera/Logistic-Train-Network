@@ -1,3 +1,9 @@
+0.4.4
+- fixed: circuit/signal error detection sometimes failed
+- fixed: changing station name between job creation and schedule generation can produce invalid stations in schedule
+- changed lamp error status pink: duplicate station name, no deliveries to/from this station will be created
+- added priority signal to provider stations, higher priority is picked as provider first, default priority = 0
+
 0.4.3
 - requested/provided items are calculated from parked train inventory instead of delivery size
 
