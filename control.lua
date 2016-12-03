@@ -1,4 +1,3 @@
---require "lib"
 require "config"
 require "interface"
 
@@ -11,36 +10,54 @@ ErrorCodes = {
   "red",    -- circuit/signal error
   "pink"    -- duplicate stop name
 }
+
 -- Events
 
-script.on_init(function()
-  onLoad()
-  initialize()
-end)
-
 script.on_load(function()
-  onLoad()
-
-end)
-
-function onLoad ()
-	if global.LogisticTrainStops ~= nil then
-		script.on_event(defines.events.on_tick, ticker) --subscribe ticker when train stops exist    
+	if global.LogisticTrainStops ~= nil and next(global.LogisticTrainStops) ~= nil then
+		script.on_event(defines.events.on_tick, ticker) --subscribe ticker when train stops exist
     for stopID, stop in pairs(global.LogisticTrainStops) do --outputs are not stored in save
       UpdateStopOutput(stop)
     end
 	end
-end
+  log("[LTN] on_load: complete")
+  if global.useRailTanker then
+    log("[LTN] fluid deliveries enabled")
+  end
+end)
 
-script.on_configuration_changed(function(data)
-  -- initialize  
+script.on_init(function()
   initialize()
   
+  log("[LTN] on_init: ".. MOD_NAME.." "..game.active_mods[MOD_NAME].." initialized.")
+  if global.useRailTanker then
+    log("[LTN] Rail Tanker "..game.active_mods["RailTanker"].." found, fluid deliveries enabled.")
+  end
+end)
+
+script.on_configuration_changed(function(data)
+  initialize()
+  
+  local loadmsg = MOD_NAME.." "..game.active_mods[MOD_NAME].." initialized."
+  if data and data.mod_changes[MOD_NAME] then
+    if data.mod_changes[MOD_NAME].old_version and data.mod_changes[MOD_NAME].new_version then
+      loadmsg = MOD_NAME.." version changed from "..data.mod_changes[MOD_NAME].old_version.." to "..data.mod_changes[MOD_NAME].new_version.."."
+    end
+  end
+  log("[LTN] on_configuration_changed: "..loadmsg)
+  if global.useRailTanker then
+    log("[LTN] Rail Tanker "..game.active_mods["RailTanker"].." found, fluid deliveries enabled.")
+  end
 end)
 
 function initialize()
   global.log_level = global.log_level or 2 -- 4: everything, 3: scheduler messages, 2: basic messages, 1 errors only, 0: off
-  global.log_output = global.log_output or {console = 'console'} -- console or log or both
+  global.log_output = global.log_output or "both" -- console or log or both
+  
+  -- update to 0.4.5
+  if type(global.log_output) ~= "string" then
+    global.log_output = "both"
+  end
   
   global.Dispatcher = global.Dispatcher or {}
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
@@ -69,34 +86,38 @@ function initialize()
   end
 
   global.LogisticTrainStops = global.LogisticTrainStops or {}
-  for stopID, stop in pairs (global.LogisticTrainStops) do
-    -- update to 0.3.8
-    global.LogisticTrainStops[stopID].activeDeliveries = global.LogisticTrainStops[stopID].activeDeliveries or 0
-    global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or 0
-    if stop.lampControl == nil then
-      local lampctrl = stop.entity.surface.create_entity
-          {
-            name = "logistic-train-stop-lamp-control",
-            position = stop.input.position,
-            force = stop.entity.force
-          }  
-          lampctrl.operable = false -- disable gui
-          lampctrl.minable = false
-          lampctrl.destructible = false -- don't bother checking if alive
-          lampctrl.connect_neighbour({target_entity=stop.input, wire=defines.wire_type.green})
-          lampctrl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}}
-          global.LogisticTrainStops[stopID].lampControl = lampctrl
-          global.LogisticTrainStops[stopID].input.operable = false
-          global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().use_colors = true
-          global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().circuit_condition = {condition = {comperator=">",first_signal={type="virtual",name="signal-anything"}}}      
+  if next(global.LogisticTrainStops) ~= nil then
+    for stopID, stop in pairs (global.LogisticTrainStops) do    
+      global.LogisticTrainStops[stopID].activeDeliveries = global.LogisticTrainStops[stopID].activeDeliveries or 0
+      global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or 0
+      -- update to 0.3.8
+      if stop.lampControl == nil then
+        local lampctrl = stop.entity.surface.create_entity
+        {
+          name = "logistic-train-stop-lamp-control",
+          position = stop.input.position,
+          force = stop.entity.force
+        }  
+        lampctrl.operable = false -- disable gui
+        lampctrl.minable = false
+        lampctrl.destructible = false -- don't bother checking if alive
+        lampctrl.connect_neighbour({target_entity=stop.input, wire=defines.wire_type.green})
+        lampctrl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}}
+        global.LogisticTrainStops[stopID].lampControl = lampctrl
+        global.LogisticTrainStops[stopID].input.operable = false
+        global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().use_colors = true
+        global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().circuit_condition = {condition = {comperator=">",first_signal={type="virtual",name="signal-anything"}}}      
       end
-    UpdateStop(stopID)
+      
+      UpdateStopOutput(stop) --make sure output is set
+      --UpdateStop(stopID)
+    end
+    script.on_event(defines.events.on_tick, ticker) --subscribe ticker when train stops exist    
   end
   
   -- check if RailTanker is installed
-  if game.item_prototypes["rail-tanker"] then
+  if game.active_mods["RailTanker"] then
     global.useRailTanker = true
-    printmsg("RailTanker found, enabling fluid deliveries")
   else
     global.useRailTanker = false
   end
@@ -212,10 +233,12 @@ end)
 
 function ticker(event)
   local tick = game.tick
+  
   -- exit when there are no logistic train stops 
   local next = next
   if global.LogisticTrainStops == nil or next(global.LogisticTrainStops) == nil then
     script.on_event(defines.events.on_tick, nil)
+    if global.log_level >= 4 then printmsg("no LogisticTrainStops, unsubscribed from on_tick") end
     return
   end
   
@@ -233,37 +256,33 @@ function ticker(event)
         if global.log_level >= 2 then printmsg("Delivery from "..delivery.from.." to "..delivery.to.." removed. Train no longer valid.") end
         removeDelivery(trainID)
       elseif tick-delivery.started > delivery_timeout then
-        if global.log_level >= 2 then printmsg("Delivery from "..delivery.from.." to "..delivery.to.." running for "..game.tick-delivery.started.." ticks removed after time out.") end
+        if global.log_level >= 2 then printmsg("Delivery from "..delivery.from.." to "..delivery.to.." running for "..tick-delivery.started.." ticks removed after time out.") end
         removeDelivery(trainID)
       end
     end
   
     -- remove invalid stations from storage
-    CleanDispatcherStorage()
-    
-    ---- Dispatcher logic -----
+    CleanDispatcherStorage()   
     
     -- remove no longer active requests from global.Dispatcher.OrderAge[toID][type][name] = age
+    local newOrderAge = {}
     for stopID, requests in pairs (global.Dispatcher.OrderAge) do
       local storage = global.Dispatcher.Storage[stopID]
       if storage and storage.requested then
         for type, names in pairs (requests) do
           if names then
             for name, age in pairs (names) do
-              if not storage.requested[type..","..name] then
-                global.Dispatcher.OrderAge[stopID][type][name] = nil
+              if storage.requested[type..","..name] then
+                newOrderAge[stopID] = {[type] = {[name] = age}}
               end
             end
-          else
-            global.Dispatcher.OrderAge[stopID][type] = nil
           end
         end
-      else
-        global.Dispatcher.OrderAge[stopID] = nil
       end
     end
+    global.Dispatcher.OrderAge = newOrderAge
     
-    -- create orders   
+    -- create orders {toID, fromID, age, minDelivery, maxTraincars, shipmentCount, shipment = {[type] = {[name] = count}}}  
     local orders = BuildOrders()
     
     -- sort orders by age
