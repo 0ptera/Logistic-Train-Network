@@ -1,3 +1,8 @@
+0.4.6
+- fixed Error when adding LTN to existing game (on_init: __LogisticTrainNetwork__/control.lua:32: attempt to concatenate field '?' (a nil value)")
+- fixed order cleanup removed valid order data
+- added inactivity timeout to schedule (patch for misbehaving Yuoki Tender Locomotives)
+
 0.4.5
 - tweaks to order cleanup
 - changed log_output to accept 'console', 'log', 'both'(new default) as parameters
