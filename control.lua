@@ -28,8 +28,8 @@ end)
 
 script.on_init(function()
   initialize()
-  
-  log("[LTN] on_init: ".. MOD_NAME.." "..game.active_mods[MOD_NAME].." initialized.")
+  local version = game.active_mods[MOD_NAME] or 0
+  log("[LTN] on_init: ".. MOD_NAME.." "..version.." initialized.")
   if global.useRailTanker then
     log("[LTN] Rail Tanker "..game.active_mods["RailTanker"].." found, fluid deliveries enabled.")
   end
@@ -267,13 +267,16 @@ function ticker(event)
     -- remove no longer active requests from global.Dispatcher.OrderAge[toID][type][name] = age
     local newOrderAge = {}
     for stopID, requests in pairs (global.Dispatcher.OrderAge) do
-      local storage = global.Dispatcher.Storage[stopID]
+      local storage = global.Dispatcher.Storage[stopID]      
       if storage and storage.requested then
-        for type, names in pairs (requests) do
+        for itype, names in pairs (requests) do
           if names then
-            for name, age in pairs (names) do
-              if storage.requested[type..","..name] then
-                newOrderAge[stopID] = {[type] = {[name] = age}}
+            for iname, age in pairs (names) do
+              if storage.requested[itype..","..iname] then
+                newOrderAge[stopID] = newOrderAge[stopID] or {}
+                newOrderAge[stopID][itype] = newOrderAge[stopID][itype] or {}
+                newOrderAge[stopID][itype][iname] = age
+                if global.log_level >= 4 then printmsg("preserving Order, tick: "..newOrderAge[stopID][itype][iname]..", to: "..stopID..", "..itype..", "..iname) end
               end
             end
           end
@@ -376,7 +379,7 @@ function BuildOrders()
           local from = providers[i].entity.backer_name
           local fromID = providers[i].entity.unit_number
           local age = game.tick
-          if global.Dispatcher.OrderAge[toID] and global.Dispatcher.OrderAge[toID][itype] and global.Dispatcher.OrderAge[toID][itype][iname] then
+          if global.Dispatcher.OrderAge[toID] and global.Dispatcher.OrderAge[toID][itype] and global.Dispatcher.OrderAge[toID][itype][iname] then            
             age = global.Dispatcher.OrderAge[toID][itype][iname]
           end
           
@@ -602,37 +605,6 @@ function GetStations(item, min_count)
   return stations
 end
 
---return name of station with highest count of item or nil
-function GetStationItemMax(item, min_count) 
-  local currentStation = nil
-  local currentMax = min_count
-  local currentPriority = 0
-  if use_Best_Effort then -- Best effort will ship below requested size
-    currentMax = 1
-  end
-  for stopID, storage in pairs (global.Dispatcher.Storage) do
-    local stop = global.LogisticTrainStops[stopID]
-    local priority = global.Dispatcher.Storage[stopID].priority
-    if stop then    
-      for k, v in pairs (storage.provided) do      
-        if k == item then
-          if (priority > currentPriority and v >= min_count) or (priority >= currentPriority and v > currentMax) then 
-            if global.log_level >= 4 then printmsg("(GetStationItemMax): found ".. v .."/"..min_count.." ".. k.." at "..stop.entity.backer_name.." priority: "..priority) end
-            currentPriority = priority
-            currentMax = v
-            currentStation = {entity=stop.entity, count=v, maxTraincars=global.Dispatcher.Storage[stopID].maxTraincars}
-            -- subtract min_count from storage.provided so we don't request the same items multiple times
-            global.Dispatcher.Storage[stopID].provided[k] = v - min_count      
-          end
-        end
-      end --for storage.provided    
-    else
-      if global.log_level >= 1 then printmsg("Error(GetStationItemMax): "..stopID.." no such unit_number") end
-    end  
-  end -- for global.Dispatcher.Storage  
-  return currentStation
-end
-
 -- return available train with smallest suitable inventory or largest available inventory
 -- if maxTraincars is set, number of locos + wagons has to be smaller
 function GetFreeTrain(type, size, maxTraincars)
@@ -687,7 +659,7 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
       rtname = itemlist[i].name .. "-in-tanker"
       rttype = "item"
       if not game.item_prototypes[rtname] then
-        printmsg("Error(NewScheduleRecord): couldn't get RailTanker fake item")
+        if global.log_level >= 1 then printmsg("Error(NewScheduleRecord): couldn't get RailTanker fake item") end
         return nil
       end
     end
@@ -701,7 +673,9 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
     record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", condition = cond }
   end
   if condType == "circuit" then
-    record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "and", ticks = 60 } -- prevent trains leaving depot instantly
+    record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "and", ticks = 60 } -- allow trains to be refuelled in depot
+  else
+    record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "or", ticks = 1800 } -- send stuck trains away
   end
   return record
 end
