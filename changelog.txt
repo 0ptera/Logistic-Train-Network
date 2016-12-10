@@ -1,3 +1,6 @@
+0.5.0
+- provided items are split evenly among requesters
+
 0.4.6
 - fixed Error when adding LTN to existing game (on_init: __LogisticTrainNetwork__/control.lua:32: attempt to concatenate field '?' (a nil value)")
 - fixed order cleanup removed valid order data
