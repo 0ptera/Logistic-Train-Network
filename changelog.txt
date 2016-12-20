@@ -1,5 +1,9 @@
+0.5.1
+- train composition output is now binary encoded
+
 0.5.0
-- provided items are split evenly among requesters
+- provided items are split evenly among requesters with Best Effort enabled
+- added round robin handling, sending a train moves the request to the bottom of order list
 
 0.4.6
 - fixed Error when adding LTN to existing game (on_init: __LogisticTrainNetwork__/control.lua:32: attempt to concatenate field '?' (a nil value)")

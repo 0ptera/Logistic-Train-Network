@@ -1032,22 +1032,27 @@ function setLamp(stopID, color)
 end
 
 function UpdateStopOutput(trainStop)
-  local signals = {{index = 1, signal = {type="virtual",name="signal-grey"}, count = 1 }} -- short circuit test signal
+	local index = 1
+  local signals = {{index = index, signal = {type="virtual",name="signal-grey"}, count = 1 }} -- short circuit test signal
     
-    if trainStop.parkedTrain and trainStop.parkedTrain.valid then
+	if trainStop.parkedTrain and trainStop.parkedTrain.valid then
     -- get train composition
-    carriages = {}
-    for _,carriage in pairs (trainStop.parkedTrain.carriages) do
-      if carriages[carriage.name] ~= nil then
-        carriages[carriage.name] = carriages[carriage.name] + 1
-      else
-        carriages[carriage.name] = 1
-      end
-    end
-    i = 2
-    for k ,v in pairs (carriages) do      
-      table.insert(signals, {index = i, signal = {type="virtual",name="LTN-"..k}, count = v })
-      i=i+1
+    carriages = trainStop.parkedTrain.carriages
+		carriagesBin = {}
+		carriagesDec = {}
+		for i=1, #carriages do
+			local name = carriages[i].name
+			if carriagesDec[name] then
+				carriagesDec[name] = carriagesDec[name] + 2^(i-1)
+			else
+				carriagesDec[name] = 2^(i-1)
+			end
+			
+		end
+		index = 2
+    for k ,v in pairs (carriagesDec) do      
+      table.insert(signals, {index = index, signal = {type="virtual",name="LTN-"..k}, count = v })
+      index = index+1
     end
 
     if not trainStop.isDepot then
@@ -1057,12 +1062,12 @@ function UpdateStopOutput(trainStop)
         for _, c in pairs(conditions) do
           if c.condition and c.condition.comparator and c.condition.first_signal and c.condition.constant then
             if c.condition.comparator == ">" then --train expects to be loaded with x of this item
-              table.insert(signals, {index = i, signal = c.condition.first_signal, count = c.condition.constant + 1 })
-               i=i+1
+              table.insert(signals, {index = index, signal = c.condition.first_signal, count = c.condition.constant + 1 })
+               index = index+1
             elseif (c.condition.comparator == "<" and c.condition.constant == 1) or
                    (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
-              table.insert(signals, {index = i, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_item_count(c.condition.first_signal.name) * -1 })
-               i=i+1
+              table.insert(signals, {index = index, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_item_count(c.condition.first_signal.name) * -1 })
+               index = index+1
             end
           end
         end
