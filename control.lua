@@ -125,113 +125,60 @@ end
 
 
 script.on_event(defines.events.on_built_entity, function(event)
-	if (event.created_entity.name == "logistic-train-stop") then
-		CreateStop(event.created_entity)
+  local entity = event.created_entity
+	if entity.name == "logistic-train-stop" then
+		CreateStop(entity)
 	end
+  if entity.type == "locomotive" or entity.type == "cargo-wagon" then
+    entity.train.manual_mode = true
+    UpdateStopParkedTrain(entity.train)
+    --entity.train.manual_mode = false 
+  end
 end)
 
 script.on_event(defines.events.on_robot_built_entity, function(event)
-	if (event.created_entity.name == "logistic-train-stop") then
-		CreateStop(event.created_entity)
+  local entity = event.created_entity
+	if entity.name == "logistic-train-stop" then
+		CreateStop(entity)
 	end
 end)
 
 
 script.on_event(defines.events.on_preplayer_mined_item, function(event)
-  if (event.entity.name == "logistic-train-stop") then
-    RemoveStop(event.entity)
+  local entity = event.entity
+  if entity.name == "logistic-train-stop" then
+    RemoveStop(entity)
+  end
+  if entity.type == "locomotive" or entity.type == "cargo-wagon" then
+    entity.train.manual_mode = true
+    UpdateStopParkedTrain(entity.train)
+    --entity.train.manual_mode = false
   end
 end)
 
 script.on_event(defines.events.on_robot_pre_mined, function(event)
-  if (event.entity.name == "logistic-train-stop") then
-    RemoveStop(event.entity)
+  local entity = event.entity
+  if entity.name == "logistic-train-stop" then
+    RemoveStop(entity)
   end
 end)
 
 script.on_event(defines.events.on_entity_died, function(event)
-  if (event.entity.name == "logistic-train-stop") then
-    RemoveStop(event.entity)
+  local entity = event.entity
+  if entity.name == "logistic-train-stop" then
+    RemoveStop(entity)
+  end
+  if entity.type == "locomotive" or entity.type == "cargo-wagon" then
+    entity.train.manual_mode = true
+    UpdateStopParkedTrain(entity.train)
+    --entity.train.manual_mode = false
   end
 end)
-
 
 script.on_event(defines.events.on_train_changed_state, function(event)
-  local trainID = GetTrainID(event.train)
-  local trainName = GetTrainName(event.train)
-  if not trainID then --train has no locomotive
-    return
-  end
-  
-  if event.train.state == defines.train_state.wait_station and event.train.station ~= nil and event.train.station.name == "logistic-train-stop" then
-    for stopID, stop in pairs(global.LogisticTrainStops) do
-      if stopID == event.train.station.unit_number then -- add train to station
-        stop.parkedTrain = event.train
-        --global.LogisticTrainStops[stopID].parkedTrain = event.train
-        stop.parkedTrainID = trainID
-        --global.LogisticTrainStops[stopID].parkedTrainID = trainID
-        if global.log_level >= 3 then printmsg("Train "..trainName.." arrived at ".. stop.entity.backer_name) end
-        
-        if stop.isDepot then
-          -- remove delivery
-          removeDelivery(trainID)
-          
-          -- make train available for new deliveries
-          global.Dispatcher.availableTrains[trainID] = event.train          
-          
-          -- reset schedule
-          local schedule = {current = 1, records = {}}
-          schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "circuit", "=", {{type="virtual", name="signal-green", count=1}})
-          event.train.schedule = schedule          
-          if stop.errorCode == 0 then 
-            setLamp(stopID, "blue") 
-          end
-        end
-        
-        UpdateStopOutput(stop)
-        return
-      end
-    end
-  else --remove train from station
-    for stopID, stop in pairs(global.LogisticTrainStops) do
-      if stop.parkedTrainID == trainID then
-        -- remove train reference
-        stop.parkedTrain = nil
-        --global.LogisticTrainStops[stopID].parkedTrain = nil
-        stop.parkedTrainID = nil
-        --global.LogisticTrainStops[stopID].parkedTrainID = nil
-        if global.log_level >= 3 then printmsg("Train "..trainName.." left ".. stop.entity.backer_name) end
-        
-        if stop.isDepot then
-          global.Dispatcher.availableTrains[trainID] = nil
-          if stop.errorCode == 0 then 
-            setLamp(stopID, "green")
-          end
-        else
-          if global.Dispatcher.Deliveries[trainID] then
-            if global.Dispatcher.Deliveries[trainID].from == stop.entity.backer_name then
-              -- ToDO: update to loaded inventory
-              if stop.activeDeliveries > 0 then
-                global.LogisticTrainStops[stopID].activeDeliveries = stop.activeDeliveries - 1  
-              end
-            elseif global.Dispatcher.Deliveries[trainID].to == stop.entity.backer_name then
-              if stop.activeDeliveries > 0 then
-                global.LogisticTrainStops[stopID].activeDeliveries = stop.activeDeliveries - 1  
-              end
-                -- Delivery complete > remove
-                global.Dispatcher.Deliveries[trainID] = nil
-            end
-          end            
-
-        end
-        
-        UpdateStopOutput(stop)
-        return
-      end
-    end
-  end
-  
+  UpdateStopParkedTrain(event.train)
 end)
+
 
 function ticker(event)
   local tick = game.tick
@@ -812,6 +759,87 @@ function RemoveStop(logisticTrainStop)
   end
 end
 
+-- update stop output when train enters/leaves
+function UpdateStopParkedTrain(train)
+  local trainID = GetTrainID(train)
+  local trainName = GetTrainName(train)
+  
+  if not trainID then --train has no locomotive
+    if global.log_level >= 1 then printmsg("Error (UpdateStopParkedTrain): couldn't assign train id") end
+    --TODO: -Update all stops?
+    return
+  end
+  
+  if train.valid and train.manual_mode == false and train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
+    for stopID, stop in pairs(global.LogisticTrainStops) do
+      if stopID == train.station.unit_number then -- add train to station
+        stop.parkedTrain = train
+        --global.LogisticTrainStops[stopID].parkedTrain = event.train
+        stop.parkedTrainID = trainID
+        --global.LogisticTrainStops[stopID].parkedTrainID = trainID
+        if global.log_level >= 3 then printmsg("Train "..trainName.." arrived at ".. stop.entity.backer_name) end
+        
+        if stop.isDepot then
+          -- remove delivery
+          removeDelivery(trainID)
+          
+          -- make train available for new deliveries
+          global.Dispatcher.availableTrains[trainID] = train          
+          
+          -- reset schedule
+          local schedule = {current = 1, records = {}}
+          schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "circuit", "=", {{type="virtual", name="signal-green", count=1}})
+          train.schedule = schedule          
+          if stop.errorCode == 0 then 
+            setLamp(stopID, "blue") 
+          end
+        end
+        
+        UpdateStopOutput(stop)
+        return
+      end
+    end
+  else --remove train from station
+    for stopID, stop in pairs(global.LogisticTrainStops) do
+      if stop.parkedTrainID == trainID then
+        -- remove train reference
+        stop.parkedTrain = nil
+        --global.LogisticTrainStops[stopID].parkedTrain = nil
+        stop.parkedTrainID = nil
+        --global.LogisticTrainStops[stopID].parkedTrainID = nil
+        if global.log_level >= 3 then printmsg("Train "..trainName.." left ".. stop.entity.backer_name) end
+        
+        if stop.isDepot then
+          global.Dispatcher.availableTrains[trainID] = nil
+          if stop.errorCode == 0 then 
+            setLamp(stopID, "green")
+          end
+        else
+          if global.Dispatcher.Deliveries[trainID] then
+            if global.Dispatcher.Deliveries[trainID].from == stop.entity.backer_name then
+              -- TODO: update to loaded inventory
+              if stop.activeDeliveries > 0 then
+                global.LogisticTrainStops[stopID].activeDeliveries = stop.activeDeliveries - 1  
+              end
+            elseif global.Dispatcher.Deliveries[trainID].to == stop.entity.backer_name then
+              if stop.activeDeliveries > 0 then
+                global.LogisticTrainStops[stopID].activeDeliveries = stop.activeDeliveries - 1  
+              end
+                -- Delivery complete > remove
+                global.Dispatcher.Deliveries[trainID] = nil
+            end
+          end            
+
+        end
+        
+        UpdateStopOutput(stop)
+        return
+      end
+    end
+  end
+end
+
+-- update stop input signals
 function UpdateStop(stopID)
   local stop = global.LogisticTrainStops[stopID]
   local match = string.match
@@ -1047,7 +1075,6 @@ function UpdateStopOutput(trainStop)
 			else
 				carriagesDec[name] = 2^(i-1)
 			end
-			
 		end
 		index = 2
     for k ,v in pairs (carriagesDec) do      

@@ -1,3 +1,6 @@
+0.5.2
+- fixed adding/removing carriages of parked trains does not update composition signals
+
 0.5.1
 - train composition output is now binary encoded
 
