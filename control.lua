@@ -630,9 +630,11 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
     record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", condition = cond }
   end
   if condType == "circuit" then
-    record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "and", ticks = 60 } -- allow trains to be refuelled in depot
+    record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "and", ticks = 60 } -- 1s inactivity allowing trains to be refuelled in depot
   else
-    record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "or", ticks = 1800 } -- send stuck trains away
+    if stop_timeout > 0 then
+      record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "or", ticks = stop_timeout } -- send stuck trains away
+    end
   end
   return record
 end

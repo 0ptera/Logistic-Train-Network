@@ -1,3 +1,6 @@
+0.5.3
+- added stop_timeout to config parameters
+
 0.5.2
 - fixed adding/removing carriages of parked trains does not update composition signals
 
