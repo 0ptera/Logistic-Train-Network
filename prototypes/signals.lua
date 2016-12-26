@@ -26,5 +26,12 @@ data:extend({
     icon = "__"..MOD_NAME.."__/graphics/icons/stop-priority.png",
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-ad[stop-priority]"
+  },
+  {
+    type = "virtual-signal",
+    name = "ltn-depot",
+    icon = "__"..MOD_NAME.."__/graphics/icons/depot.png",
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-ae[ltn-depot]"
   }
 })

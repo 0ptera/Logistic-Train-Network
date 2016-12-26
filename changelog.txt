@@ -1,3 +1,8 @@
+0.5.4
+- changed Depot detection from name "Depot" to virtual signal "Stop is Depot"
+- made input and output blueprintable again, so they store connections in blueprints
+- fixed bugs with entity and item prototypes
+
 0.5.3
 - added stop_timeout to config parameters
 
