@@ -1,7 +1,9 @@
 0.5.4
 - changed Depot detection from name "Depot" to virtual signal "Stop is Depot"
-- made input and output blueprintable again, so they store connections in blueprints
-- fixed bugs with entity and item prototypes
+- made input and output blueprintable again / circuit connections are maintained by blueprints
+- removed circuit wait condition from depots in schedule / remove need to connect output with train stop
+- fixed bugs in entity and item prototypes
+- fixed 0.5.3 Error: __LogisticTrainNetwork__/control.lua:493: attempt to index field 'station' (a nil value)
 
 0.5.3
 - added stop_timeout to config parameters

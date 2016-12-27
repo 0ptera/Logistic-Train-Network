@@ -203,7 +203,7 @@ function ticker(event)
     end   
   end
   
-  if tick % dispatcher_update_interval == 0 then
+  if (tick + station_update_interval/2) % dispatcher_update_interval == 0 then
     ---- clean up deliveries in case train was destroyed or removed ----
     for trainID, delivery in pairs (global.Dispatcher.Deliveries) do        
       if not delivery.train or not delivery.train.valid then
@@ -493,13 +493,13 @@ function ProcessOrders(orders)
     local selectedTrain = global.Dispatcher.availableTrains[train.id]
     local depot = global.LogisticTrainStops[selectedTrain.station.unit_number]    
     local schedule = {current = 1, records = {}}
-    schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "circuit", "=", {{type="virtual", name="signal-green", count=1}})
+    schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", 120)
     schedule.records[2] = NewScheduleRecord(from, "item_count", ">", loadingList)
     schedule.records[3] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
     selectedTrain.schedule = schedule   
         
     -- send go to selectedTrain (needs output connected to station)
-    depot.output.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual", name="signal-green"}, count = 1 }}}      
+    --depot.output.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual", name="signal-green"}, count = 1 }}}      
     
     -- store delivery and reset order age
     local delivery = {}
@@ -561,23 +561,28 @@ function GetFreeTrain(type, size, maxTraincars)
   local largestInventory = 0
   local smallestInventory = 0
   for DispTrainKey, DispTrain in pairs (global.Dispatcher.availableTrains) do
-    local inventorySize = 0
-    if DispTrain.valid and (maxTraincars == nil or maxTraincars <= 0 or #DispTrain.carriages <= maxTraincars) then -- train length fits
-      -- get total inventory of train for requested item type
-      inventorySize = GetInventorySize(DispTrain, type)
-      
-      if inventorySize >= size then
-        -- train can be used for delivery
-        if inventorySize < smallestInventory or smallestInventory == 0 then
-          smallestInventory = inventorySize
-          train = {id=DispTrainKey, inventorySize=inventorySize}
+    if DispTrain.valid and DispTrain.station then
+      local inventorySize = 0
+      if maxTraincars == nil or maxTraincars <= 0 or #DispTrain.carriages <= maxTraincars then -- train length fits
+        -- get total inventory of train for requested item type
+        inventorySize = GetInventorySize(DispTrain, type)
+        
+        if inventorySize >= size then
+          -- train can be used for delivery
+          if inventorySize < smallestInventory or smallestInventory == 0 then
+            smallestInventory = inventorySize
+            train = {id=DispTrainKey, inventorySize=inventorySize}
+          end
+        elseif smallestInventory == 0 and inventorySize > 0 and (inventorySize > largestInventory or largestInventory == 0) then
+          -- store as biggest available train
+          largestInventory = inventorySize
+          train = {id=DispTrainKey, inventorySize=inventorySize}      
         end
-      elseif smallestInventory == 0 and inventorySize > 0 and (inventorySize > largestInventory or largestInventory == 0) then
-        -- store as biggest available train
-        largestInventory = inventorySize
-        train = {id=DispTrainKey, inventorySize=inventorySize}      
-      end
-    end          
+      end 
+    else
+      -- remove invalid train
+      global.Dispatcher.availableTrains[DispTrainKey] = nil
+    end
   end
   return train
 end
@@ -609,33 +614,37 @@ end
 -- itemlist = {first_signal.type, first_signal.name, constant}
 function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverride)
   local record = {station = stationName, wait_conditions = {}}
-  for i=1, #itemlist do    
-    --convert to RT fake item if needed
-    local rtname = nil
-    local rttype = nil
-    if itemlist[i].type == "fluid" and global.useRailTanker then
-      rtname = itemlist[i].name .. "-in-tanker"
-      rttype = "item"
-      if not game.item_prototypes[rtname] then
-        if global.log_level >= 1 then printmsg("Error(NewScheduleRecord): couldn't get RailTanker fake item") end
-        return nil
+
+  if condType == "item_count" then
+    -- write itemlist to conditions
+    for i=1, #itemlist do    
+      --convert to RT fake item if needed
+      local rtname = nil
+      local rttype = nil
+      if itemlist[i].type == "fluid" and global.useRailTanker then
+        rtname = itemlist[i].name .. "-in-tanker"
+        rttype = "item"
+        if not game.item_prototypes[rtname] then
+          if global.log_level >= 1 then printmsg("Error(NewScheduleRecord): couldn't get RailTanker fake item") end
+          return nil
+        end
       end
+      
+      -- make > into >=
+      if condComp == ">" then
+        countOverride = itemlist[i].count - 1
+      end
+      
+      local cond = {comparator = condComp, first_signal = {type = rttype or itemlist[i].type, name = rtname or itemlist[i].name}, constant = countOverride or itemlist[i].count}
+      record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", condition = cond }
     end
     
-    -- make > into >=
-    if condComp == ">" then
-      countOverride = itemlist[i].count - 1
-    end
-    
-    local cond = {comparator = condComp, first_signal = {type = rttype or itemlist[i].type, name = rtname or itemlist[i].name}, constant = countOverride or itemlist[i].count}
-    record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", condition = cond }
-  end
-  if condType == "circuit" then
-    record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "and", ticks = 60 } -- 1s inactivity allowing trains to be refuelled in depot
-  else
+    -- if stop_timeout is set add inactivity condition
     if stop_timeout > 0 then
       record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "or", ticks = stop_timeout } -- send stuck trains away
     end
+  elseif condType == "inactivity" then
+    record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp } -- 1s inactivity allowing trains to be refuelled in depot
   end
   return record
 end
@@ -720,7 +729,7 @@ function CreateStop(entity)
   output.operable = false -- disable gui
   output.minable = false
   output.destructible = false -- don't bother checking if alive
-  output.connect_neighbour({target_entity=entity, wire=defines.wire_type.green})
+  --output.connect_neighbour({target_entity=entity, wire=defines.wire_type.green})
   
   global.LogisticTrainStops[entity.unit_number] = {
     entity = entity,
@@ -798,8 +807,8 @@ function UpdateStopParkedTrain(train)
           global.Dispatcher.availableTrains[trainID] = train          
           
           -- reset schedule
-          local schedule = {current = 1, records = {}}
-          schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "circuit", "=", {{type="virtual", name="signal-green", count=1}})
+          local schedule = {current = 1, records = {}}          
+          schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "inactivity", 300)
           train.schedule = schedule          
           if stop.errorCode == 0 then 
             setLamp(stopID, "blue") 
@@ -889,7 +898,7 @@ function UpdateStop(stopID)
     end
     
     -- add parked train to available trains
-    if stop.parkedTrainID and stop.parkedTrain.valid then
+    if stop.parkedTrainID and stop.parkedTrain.valid and not global.Dispatcher.Deliveries[stop.parkedTrainID] then
       global.Dispatcher.availableTrains[stop.parkedTrainID] = stop.parkedTrain
     end    
     
