@@ -1,16 +1,20 @@
 local ltn_stop = copyPrototype("train-stop", "train-stop", "logistic-train-stop")
 ltn_stop.icon = "__"..MOD_NAME.."__/graphics/icons/train-stop.png"
 ltn_stop.selection_box = {{-0.6, -0.6}, {0.6, 0.6}}
+ltn_stop.collision_box = {{-0.5, -0.1}, {0.5, 0.5}}
 
 local ltn_stop_in = copyPrototype("lamp", "small-lamp","logistic-train-stop-input")
-ltn_stop_in.energy_usage_per_tick = "250W"
-ltn_stop_in.collision_mask = { "resource-layer" }
+ltn_stop_in.icon = "__"..MOD_NAME.."__/graphics/icons/train-stop.png"
+ltn_stop_in.selection_box = {{-0.5, -0.5}, {0.5, 0.5}}
+ltn_stop_in.collision_box = {{-0.15, -0.15}, {0.15, 0.15}}
+ltn_stop_in.energy_usage_per_tick = "10W"
 ltn_stop_in.light = { intensity = 1, size = 6 }
-ltn_stop_in.minable = nil
-ltn_stop_in.flags = {"not-blueprintable", "not-deconstructable"}
 
 local ltn_stop_out = copyPrototype("constant-combinator","constant-combinator","logistic-train-stop-output")
 ltn_stop_out.icon = "__"..MOD_NAME.."__/graphics/icons/output.png"
+ltn_stop_out.selection_box = {{-0.5, -0.5}, {0.5, 0.5}}
+ltn_stop_out.collision_box = {{-0.15, -0.15}, {0.15, 0.15}}
+ltn_stop_out.item_slot_count = 50
 ltn_stop_out.sprites = 
 {
   north =
@@ -53,13 +57,14 @@ ltn_stop_out.sprites =
     shift = {0.140625, 0.140625},
   }
 }
-ltn_stop_in.collision_mask = { "resource-layer" }
-ltn_stop_out.item_slot_count = 50
-ltn_stop_out.minable = nil
-ltn_stop_out.flags = {"not-blueprintable", "not-deconstructable"}
 
 local ltn_lamp_control = copyPrototype("constant-combinator","constant-combinator","logistic-train-stop-lamp-control")
 ltn_lamp_control.icon = "__"..MOD_NAME.."__/graphics/icons/empty.png"
+ltn_lamp_control.selection_box = {{-0.0, -0.0}, {0.0, 0.0}}
+ltn_lamp_control.collision_box = {{-0.0, -0.0}, {0.0, 0.0}}
+ltn_lamp_control.collision_mask = { "resource-layer" }
+ltn_lamp_control.item_slot_count = 50
+ltn_lamp_control.flags = {"not-blueprintable", "not-deconstructable"}
 ltn_lamp_control.sprites = 
 {
   north =
@@ -194,25 +199,7 @@ ltn_lamp_control.circuit_wire_connection_points =
     }
   }  
 }
-ltn_lamp_control.collision_mask = { "resource-layer" }
-ltn_lamp_control.item_slot_count = 50
-ltn_lamp_control.minable = nil
-ltn_lamp_control.flags = {"not-blueprintable", "not-deconstructable"}
-ltn_lamp_control.selection_box = {{-0.0, -0.0}, {0.0, 0.0}}
-ltn_lamp_control.collision_box = {{-0.0, -0.0}, {0.0, 0.0}}
 
-local ltn_radar = copyPrototype("radar", "radar", "ltn-control-radar")
-ltn_radar.icon = "__"..MOD_NAME.."__/graphics/icons/radar.png"
-ltn_radar.pictures = {
-  filename = "__"..MOD_NAME.."__/graphics/entity/radar.png",
-  priority = "low",
-  width = 153,
-  height = 131,
-  apply_projection = false,
-  direction_count = 64,
-  line_length = 8,
-  shift = {0.875, -0.34375}  
-}
 
 data:extend({
   ltn_stop,
