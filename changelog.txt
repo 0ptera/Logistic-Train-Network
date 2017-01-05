@@ -1,3 +1,6 @@
+0.5.5
+- fix rail tanker displaying incorrect cargo-wagon icon
+
 0.5.4
 - changed Depot detection from name "Depot" to virtual signal "Stop is Depot"
 - made input and output blueprintable again / circuit connections are maintained by blueprints

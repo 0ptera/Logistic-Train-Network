@@ -23,6 +23,10 @@ for k, wagon in pairs(data.raw["cargo-wagon"]) do
     order = "z[LTN-signal]-bb",
     localised_name = {"virtual-signal-name.LTN-wagon", "#", {"entity-name." .. wagon.name}}
   }
+  -- fix RailTanker 1.4.0 shows cargo-wagon icon on entity
+  if wagon.name == "rail-tanker" then
+    signal.icon = "__"..MOD_NAME.."__/graphics/icons/rail-tanker.png"
+  end
   data:extend({signal})
   i=i+1
 end

@@ -38,7 +38,6 @@ end)
 
 script.on_configuration_changed(function(data)
   initialize()
-  
   local loadmsg = MOD_NAME.." "..game.active_mods[MOD_NAME].." initialized."
   if data and data.mod_changes[MOD_NAME] then
     if data.mod_changes[MOD_NAME].old_version and data.mod_changes[MOD_NAME].new_version then
@@ -881,6 +880,9 @@ function UpdateStop(stopID)
     global.LogisticTrainStops[stopID].parkedTrainID = nil
   end
 
+  -- TODO: check if input and output are connected through LuaCircuitNetwork  
+  
+  -- get circuit values
   local circuitValues = GetCircuitValues(stop.input)
   if not circuitValues then
     return
@@ -1042,7 +1044,7 @@ function UpdateStop(stopID)
       global.LogisticTrainStops[stopID].errorCode = 1
       setLamp(stopID, ErrorCodes[1])               
     elseif stop.errorCode <= 1 then
-      -- signal error fixed
+      --signal error fixed
       global.LogisticTrainStops[stopID].errorCode = 0
 
       global.LogisticTrainStops[stopID].minDelivery = minDelivery
@@ -1114,12 +1116,12 @@ end
 function UpdateStopOutput(trainStop)
 	local index = 1
   local signals = {{index = index, signal = {type="virtual",name="signal-grey"}, count = 1 }} -- short circuit test signal
-    
-	if trainStop.parkedTrain and trainStop.parkedTrain.valid then
+  index = index + 1
+  
+	if trainStop.parkedTrain and trainStop.parkedTrain.valid then    
     -- get train composition
-    carriages = trainStop.parkedTrain.carriages
-		carriagesBin = {}
-		carriagesDec = {}
+    local carriages = trainStop.parkedTrain.carriages
+		local carriagesDec = {}
 		for i=1, #carriages do
 			local name = carriages[i].name
 			if carriagesDec[name] then
@@ -1128,7 +1130,6 @@ function UpdateStopOutput(trainStop)
 				carriagesDec[name] = 2^(i-1)
 			end
 		end
-		index = 2
     for k ,v in pairs (carriagesDec) do      
       table.insert(signals, {index = index, signal = {type="virtual",name="LTN-"..k}, count = v })
       index = index+1
