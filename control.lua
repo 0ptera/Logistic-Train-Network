@@ -287,7 +287,7 @@ function BuildOrders()
       end        
         
       -- get providers ordered by priority
-      local providers = GetStations(item, minDelivery)
+      local providers = GetStations(requestStation.entity.force, item, minDelivery)
       if not providers or #providers < 1 then
         if global.log_level >= 3 then printmsg("Notice: no station supplying "..item.." found") end
         goto skipRequestItem
@@ -437,12 +437,12 @@ function ProcessOrders(orders)
     if not toStop or not  fromStop then
       if global.log_level >= 1 then printmsg("Error: Couldn't read station name") end
       goto skipOrder
-    end  
+    end
     local to = toStop.entity.backer_name
     local from = fromStop.entity.backer_name
     
     -- find train
-    local train = GetFreeTrain(loadingList[1].type, totalStacks, order.maxTraincars)
+    local train = GetFreeTrain(toStop.entity.force, loadingList[1].type, totalStacks, order.maxTraincars)
     if not train then
       if order.maxTraincars > 0 then
         if global.log_level >= 3 then printmsg("No train with length "..order.maxTraincars.." to transport "..totalStacks.." found in Depot") end
@@ -523,7 +523,7 @@ function ProcessOrders(orders)
 end
 
 -- return all stations providing item, ordered by priority and item-count
-function GetStations(item, min_count) 
+function GetStations(force, item, min_count)
   local stations = {}
   local providers = global.Dispatcher.Provided[item]
   if not providers then
@@ -532,8 +532,8 @@ function GetStations(item, min_count)
   -- get all providing stations
   for stopID, count in pairs (providers) do
   if not(stopID == "sumCount" or stopID == "sumStops") then --skip sumCount, sumStops
-    local stop = global.LogisticTrainStops[stopID]    
-    if stop then 
+    local stop = global.LogisticTrainStops[stopID]
+    if stop and stop.entity.force.name == force.name then 
       if count > 0 and (use_Best_Effort or count > min_count) then
         if global.log_level >= 4 then printmsg("(GetStations): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." maxTraincars: "..stop.maxTraincars) end
         stations[#stations +1] = {entity = stop.entity, priority = stop.priority, item = item, count = count, maxTraincars = stop.maxTraincars}
@@ -555,33 +555,36 @@ end
 
 -- return available train with smallest suitable inventory or largest available inventory
 -- if maxTraincars is set, number of locos + wagons has to be smaller
-function GetFreeTrain(type, size, maxTraincars)
+function GetFreeTrain(force, type, size, maxTraincars)
   local train = nil
   local largestInventory = 0
   local smallestInventory = 0
-  for DispTrainKey, DispTrain in pairs (global.Dispatcher.availableTrains) do
+  for DispTrainKey, DispTrain in pairs (global.Dispatcher.availableTrains) do    
     if DispTrain.valid and DispTrain.station then
-      local inventorySize = 0
-      if maxTraincars == nil or maxTraincars <= 0 or #DispTrain.carriages <= maxTraincars then -- train length fits
-        -- get total inventory of train for requested item type
-        inventorySize = GetInventorySize(DispTrain, type)
-        
-        if inventorySize >= size then
-          -- train can be used for delivery
-          if inventorySize < smallestInventory or smallestInventory == 0 then
-            smallestInventory = inventorySize
-            train = {id=DispTrainKey, inventorySize=inventorySize}
+      local locomotive = GetMainLocomotive(DispTrain)
+      if locomotive.force.name == force.name then
+        local inventorySize = 0
+        if maxTraincars == nil or maxTraincars <= 0 or #DispTrain.carriages <= maxTraincars then -- train length fits
+          -- get total inventory of train for requested item type
+          inventorySize = GetInventorySize(DispTrain, type)
+          
+          if inventorySize >= size then
+            -- train can be used for delivery
+            if inventorySize < smallestInventory or smallestInventory == 0 then
+              smallestInventory = inventorySize
+              train = {id=DispTrainKey, inventorySize=inventorySize}
+            end
+          elseif smallestInventory == 0 and inventorySize > 0 and (inventorySize > largestInventory or largestInventory == 0) then
+            -- store as biggest available train
+            largestInventory = inventorySize
+            train = {id=DispTrainKey, inventorySize=inventorySize}      
           end
-        elseif smallestInventory == 0 and inventorySize > 0 and (inventorySize > largestInventory or largestInventory == 0) then
-          -- store as biggest available train
-          largestInventory = inventorySize
-          train = {id=DispTrainKey, inventorySize=inventorySize}      
         end
-      end 
+      end      
     else
       -- remove invalid train
       global.Dispatcher.availableTrains[DispTrainKey] = nil
-    end
+    end    
   end
   return train
 end
@@ -1004,7 +1007,7 @@ function UpdateStop(stopID)
           end
         end -- for delivery
         
-        -- update Dispatcher Storage
+        -- update Dispatcher Storage        
         if count < 0 then
           count = count * -1
           local requested = global.Dispatcher.Requested[item] or {}
