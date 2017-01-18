@@ -1,3 +1,8 @@
+0.6.0
+- added log_level and log_output to config.lua (in game command overrides for current session)
+- replaced misleading < and > in  and maximum train length icons with ≤ and ≥
+- changed train composition signal names
+
 0.5.6
 - added rudimentary sanity checks for different forces: Requester, Provider and delivering Train have to be in the same force
 - can not fix: Trains of different forces will still try going to stops with the same name in other forces, including depots

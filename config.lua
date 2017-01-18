@@ -1,3 +1,11 @@
+-- set notification level
+-- 4: everything, 3: scheduler messages, 2: basic messages (default), 1 errors only, 0: off
+log_level = 2
+
+-- set notification target
+-- console: in game console, log: logfile in factorio root directory or both (default)
+log_output = "both"
+
 -- update interval in ticks for reading circuit values at stops
 -- default 60
 station_update_interval = 60
@@ -15,10 +23,10 @@ min_delivery_size = 1000
 delivery_timeout = 18000
 
 -- duration in ticks of inactivity before leaving un-loading stations 
--- default 18000 = 30s
+-- default 18000 = 5min
 -- off 0 (trains will wait forever to un-load
 stop_timeout = 18000
 
 -- when false provider stations holding less than request stations min_delivery_size are ignored
 -- default true
-use_Best_Effort = true            
+use_Best_Effort = true

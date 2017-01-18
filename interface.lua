@@ -1,3 +1,4 @@
+local lastMessage
 
 remote.add_interface("LTN",
     {
@@ -16,7 +17,7 @@ remote.add_interface("LTN",
                 game.player.print("[LTN] log_level: Wrong parameter type")
                 return
             end
-            global.log_level = level
+            log_level = level
             remote.call('LTN', 'log_status')
         end,
 
@@ -26,7 +27,7 @@ remote.add_interface("LTN",
                 return
             end
             if log_set == "console" or log_set == "log" or log_set == "both" then
-              global.log_output = log_set
+              log_output = log_set
               remote.call('LTN', 'log_status')
             else
               game.player.print("[LTN] log_output: Wrong parameter "..log_set)
@@ -35,24 +36,23 @@ remote.add_interface("LTN",
         end,
         
         log_status = function()
-            game.player.print("[LTN] <log_status> log-level: " .. global.log_level .. " - log-output: " .. global.log_output)
+            game.player.print("[LTN] <log_status> log-level: " .. log_level .. " - log-output: " .. log_output)
         end
     }
 )
 
-
 function printmsg(msg)
-  if global.lastMessage == msg then
+  if lastMessage == msg then
     -- don't spam the same message
     return
   end
-  global.lastMessage = msg
-  if global.log_output == "console" or global.log_output == "both" then
+  lastMessage = msg
+  if log_output == "console" or log_output == "both" then
     game.print("[LTN] " .. msg)
   end
-  if global.log_output == "log" or global.log_output == "both" then
+  if log_output == "log" or log_output == "both" then
     log("[LTN] " .. msg)
   end
 end
 
-return printmsg
+return printmsg, log_output, log_level

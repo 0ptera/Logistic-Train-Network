@@ -51,9 +51,6 @@ script.on_configuration_changed(function(data)
 end)
 
 function initialize()
-  global.log_level = global.log_level or 2 -- 4: everything, 3: scheduler messages, 2: basic messages, 1 errors only, 0: off
-  global.log_output = global.log_output or "both" -- console or log or both
-  
   -- check if RailTanker is installed
   if game.active_mods["RailTanker"] then
     global.useRailTanker = true
@@ -61,9 +58,13 @@ function initialize()
     global.useRailTanker = false
   end
   
-  -- update to 0.4.5
-  if type(global.log_output) ~= "string" then
-    global.log_output = "both"
+  -- update to 0.5.7
+  global.log_level = nil
+  global.log_output = nil
+  
+  if type(log_output) ~= "string" then
+    log_output = "both"
+    printmsg("log_output: Wrong parameter type")
   end
   
   global.LogisticTrainStops = global.LogisticTrainStops or {}
@@ -187,7 +188,7 @@ function ticker(event)
   local next = next
   if global.LogisticTrainStops == nil or next(global.LogisticTrainStops) == nil then
     script.on_event(defines.events.on_tick, nil)
-    if global.log_level >= 4 then printmsg("no LogisticTrainStops, unsubscribed from on_tick") end
+    if log_level >= 4 then printmsg("no LogisticTrainStops, unsubscribed from on_tick") end
     return
   end
   
@@ -206,13 +207,19 @@ function ticker(event)
     ---- clean up deliveries in case train was destroyed or removed ----
     for trainID, delivery in pairs (global.Dispatcher.Deliveries) do        
       if not delivery.train or not delivery.train.valid then
-        if global.log_level >= 2 then printmsg("Delivery from "..delivery.from.." to "..delivery.to.." removed. Train no longer valid.") end
+        if log_level >= 2 then printmsg("Delivery from "..delivery.from.." to "..delivery.to.." removed. Train no longer valid.") end
         removeDelivery(trainID)
       elseif tick-delivery.started > delivery_timeout then
-        if global.log_level >= 2 then printmsg("Delivery from "..delivery.from.." to "..delivery.to.." running for "..tick-delivery.started.." ticks removed after time out.") end
+        if log_level >= 2 then printmsg("Delivery from "..delivery.from.." to "..delivery.to.." running for "..tick-delivery.started.." ticks removed after time out.") end
         removeDelivery(trainID)
       end
     end  
+    
+    -- TODO: change logic
+    -- request < min delivery size => generate order with age
+    -- sort orders by age
+    -- for orders => find best provider (merge), find train, generate delivery, reset age
+    
     
     -- remove no longer active requests from global.Dispatcher.OrderAge[toID][type][name] = age
     local newOrderAge = {}
@@ -227,7 +234,7 @@ function ticker(event)
                 newOrderAge[stopID] = newOrderAge[stopID] or {}
                 newOrderAge[stopID][itype] = newOrderAge[stopID][itype] or {}
                 newOrderAge[stopID][itype][iname] = age
-                if global.log_level >= 4 then printmsg("preserving Order, tick: "..newOrderAge[stopID][itype][iname]..", to: "..stopID..", "..itype..", "..iname) end
+                if log_level >= 4 then printmsg("preserving Order, tick: "..newOrderAge[stopID][itype][iname]..", to: "..stopID..", "..itype..", "..iname) end
               end
             end
           end
@@ -262,7 +269,7 @@ function BuildOrders()
     if not(stopID == "sumCount" or stopID == "sumStops") then --skip sumCount, sumStops 
       local requestStation = global.LogisticTrainStops[stopID]
       if not requestStation or requestStation.isDepot or requestStation.errorCode > 0 then
-        if global.log_level >= 1 then printmsg("Error(BuildOrders): invalid request Stop ID: "..stopID) end
+        if log_level >= 1 then printmsg("Error(BuildOrders): invalid request Stop ID: "..stopID) end
         goto skipRequestItem
       end
       local minDelivery = requestStation.minDelivery
@@ -276,39 +283,39 @@ function BuildOrders()
       -- split merged key into type & name
       local itype, iname = match(item, "([^,]+),([^,]+)")
       if not (itype and iname) then
-        if global.log_level >= 1 then printmsg("Error(BuildOrders): could not parse item "..item) end
+        if log_level >= 1 then printmsg("Error(BuildOrders): could not parse item "..item) end
         goto skipRequestItem
       end
         
       -- ignore fluids without rail tanker
       if itype == "fluid" and not global.useRailTanker then
-        if global.log_level >= 3 then printmsg("Notice: fluid transport requires Rail Tanker") end
+        if log_level >= 3 then printmsg("Notice: fluid transport requires Rail Tanker") end
         goto skipRequestItem
       end        
         
       -- get providers ordered by priority
       local providers = GetStations(requestStation.entity.force, item, minDelivery)
       if not providers or #providers < 1 then
-        if global.log_level >= 3 then printmsg("Notice: no station supplying "..item.." found") end
+        if log_level >= 3 then printmsg("Notice: no station supplying "..item.." found") end
         goto skipRequestItem
       end
         
       -- prevent stop from hogging all available items
       local provided = global.Dispatcher.Provided[item]
       local requested = global.Dispatcher.Requested[item]
-      if requested and provided then
-        if provided.sumCount < requested.sumCount then
-          local floor = math.floor
-          local averageCount = floor(provided.sumCount / requested.sumStops)
-          if count > averageCount then
-            if averageCount > minDelivery or use_Best_Effort then
-              count = averageCount
-            else
-              count = minDelivery
-            end
-          end
-        end
-      end
+      -- if requested and provided then
+        -- if provided.sumCount < requested.sumCount then
+          -- local floor = math.floor
+          -- local averageCount = floor(provided.sumCount / requested.sumStops)
+          -- if count > averageCount then
+            -- if averageCount > minDelivery or use_Best_Effort then
+              -- count = averageCount
+            -- else
+              -- count = minDelivery
+            -- end
+          -- end
+        -- end
+      -- end
         
         -- create orders until request is fulfilled
       for i=1, #providers do
@@ -351,7 +358,7 @@ function BuildOrders()
             orders[j].age = age
             orders[j].maxTraincars = maxTraincars
             orders[j].minDelivery = minDelivery 
-            if global.log_level >= 3 then  printmsg("inserted into  order "..i.."/"..#orders.." tick: "..age.."/"..game.tick.." maxLength: "..maxTraincars.." "..from..">>"..to..": "..deliverySize.." "..itype..","..iname) end
+            if log_level >= 3 then  printmsg("inserted into  order "..i.."/"..#orders.." tick: "..age.."/"..game.tick.." maxLength: "..maxTraincars.." "..from..">>"..to..": "..deliverySize.." "..itype..","..iname) end
             insertnew = false
             break
           end          
@@ -362,7 +369,7 @@ function BuildOrders()
           global.Dispatcher.OrderAge[toID] = global.Dispatcher.OrderAge[toID] or {}
           global.Dispatcher.OrderAge[toID][itype] = global.Dispatcher.OrderAge[toID][itype] or {}
           global.Dispatcher.OrderAge[toID][itype][iname] = global.Dispatcher.OrderAge[toID][itype][iname] or age
-          if global.log_level >= 3 then  printmsg("added new order "..#orders.." tick: "..age.."/"..game.tick.." maxLength: "..maxTraincars.." "..from..">>"..to..": "..deliverySize.." "..itype..","..iname) end
+          if log_level >= 3 then  printmsg("added new order "..#orders.." tick: "..age.."/"..game.tick.." maxLength: "..maxTraincars.." "..from..">>"..to..": "..deliverySize.." "..itype..","..iname) end
         end                   
         
         -- prevent multiple orders for same items
@@ -385,7 +392,7 @@ end
 function ProcessOrders(orders)
   local ceil = math.ceil
   for orderIndex=1, #orders do
-    if global.log_level >= 3 then printmsg("processing "..orderIndex.."/"..#orders.." Orders") end
+    if log_level >= 3 then printmsg("processing "..orderIndex.."/"..#orders.." Orders") end
     local order = orders[orderIndex]
     local totalStacks = 0
     local totalCount = 0
@@ -395,7 +402,7 @@ function ProcessOrders(orders)
     for itype, items in pairs (order.shipment) do
       if items then
       for name, count in pairs (items) do
-        --if global.log_level >= 4 then printmsg("order List: "..itype.." "..name.." "..count) end
+        --if log_level >= 4 then printmsg("order List: "..itype.." "..name.." "..count) end
         -- calculate stacks needed, type is guaranteed to stay the same per order
         if itype == "item" then
           local addstacks = ceil(count / game.item_prototypes[name].stack_size)
@@ -408,7 +415,7 @@ function ProcessOrders(orders)
           loadingList[#loadingList+1] = {type=itype, name=name, count=count, stacks=1}
         else
           -- either rail tanker was removed after the order was created or order got corrupted
-          if global.log_level >= 1 then printmsg("Error(ProcessOrders): "..itype.."is no valid type") end
+          if log_level >= 1 then printmsg("Error(ProcessOrders): "..itype.."is no valid type") end
           goto skipOrder
         end        
 
@@ -416,16 +423,16 @@ function ProcessOrders(orders)
       end
     end -- for shipment.items
     else
-      if global.log_level >= 3 then  printmsg("skipped empty shipment") end
+      if log_level >= 3 then  printmsg("skipped empty shipment") end
       goto skipOrder
     end
 
     if loadingList == nil or #loadingList < 1 then
-      if global.log_level >= 3 then  printmsg("couldn't create loadingList") end
+      if log_level >= 3 then  printmsg("couldn't create loadingList") end
       goto skipOrder
     end
     
-    if global.log_level >= 3 then
+    if log_level >= 3 then
     for i=1 ,#loadingList do
        printmsg("loading List: "..loadingList[i].type.." "..loadingList[i].name.." "..loadingList[i].count.." "..loadingList[i].stacks)
     end
@@ -435,7 +442,7 @@ function ProcessOrders(orders)
     local toStop = global.LogisticTrainStops[order.toID]
     local fromStop = global.LogisticTrainStops[order.fromID]
     if not toStop or not  fromStop then
-      if global.log_level >= 1 then printmsg("Error: Couldn't read station name") end
+      if log_level >= 1 then printmsg("Error: Couldn't read station name") end
       goto skipOrder
     end
     local to = toStop.entity.backer_name
@@ -445,14 +452,14 @@ function ProcessOrders(orders)
     local train = GetFreeTrain(toStop.entity.force, loadingList[1].type, totalStacks, order.maxTraincars)
     if not train then
       if order.maxTraincars > 0 then
-        if global.log_level >= 3 then printmsg("No train with length "..order.maxTraincars.." to transport "..totalStacks.." found in Depot") end
+        if log_level >= 3 then printmsg("No train with length "..order.maxTraincars.." to transport "..totalStacks.." found in Depot") end
       else
-        if global.log_level >= 3 then printmsg("No train to transport "..totalStacks.." found in Depot") end
+        if log_level >= 3 then printmsg("No train to transport "..totalStacks.." found in Depot") end
       end
       goto skipOrder
     end
 
-    if global.log_level >= 3 then printmsg("Train with "..train.inventorySize.."/"..totalStacks.." found in Depot") end
+    if log_level >= 3 then printmsg("Train with "..train.inventorySize.."/"..totalStacks.." found in Depot") end
     
     if train.inventorySize < totalStacks then
       -- recalculate partial shipment    
@@ -480,7 +487,7 @@ function ProcessOrders(orders)
       end
     end 
     
-    if global.log_level >= 2 then 
+    if log_level >= 2 then 
       if #loadingList == 1 then
         printmsg("Creating Delivery: ".. loadingList[1].count .."  ".. loadingList[1].name..", from "..from.." to "..to) 
       else
@@ -535,7 +542,7 @@ function GetStations(force, item, min_count)
     local stop = global.LogisticTrainStops[stopID]
     if stop and stop.entity.force.name == force.name then 
       if count > 0 and (use_Best_Effort or count > min_count) then
-        if global.log_level >= 4 then printmsg("(GetStations): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." maxTraincars: "..stop.maxTraincars) end
+        if log_level >= 4 then printmsg("(GetStations): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." maxTraincars: "..stop.maxTraincars) end
         stations[#stations +1] = {entity = stop.entity, priority = stop.priority, item = item, count = count, maxTraincars = stop.maxTraincars}
       end
     end
@@ -605,7 +612,7 @@ function GetInventorySize(train, type)
       if slots then
         inventorySize = inventorySize + slots
       else
-        if global.log_level >= 1 then printmsg("Error(GetInventorySize): Could not read inventory size of ".. wagon.name) end
+        if log_level >= 1 then printmsg("Error(GetInventorySize): Could not read inventory size of ".. wagon.name) end
       end
     end
   end         
@@ -627,7 +634,7 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
         rtname = itemlist[i].name .. "-in-tanker"
         rttype = "item"
         if not game.item_prototypes[rtname] then
-          if global.log_level >= 1 then printmsg("Error(NewScheduleRecord): couldn't get RailTanker fake item") end
+          if log_level >= 1 then printmsg("Error(NewScheduleRecord): couldn't get RailTanker fake item") end
           return nil
         end
       end
@@ -669,7 +676,7 @@ end
 
 function CreateStop(entity)
   if global.LogisticTrainStops[entity.unit_number] then
-    if global.log_level >= 1 then printmsg("Error(CreateStop): Duplicated unit_number "..entity.unit_number) end
+    if log_level >= 1 then printmsg("Error(CreateStop): Duplicated unit_number "..entity.unit_number) end
     return
   end
   
@@ -691,7 +698,7 @@ function CreateStop(entity)
     posOut = {entity.position.x-1, entity.position.y}
     rot = 6
   else --invalid orientation
-    if global.log_level >= 1 then printmsg("Error(CreateStop): invalid Train Stop Orientation "..entity.direction) end
+    if log_level >= 1 then printmsg("Error(CreateStop): invalid Train Stop Orientation "..entity.direction) end
     entity.destroy()
     return
   end
@@ -753,7 +760,7 @@ function CreateStop(entity)
   end
   if count == 1 then
     script.on_event(defines.events.on_tick, ticker) --subscribe ticker on first created train stop
-    if global.log_level >= 4 then printmsg("on_tick subscribed") end
+    if log_level >= 4 then printmsg("on_tick subscribed") end
   end
 end
 
@@ -777,7 +784,7 @@ function RemoveStop(entity)
   end
   if count == 0 then
     script.on_event(defines.events.on_tick, nil) --unsubscribe ticker on last removed train stop
-    if  global.log_level >= 4 then printmsg("on_tick unsubscribed") end
+    if  log_level >= 4 then printmsg("on_tick unsubscribed") end
   end
 end
 
@@ -787,7 +794,7 @@ function UpdateStopParkedTrain(train)
   local trainName = GetTrainName(train)
   
   if not trainID then --train has no locomotive
-    if global.log_level >= 1 then printmsg("Error (UpdateStopParkedTrain): couldn't assign train id") end
+    if log_level >= 1 then printmsg("Error (UpdateStopParkedTrain): couldn't assign train id") end
     --TODO: -Update all stops?
     return
   end
@@ -799,7 +806,7 @@ function UpdateStopParkedTrain(train)
         --global.LogisticTrainStops[stopID].parkedTrain = event.train
         stop.parkedTrainID = trainID
         --global.LogisticTrainStops[stopID].parkedTrainID = trainID
-        if global.log_level >= 3 then printmsg("Train "..trainName.." arrived at ".. stop.entity.backer_name) end
+        if log_level >= 3 then printmsg("Train "..trainName.." arrived at ".. stop.entity.backer_name) end
         
         if stop.isDepot then
           -- remove delivery
@@ -829,7 +836,7 @@ function UpdateStopParkedTrain(train)
         --global.LogisticTrainStops[stopID].parkedTrain = nil
         stop.parkedTrainID = nil
         --global.LogisticTrainStops[stopID].parkedTrainID = nil
-        if global.log_level >= 3 then printmsg("Train "..trainName.." left ".. stop.entity.backer_name) end
+        if log_level >= 3 then printmsg("Train "..trainName.." left ".. stop.entity.backer_name) end
         
         if stop.isDepot then
           global.Dispatcher.availableTrains[trainID] = nil
@@ -977,11 +984,11 @@ function UpdateStop(stopID)
               
               local traincount = stop.parkedTrain.get_item_count(iname)
               if delivery.to == stop.entity.backer_name then
-                if global.log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with train inventory: "..item.." "..count.." + "..traincount) end                  
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with train inventory: "..item.." "..count.." + "..traincount) end
                 count = count + traincount
                 deliverycount = deliverycount + 1
               elseif delivery.from == stop.entity.backer_name then
-                if global.log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." - "..traincount) end
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." - "..traincount) end
                 count = count - traincount
                 deliverycount = deliverycount + 1
                 if count < 0 then count = 0 end --make sure we don't turn it into a request
@@ -993,11 +1000,11 @@ function UpdateStop(stopID)
             local traincount = delivery.shipment[item]
             if traincount then
               if delivery.to == stop.entity.backer_name then                              
-                if global.log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with delivery: "..item.." "..count.." + "..traincount) end
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with delivery: "..item.." "..count.." + "..traincount) end
                 count = count + traincount
                 deliverycount = deliverycount + 1
               elseif delivery.from == stop.entity.backer_name then
-                if global.log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with delivery: "..item.." "..count.." - "..traincount) end
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with delivery: "..item.." "..count.." - "..traincount) end
                 count = count - traincount
                 deliverycount = deliverycount + 1
                 if count < 0 then count = 0 end --make sure we don't turn it into a request
@@ -1023,6 +1030,7 @@ function UpdateStop(stopID)
             requested.sumStops = 1
           end
           global.Dispatcher.Requested[item] = requested
+          if log_level >= 3 then printmsg("(UpdateStop) "..stop.entity.backer_name.." requested "..item.." "..count) end
         else
           local provided = global.Dispatcher.Provided[item] or {}
           provided[stopID] = count
@@ -1037,6 +1045,7 @@ function UpdateStop(stopID)
             provided.sumStops = 1
           end
           global.Dispatcher.Provided[item] = provided
+          if log_level >= 3 then printmsg("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count) end
         end
       end  
     end
