@@ -124,22 +124,45 @@ function initialize()
 
 end
 
-
 script.on_event(defines.events.on_built_entity, function(event)
   local entity = event.created_entity
 	if entity.name == "logistic-train-stop" then
+    printmsg("Built Entity "..entity.name)
 		CreateStop(entity)
+    return
 	end
+  
+  -- remove I/O Entities when being built outside createStop (e.g. Creative Mode instant blueprint)
+  -- if entity.name == "logistic-train-stop-input" then
+    -- --printmsg("built IO Entity "..entity.name)
+    -- --inputConnections = entity.circuit_connected_entities
+    -- entity.destroy()
+    -- return
+  -- end
+  -- if entity.name == "logistic-train-stop-output" then
+    -- --printmsg("built IO Entity "..entity.name)
+    -- --outputConnections = entity.circuit_connected_entities
+    -- entity.destroy()
+    -- return
+  -- end
+  -- if entity.name == "logistic-train-stop-lamp-control" then   
+    -- entity.destroy()
+    -- return
+  -- end
+  
+  -- handle adding carriages to parked trains
   if entity.type == "locomotive" or entity.type == "cargo-wagon" then
     entity.train.manual_mode = true
     UpdateStopParkedTrain(entity.train)
     --entity.train.manual_mode = false 
+    return
   end
 end)
 
 script.on_event(defines.events.on_robot_built_entity, function(event)
   local entity = event.created_entity
 	if entity.name == "logistic-train-stop" then
+    printmsg("Robots built Entity "..entity.name)
 		CreateStop(entity)
 	end
 end)
@@ -149,11 +172,13 @@ script.on_event(defines.events.on_preplayer_mined_item, function(event)
   local entity = event.entity
   if entity.name == "logistic-train-stop" then
     RemoveStop(entity)
+    return
   end
   if entity.type == "locomotive" or entity.type == "cargo-wagon" then
     entity.train.manual_mode = true
     UpdateStopParkedTrain(entity.train)
     --entity.train.manual_mode = false
+    return    
   end
 end)
 
@@ -168,11 +193,13 @@ script.on_event(defines.events.on_entity_died, function(event)
   local entity = event.entity
   if entity.name == "logistic-train-stop" then
     RemoveStop(entity)
+    return
   end
   if entity.type == "locomotive" or entity.type == "cargo-wagon" then
     entity.train.manual_mode = true
     UpdateStopParkedTrain(entity.train)
     --entity.train.manual_mode = false
+    return
   end
 end)
 
@@ -678,7 +705,7 @@ function CreateStop(entity)
   if global.LogisticTrainStops[entity.unit_number] then
     if log_level >= 1 then printmsg("Error(CreateStop): Duplicated unit_number "..entity.unit_number) end
     return
-  end
+  end  
   
   --log("Stop created at "..entity.position.x.."/"..entity.position.y..", orientation "..entity.direction)
   if entity.direction == 0 then --SN
@@ -714,31 +741,51 @@ function CreateStop(entity)
   lampctrl.destructible = false -- don't bother checking if alive
   lampctrl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}}
 
-  local input = entity.surface.create_entity
-  {
-    name = "logistic-train-stop-input",
+  local input, output
+  -- revive ghosts (should preserve connections)
+  --local ghosts = entity.surface.find_entities_filtered{area={{entity.position.x-2, entity.position.y-2},{entity.position.x+2, entity.position.y+2}} , name="entity-ghost"}
+  local ghosts = entity.surface.find_entities_filtered{area={{entity.position.x-2, entity.position.y-2},{entity.position.x+2, entity.position.y+2}} }
+  for _,ghost in pairs (ghosts) do    
+    if ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-input" then
+      _, input = ghost.revive()
+    elseif ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-output" then
+      _, output = ghost.revive()
+    -- something has built I/O already (e.g.) Creative Mode Instant Blueprint
+    elseif ghost.name == "logistic-train-stop-input" then
+      input = ghost
+    elseif ghost.name == "logistic-train-stop-output" then
+      output = ghost
+    end
+  end
+  
+  if input == nil then -- create new
+    input = entity.surface.create_entity
+    {
+      name = "logistic-train-stop-input",
 
-    position = posIn,
-    force = entity.force
-  }  
+      position = posIn,
+      force = entity.force
+    }  
+  end
   input.operable = false -- disable gui
   input.minable = false
   input.destructible = false -- don't bother checking if alive  
   input.connect_neighbour({target_entity=lampctrl, wire=defines.wire_type.green})
   input.get_or_create_control_behavior().use_colors = true
   input.get_or_create_control_behavior().circuit_condition = {condition = {comperator=">",first_signal={type="virtual",name="signal-anything"}}}
-  
-  local output = entity.surface.create_entity
-  {
-    name = "logistic-train-stop-output",
-    position = posOut,
-    direction = rot,
-    force = entity.force
-  }  
+    
+  if output == nil then -- create new
+    output = entity.surface.create_entity
+    {
+      name = "logistic-train-stop-output",
+      position = posOut,
+      direction = rot,
+      force = entity.force
+    }  
+  end
   output.operable = false -- disable gui
   output.minable = false
   output.destructible = false -- don't bother checking if alive
-  --output.connect_neighbour({target_entity=entity, wire=defines.wire_type.green})
   
   global.LogisticTrainStops[entity.unit_number] = {
     entity = entity,

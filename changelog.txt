@@ -1,4 +1,5 @@
 0.6.0
+- blueprinting stops creates circuit connections at first stamp (also works with instant blueprint from Creative Mode)
 - added log_level and log_output to config.lua (in game command overrides for current session)
 - replaced misleading < and > in  and maximum train length icons with ≤ and ≥
 - changed train composition signal names
