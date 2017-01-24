@@ -1,8 +1,12 @@
+0.6.1
+- fixed a typo in lamp control
+- corrected item calculation during loading at a provider
+
 0.6.0
 - changed dispatcher to use pure round robin (currently only 1 delivery/update is created)
 - blueprinting stops creates circuit connections at first stamp (also works with instant blueprint from Creative Mode), Thanks to Mooncat for the Tip
 - added log_level and log_output to config.lua (in game command overrides for current session)
-- replaced misleading < and > in  and maximum train length icons with ≤ and ≥
+- replaced misleading < and > in minimum delivery size and maximum train length icons with ≤ and ≥
 - changed train composition signal names
 
 0.5.6

@@ -6,11 +6,7 @@ log_level = 2
 -- console: in game console, log: logfile in factorio root directory or both (default)
 log_output = "both"
 
--- update interval in ticks for reading circuit values at stops
--- default 60
-station_update_interval = 60
-
--- update interval in ticks for generating deliveries and sending them to trains as schedules
+-- update interval in ticks
 -- default 60
 dispatcher_update_interval = 60
 

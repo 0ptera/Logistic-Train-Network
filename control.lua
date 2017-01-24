@@ -84,7 +84,7 @@ function initialize()
         global.LogisticTrainStops[stopID].lampControl = lampctrl
         global.LogisticTrainStops[stopID].input.operable = false
         global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().use_colors = true
-        global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().circuit_condition = {condition = {comperator=">",first_signal={type="virtual",name="signal-anything"}}}
+        global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().circuit_condition = {condition = {comparator=">",first_signal={type="virtual",name="signal-anything"}}}
       end
 
       UpdateStopOutput(stop) --make sure output is set
@@ -244,13 +244,15 @@ function ticker(event)
 
 
     -- find best provider, merge shipments, find train, generate delivery, reset age
-    for reqIndex, request in pairs (global.Dispatcher.Requests) do
+    if next(global.Dispatcher.availableTrains) ~= nil then -- no need to parse requests without available trains
+      for reqIndex, request in pairs (global.Dispatcher.Requests) do
 
-      local delivery = ProcessRequest(request)
-      if delivery then
-        break
+        local delivery = ProcessRequest(request)
+        if delivery then
+          break
+        end
+
       end
-
     end
 
   end -- dispatcher update
@@ -659,7 +661,7 @@ function CreateStop(entity)
   input.destructible = false -- don't bother checking if alive
   input.connect_neighbour({target_entity=lampctrl, wire=defines.wire_type.green})
   input.get_or_create_control_behavior().use_colors = true
-  input.get_or_create_control_behavior().circuit_condition = {condition = {comperator=">",first_signal={type="virtual",name="signal-anything"}}}
+  input.get_or_create_control_behavior().circuit_condition = {condition = {comparator=">",first_signal={type="virtual",name="signal-anything"}}}
 
   if output == nil then -- create new
     output = entity.surface.create_entity
@@ -869,14 +871,14 @@ function UpdateStop(stopID)
     end
 
     -- update input signals of depot
-    local colorCount = 0
+    local colorCounter = 0
     for item, count in pairs (circuitValues) do
       if colorSignals[item] then
-        colorCount = colorCount + count
+        colorCounter = colorCounter + count
       end
     end
 
-    if colorCount ~= 1 then
+    if colorCounter ~= 1 then
       -- signal error
       global.LogisticTrainStops[stopID].errorCode = 1
       setLamp(stopID, ErrorCodes[1])
@@ -908,54 +910,54 @@ function UpdateStop(stopID)
     end
 
     -- update input signals of stop
-    local colorCount = 0
-    local deliverycount = 0
+    local colorCounter = 0
+    local deliveryCounter = 0
     local requestItems = {}
     global.Dispatcher.RequestAge[stopID] = global.Dispatcher.RequestAge[stopID] or game.tick
 
     for item, count in pairs (circuitValues) do
       if colorSignals[item] then
-        colorCount = colorCount + count
+        colorCounter = colorCounter + count
       else       
         for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
-          if stop.parkedTrain and stop.parkedTrainID == trainID then
-            -- calculate items +- train inventory
-            local itype, iname = match(item, "([^,]+),([^,]+)")
-            if itype and (itype == "item" or itype == "fluid") and iname then
-              --use RT fake item
-              if itype == "fluid" then
-                iname = iname .. "-in-tanker"
+          local deliverycount = delivery.shipment[item]
+          if deliverycount then
+            if stop.parkedTrain and stop.parkedTrainID == trainID then
+              -- calculate items +- train inventory
+              local itype, iname = match(item, "([^,]+),([^,]+)")
+              if itype and (itype == "item" or itype == "fluid") and iname then
+                --use RT fake item
+                if itype == "fluid" then
+                  iname = iname .. "-in-tanker"
+                end
+
+                local traincount = stop.parkedTrain.get_item_count(iname)
+                if delivery.to == stop.entity.backer_name then
+                  if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with train inventory: "..item.." "..count.." + "..traincount) end
+                  count = count + traincount
+                  deliveryCounter = deliveryCounter + 1
+                elseif delivery.from == stop.entity.backer_name then
+                  if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." + "..traincount.." - "..deliverycount) end
+                  count = count + traincount - deliverycount
+                  deliveryCounter = deliveryCounter + 1
+                  if count < 0 then count = 0 end --make sure we don't turn it into a request
+                end
               end
 
-              local traincount = stop.parkedTrain.get_item_count(iname)
+            else
+              -- calculate items +- deliveries            
               if delivery.to == stop.entity.backer_name then
-                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with train inventory: "..item.." "..count.." + "..traincount) end
-                count = count + traincount
-                deliverycount = deliverycount + 1
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with delivery: "..item.." "..count.." + "..deliverycount) end
+                count = count + deliverycount
+                deliveryCounter = deliveryCounter + 1
               elseif delivery.from == stop.entity.backer_name then
-                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." - "..traincount) end
-                count = count - traincount
-                deliverycount = deliverycount + 1
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with delivery: "..item.." "..count.." - "..deliverycount) end
+                count = count - deliverycount
+                deliveryCounter = deliveryCounter + 1
                 if count < 0 then count = 0 end --make sure we don't turn it into a request
               end
-            end
 
-          else
-            -- calculate items +- deliveries
-            local traincount = delivery.shipment[item]
-            if traincount then
-              if delivery.to == stop.entity.backer_name then
-                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with delivery: "..item.." "..count.." + "..traincount) end
-                count = count + traincount
-                deliverycount = deliverycount + 1
-              elseif delivery.from == stop.entity.backer_name then
-                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with delivery: "..item.." "..count.." - "..traincount) end
-                count = count - traincount
-                deliverycount = deliverycount + 1
-                if count < 0 then count = 0 end --make sure we don't turn it into a request
-              end
             end
-
           end
         end -- for delivery
 
@@ -984,7 +986,7 @@ function UpdateStop(stopID)
       end
     end -- for circuitValues
 
-    if colorCount ~= 1 then
+    if colorCounter ~= 1 then
       -- signal error
       global.LogisticTrainStops[stopID].errorCode = 1
       setLamp(stopID, ErrorCodes[1])
@@ -1001,7 +1003,7 @@ function UpdateStop(stopID)
 
       -- reset delivery counter in case train became invalid during delivery
       -- only reset when 0 so provider can be cleared once train leaves
-      if deliverycount == 0 then
+      if deliveryCounter == 0 then
         stop.activeDeliveries = 0
       end
 
