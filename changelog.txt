@@ -1,3 +1,6 @@
+0.6.2
+- fixed: reserved items remain reserved after trains finished loading them
+
 0.6.1
 - fixed a typo in lamp control
 - corrected item calculation during loading at a provider

@@ -765,24 +765,32 @@ function UpdateStopParkedTrain(train)
       end
     end
   else --remove train from station
+    local match = string.match
     for stopID, stop in pairs(global.LogisticTrainStops) do
       if stop.parkedTrainID == trainID then
-        -- remove train reference
-        stop.parkedTrain = nil
-        --global.LogisticTrainStops[stopID].parkedTrain = nil
-        stop.parkedTrainID = nil
-        --global.LogisticTrainStops[stopID].parkedTrainID = nil
-        if log_level >= 3 then printmsg("Train "..trainName.." left ".. stop.entity.backer_name) end
-
         if stop.isDepot then
           global.Dispatcher.availableTrains[trainID] = nil
           if stop.errorCode == 0 then
             setLamp(stopID, "green")
           end
         else
-          if global.Dispatcher.Deliveries[trainID] then
-            if global.Dispatcher.Deliveries[trainID].from == stop.entity.backer_name then
-              -- TODO: update to loaded inventory
+          local delivery = global.Dispatcher.Deliveries[trainID]
+          if delivery then
+            if delivery.from == stop.entity.backer_name then
+              -- update delivery counts to train inventory
+              local inventory = train.get_contents()
+              for item, count in pairs (delivery.shipment) do
+                local itype, iname = match(item, "([^,]+),([^,]+)")
+                if itype and (itype == "item" or itype == "fluid") and iname then
+                  --use RT fake item
+                  if itype == "fluid" then
+                    iname = iname .. "-in-tanker"
+                  end                  
+                  delivery.shipment[item] = inventory[iname]                  
+                end              
+              end
+              delivery.from = nil -- remove reservations from this delivery
+              
               if stop.activeDeliveries > 0 then
                 global.LogisticTrainStops[stopID].activeDeliveries = stop.activeDeliveries - 1
               end
@@ -797,6 +805,13 @@ function UpdateStopParkedTrain(train)
 
         end
 
+        -- remove train reference
+        stop.parkedTrain = nil
+        --global.LogisticTrainStops[stopID].parkedTrain = nil
+        stop.parkedTrainID = nil
+        --global.LogisticTrainStops[stopID].parkedTrainID = nil
+        if log_level >= 3 then printmsg("Train "..trainName.." left ".. stop.entity.backer_name) end
+        
         UpdateStopOutput(stop)
         return
       end
@@ -936,9 +951,9 @@ function UpdateStop(stopID)
                   if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with train inventory: "..item.." "..count.." + "..traincount) end
                   count = count + traincount
                   deliveryCounter = deliveryCounter + 1
-                elseif delivery.from == stop.entity.backer_name then
-                  if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." + "..traincount.." - "..deliverycount) end
-                  count = count + traincount - deliverycount
+                elseif delivery.from == stop.entity.backer_name then                  
+                  if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." - "..deliverycount - traincount) end
+                  count = count - (deliverycount - traincount)
                   deliveryCounter = deliveryCounter + 1
                   if count < 0 then count = 0 end --make sure we don't turn it into a request
                 end
