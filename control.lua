@@ -789,7 +789,7 @@ function UpdateStopParkedTrain(train)
                   delivery.shipment[item] = inventory[iname]                  
                 end              
               end
-              delivery.from = nil -- remove reservations from this delivery
+              delivery.pickupDone = true -- remove reservations from this delivery
               
               if stop.activeDeliveries > 0 then
                 global.LogisticTrainStops[stopID].activeDeliveries = stop.activeDeliveries - 1
@@ -965,7 +965,7 @@ function UpdateStop(stopID)
                 if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with delivery: "..item.." "..count.." + "..deliverycount) end
                 count = count + deliverycount
                 deliveryCounter = deliveryCounter + 1
-              elseif delivery.from == stop.entity.backer_name then
+              elseif delivery.from == stop.entity.backer_name and not delivery.pickupDone then
                 if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with delivery: "..item.." "..count.." - "..deliverycount) end
                 count = count - deliverycount
                 deliveryCounter = deliveryCounter + 1

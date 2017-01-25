@@ -1,3 +1,6 @@
+0.6.3
+- fixed: trying to concatenate field 'from' (a nil value)
+
 0.6.2
 - fixed: reserved items remain reserved after trains finished loading them
 
