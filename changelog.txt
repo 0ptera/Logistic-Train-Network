@@ -1,3 +1,8 @@
+0.7.0
+- spread stop updates over dispatcher_update_interval
+- fixed possible error when removing stops between updating stops and processing requests
+- removed left over debug messages
+
 0.6.3
 - fixed: trying to concatenate field 'from' (a nil value)
 

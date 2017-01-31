@@ -11,15 +11,22 @@ ErrorCodes = {
   "red",    -- circuit/signal error
   "pink"    -- duplicate stop name
 }
+StopIDList = {} -- stopIDs list for on_tick updates
 
--- Events
+local match = string.match
+local ceil = math.ceil
+    
+---- Events ----
 
 script.on_load(function()
 	if global.LogisticTrainStops ~= nil and next(global.LogisticTrainStops) ~= nil then
 		script.on_event(defines.events.on_tick, ticker) --subscribe ticker when train stops exist
     for stopID, stop in pairs(global.LogisticTrainStops) do --outputs are not stored in save
       UpdateStopOutput(stop)
+      StopIDList[#StopIDList+1] = stopID
     end
+    stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1))
+    stopIdStartIndex = 1
 	end
   log("[LTN] on_load: complete")
   if global.useRailTanker then
@@ -127,7 +134,6 @@ end
 script.on_event(defines.events.on_built_entity, function(event)
   local entity = event.created_entity
 	if entity.name == "logistic-train-stop" then
-    printmsg("Built Entity "..entity.name)
 		CreateStop(entity)
     return
 	end
@@ -143,8 +149,7 @@ end)
 
 script.on_event(defines.events.on_robot_built_entity, function(event)
   local entity = event.created_entity
-	if entity.name == "logistic-train-stop" then
-    printmsg("Robots built Entity "..entity.name)
+	if entity.name == "logistic-train-stop" then    
 		CreateStop(entity)
 	end
 end)
@@ -195,8 +200,6 @@ end)
 
 
 function ticker(event)
-  local tick = game.tick
-
   -- exit when there are no logistic train stops
   local next = next
   if global.LogisticTrainStops == nil or next(global.LogisticTrainStops) == nil then
@@ -205,16 +208,32 @@ function ticker(event)
     return
   end
 
-  if tick % dispatcher_update_interval == 0 then
+  local tick = game.tick
+  global.tickCount = global.tickCount or 1
+  
+  if global.tickCount == 1 then
     -- clear Dispatcher.Storage
     global.Dispatcher.Provided = {}
     global.Dispatcher.Requests = {}
+    
+    stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1)) -- 59 ticks for stop Updates, 60th tick for dispatcher
+    stopIdStartIndex = 1
+  end
+  
+  stopIdLastIndex = stopIdStartIndex + stopsPerTick - 1
+  if stopIdLastIndex > #StopIDList then 
+    stopIdLastIndex = #StopIDList 
+  end
+  for i = stopIdStartIndex, stopIdLastIndex, 1 do
+    local stopID = StopIDList[i]
+    if log_level >= 4 then printmsg(global.tickCount.."/"..tick.." updating stopID "..tostring(stopID)) end
+    UpdateStop(stopID)
+  end
+  stopIdStartIndex = stopIdLastIndex + 1
 
-    -- update LogisticTrainStops
-    for stopID, stop in pairs(global.LogisticTrainStops) do
-      UpdateStop(stopID)
-    end
-
+  
+  if global.tickCount == dispatcher_update_interval then
+    global.tickCount = 1
     --clean up deliveries in case train was destroyed or removed
     for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
       if not delivery.train or not delivery.train.valid then
@@ -254,10 +273,10 @@ function ticker(event)
 
       end
     end
-
-  end -- dispatcher update
-
-
+    
+  else -- dispatcher update
+      global.tickCount = global.tickCount + 1
+  end 
 end
 
 
@@ -266,10 +285,11 @@ end
 -- creates a single delivery from a given request
 -- returns generated delivery or nil
 function ProcessRequest(request)
-  local match = string.match
-  local ceil = math.ceil
   local stopID = request.stopID
   local requestStation = global.LogisticTrainStops[stopID]
+  if not requestStation or not (requestStation.entity and requestStation.entity.valid) then
+    return nil -- station was removed since request was generated
+  end  
   local minDelivery = requestStation.minDelivery
   local orders = {}
   local deliveries = nil
@@ -687,7 +707,7 @@ function CreateStop(entity)
     parkedTrain = nil,
     parkedTrainID = nil
   }
-
+  StopIDList[#StopIDList+1] = entity.unit_number
   UpdateStopOutput(global.LogisticTrainStops[entity.unit_number])
 
   count = 0
@@ -713,6 +733,11 @@ function RemoveStop(entity)
   global.LogisticTrainStops[stopID].input.destroy()
   global.LogisticTrainStops[stopID].output.destroy()
   global.LogisticTrainStops[stopID] = nil
+  for i=#StopIDList, 0, -1 do
+    if StopIDList[i] == stopID then
+      table.remove(StopIDList, i)
+    end
+  end
 
   count = 0
   for id, stop in pairs (global.LogisticTrainStops) do --can not get size with #
@@ -720,7 +745,7 @@ function RemoveStop(entity)
   end
   if count == 0 then
     script.on_event(defines.events.on_tick, nil) --unsubscribe ticker on last removed train stop
-    if  log_level >= 4 then printmsg("on_tick unsubscribed") end
+    if  log_level >= 4 then printmsg("on_tick unsubscribed: Removed last Logistic Train Stop") end
   end
 end
 
@@ -765,7 +790,6 @@ function UpdateStopParkedTrain(train)
       end
     end
   else --remove train from station
-    local match = string.match
     for stopID, stop in pairs(global.LogisticTrainStops) do
       if stop.parkedTrainID == trainID then
         if stop.isDepot then
@@ -822,16 +846,9 @@ end
 -- update stop input signals
 function UpdateStop(stopID)
   local stop = global.LogisticTrainStops[stopID]
-  local match = string.match
-  local lower = string.lower
 
   -- remove invalid stops
-  if not (stop.entity and stop.entity.valid) or
-    not (stop.input and stop.input.valid) or
-    not (stop.output and stop.output.valid) or
-    not (stop.lampControl and stop.lampControl.valid) then
-
-    global.LogisticTrainStops[stopID] = nil
+  if not stop or not (stop.entity and stop.entity.valid) or not (stop.input and stop.input.valid) or not (stop.output and stop.output.valid) or not (stop.lampControl and stop.lampControl.valid) then
     return
   end
 
