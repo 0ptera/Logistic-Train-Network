@@ -1,3 +1,6 @@
+0.7.1
+- fixed: setting no max train length on requester results in provider max train length being ignored
+
 0.7.0
 - spread stop updates over dispatcher_update_interval
 - fixed possible error when removing stops between updating stops and processing requests

@@ -15,7 +15,7 @@ StopIDList = {} -- stopIDs list for on_tick updates
 
 local match = string.match
 local ceil = math.ceil
-    
+
 ---- Events ----
 
 script.on_load(function()
@@ -149,7 +149,7 @@ end)
 
 script.on_event(defines.events.on_robot_built_entity, function(event)
   local entity = event.created_entity
-	if entity.name == "logistic-train-stop" then    
+	if entity.name == "logistic-train-stop" then
 		CreateStop(entity)
 	end
 end)
@@ -210,19 +210,19 @@ function ticker(event)
 
   local tick = game.tick
   global.tickCount = global.tickCount or 1
-  
+
   if global.tickCount == 1 then
     -- clear Dispatcher.Storage
     global.Dispatcher.Provided = {}
     global.Dispatcher.Requests = {}
-    
+
     stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1)) -- 59 ticks for stop Updates, 60th tick for dispatcher
     stopIdStartIndex = 1
   end
-  
+
   stopIdLastIndex = stopIdStartIndex + stopsPerTick - 1
-  if stopIdLastIndex > #StopIDList then 
-    stopIdLastIndex = #StopIDList 
+  if stopIdLastIndex > #StopIDList then
+    stopIdLastIndex = #StopIDList
   end
   for i = stopIdStartIndex, stopIdLastIndex, 1 do
     local stopID = StopIDList[i]
@@ -231,7 +231,7 @@ function ticker(event)
   end
   stopIdStartIndex = stopIdLastIndex + 1
 
-  
+
   if global.tickCount == dispatcher_update_interval then
     global.tickCount = 1
     --clean up deliveries in case train was destroyed or removed
@@ -273,10 +273,10 @@ function ticker(event)
 
       end
     end
-    
+
   else -- dispatcher update
       global.tickCount = global.tickCount + 1
-  end 
+  end
 end
 
 
@@ -289,7 +289,7 @@ function ProcessRequest(request)
   local requestStation = global.LogisticTrainStops[stopID]
   if not requestStation or not (requestStation.entity and requestStation.entity.valid) then
     return nil -- station was removed since request was generated
-  end  
+  end
   local minDelivery = requestStation.minDelivery
   local orders = {}
   local deliveries = nil
@@ -319,7 +319,7 @@ function ProcessRequest(request)
     -- only one delivery is created so use only the best provider
     local providerStation = providers[1]
 
-    -- set count to availability of highest priority provider
+    -- limit count to availability of highest priority provider
     local deliverySize = count
     if count > providerStation.count then
       deliverySize = providerStation.count
@@ -331,7 +331,7 @@ function ProcessRequest(request)
 
     -- maxTraincars = shortest set max-train-length
     local maxTraincars = requestStation.maxTraincars
-    if providerStation.maxTraincars > 0 and providerStation.maxTraincars < requestStation.maxTraincars then
+    if providerStation.maxTraincars > 0 and (providerStation.maxTraincars < requestStation.maxTraincars or requestStation.maxTraincars == 0) then
       maxTraincars = providerStation.maxTraincars
     end
 
@@ -418,7 +418,7 @@ function ProcessRequest(request)
 
     if log_level >= 2 then
       if #loadingList == 1 then
-        printmsg("Creating Delivery: ".. loadingList[1].count .."  ".. loadingList[1].name..", "..from.." >> "..to)
+        printmsg("Creating Delivery: ".. loadingList[1].count .." ".. loadingList[1].name..", "..from.." >> "..to)
       else
         printmsg("Creating merged Delivery: "..totalStacks.." stacks total, "..from.." >> "..to)
       end
@@ -809,12 +809,12 @@ function UpdateStopParkedTrain(train)
                   --use RT fake item
                   if itype == "fluid" then
                     iname = iname .. "-in-tanker"
-                  end                  
-                  delivery.shipment[item] = inventory[iname]                  
-                end              
+                  end
+                  delivery.shipment[item] = inventory[iname]
+                end
               end
               delivery.pickupDone = true -- remove reservations from this delivery
-              
+
               if stop.activeDeliveries > 0 then
                 global.LogisticTrainStops[stopID].activeDeliveries = stop.activeDeliveries - 1
               end
@@ -835,7 +835,7 @@ function UpdateStopParkedTrain(train)
         stop.parkedTrainID = nil
         --global.LogisticTrainStops[stopID].parkedTrainID = nil
         if log_level >= 3 then printmsg("Train "..trainName.." left ".. stop.entity.backer_name) end
-        
+
         UpdateStopOutput(stop)
         return
       end
@@ -865,7 +865,7 @@ function UpdateStop(stopID)
   if not circuitValues then
     return
   end
-  
+
   local colorSignals = { -- lookup table for color signals
     ["virtual,signal-red"] = true,
     ["virtual,signal-green"] = true,
@@ -950,7 +950,7 @@ function UpdateStop(stopID)
     for item, count in pairs (circuitValues) do
       if colorSignals[item] then
         colorCounter = colorCounter + count
-      else       
+      else
         for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
           local deliverycount = delivery.shipment[item]
           if deliverycount then
@@ -968,7 +968,7 @@ function UpdateStop(stopID)
                   if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with train inventory: "..item.." "..count.." + "..traincount) end
                   count = count + traincount
                   deliveryCounter = deliveryCounter + 1
-                elseif delivery.from == stop.entity.backer_name then                  
+                elseif delivery.from == stop.entity.backer_name then
                   if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." - "..deliverycount - traincount) end
                   count = count - (deliverycount - traincount)
                   deliveryCounter = deliveryCounter + 1
@@ -977,7 +977,7 @@ function UpdateStop(stopID)
               end
 
             else
-              -- calculate items +- deliveries            
+              -- calculate items +- deliveries
               if delivery.to == stop.entity.backer_name then
                 if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with delivery: "..item.." "..count.." + "..deliverycount) end
                 count = count + deliverycount
