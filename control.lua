@@ -383,7 +383,7 @@ function ProcessRequest(request)
     local train = GetFreeTrain(toStop.entity.force, loadingList[1].type, totalStacks, maxTraincars)
     if not train then
       if maxTraincars > 0 then
-        if log_level >= 3 then printmsg("No train with length "..maxTraincars.." to transport "..totalStacks.."stacks found in Depot") end
+        if log_level >= 3 then printmsg("No train with length "..maxTraincars.." to transport "..totalStacks.." stacks found in Depot") end
       else
         if log_level >= 3 then printmsg("No train to transport "..totalStacks.." stacks found in Depot") end
       end
@@ -477,7 +477,7 @@ function GetStations(force, item, min_count)
   if not(stopID == "sumCount" or stopID == "sumStops") then --skip sumCount, sumStops
     local stop = global.LogisticTrainStops[stopID]
     if stop and stop.entity.force.name == force.name then
-      if count > 0 and (use_Best_Effort or count > min_count) then
+      if count > 0 and (use_Best_Effort or count >= min_count) then
         if log_level >= 4 then printmsg("(GetStations): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." maxTraincars: "..stop.maxTraincars) end
         stations[#stations +1] = {entity = stop.entity, priority = stop.priority, item = item, count = count, maxTraincars = stop.maxTraincars}
       end

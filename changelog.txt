@@ -1,3 +1,7 @@
+0.7.2
+- fixed: threshold for finding provider was > instead of >=
+- changed default: use_Best_Effort = false (replies I got suggest most players want it off)
+
 0.7.1
 - fixed: setting no max train length on requester results in provider max train length being ignored
 

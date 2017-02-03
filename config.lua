@@ -24,5 +24,5 @@ delivery_timeout = 18000
 stop_timeout = 18000
 
 -- when false provider stations holding less than request stations min_delivery_size are ignored
--- default true
-use_Best_Effort = true
+-- default false
+use_Best_Effort = false
