@@ -8,6 +8,13 @@ data:extend({
 
   {
     type = "virtual-signal",
+    name = "min-train-length",
+    icon = "__"..MOD_NAME.."__/graphics/icons/min-train-length.png",
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-aa[min-train-length]"
+  },  
+  {
+    type = "virtual-signal",
     name = "max-train-length",
     icon = "__"..MOD_NAME.."__/graphics/icons/max-train-length.png",
     subgroup = "LTN-signal",

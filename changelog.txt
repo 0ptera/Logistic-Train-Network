@@ -1,3 +1,8 @@
+0.8.0
+- added Minimum Train Size signal
+- removed blue science pack from technology, increased red/green cost
+- fixed: Creating schedules trying to load huge number of items
+
 0.7.2
 - fixed: threshold for finding provider was > instead of >=
 - changed default: use_Best_Effort = false (replies I got suggest most players want it off)

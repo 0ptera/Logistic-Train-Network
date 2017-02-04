@@ -3,6 +3,7 @@ require "interface"
 
 MOD_NAME = "LogisticTrainNetwork"
 MINDELIVERYSIZE = "min-delivery-size"
+MINTRAINLENGTH = "min-train-length"
 MAXTRAINLENGTH = "max-train-length"
 PRIORITY = "stop-priority"
 ISDEPOT = "ltn-depot"
@@ -334,6 +335,11 @@ function ProcessRequest(request)
     if providerStation.maxTraincars > 0 and (providerStation.maxTraincars < requestStation.maxTraincars or requestStation.maxTraincars == 0) then
       maxTraincars = providerStation.maxTraincars
     end
+    -- minTraincars = longest set min-train-length
+    local minTraincars = requestStation.minTraincars
+    if providerStation.minTraincars > 0 and (providerStation.minTraincars > requestStation.minTraincars or requestStation.minTraincars == 0) then
+      minTraincars = providerStation.minTraincars
+    end
 
     -- merge into existing shipments
     local to = requestStation.entity.backer_name
@@ -349,14 +355,14 @@ function ProcessRequest(request)
         orders[i].loadingList[#orders[i].loadingList+1] = loadingList
         orders[i].totalStacks = orders[i].totalStacks + stacks
         insertnew = false
-        if log_level >= 3 then  printmsg("inserted into order "..i.."/"..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." maxLength: "..maxTraincars) end
+        if log_level >= 3 then  printmsg("inserted into order "..i.."/"..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars) end
         break
       end
     end
     -- create new order for fluids and different provider-requester pairs
     if insertnew then
-      orders[#orders+1] = {toID=toID, fromID=fromID, minDelivery=minDelivery, maxTraincars=maxTraincars, shipmentCount=1, totalStacks=stacks, loadingList={loadingList} }
-      if log_level >= 3 then  printmsg("added new order "..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." maxLength: "..maxTraincars) end
+      orders[#orders+1] = {toID=toID, fromID=fromID, minDelivery=minDelivery, minTraincars=minTraincars, maxTraincars=maxTraincars, shipmentCount=1, totalStacks=stacks, loadingList={loadingList} }
+      if log_level >= 3 then  printmsg("added new order "..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars) end
     end
 
     ::skipRequestItem:: -- use goto since lua doesn't know continue
@@ -367,6 +373,7 @@ function ProcessRequest(request)
   for orderIndex=1, #orders do
     local loadingList = orders[orderIndex].loadingList
     local totalStacks = orders[orderIndex].totalStacks
+    local minTraincars = orders[orderIndex].minTraincars
     local maxTraincars = orders[orderIndex].maxTraincars
 
     -- get station names
@@ -380,12 +387,18 @@ function ProcessRequest(request)
     local from = fromStop.entity.backer_name
 
     -- find train
-    local train = GetFreeTrain(toStop.entity.force, loadingList[1].type, totalStacks, maxTraincars)
+    local train = GetFreeTrain(toStop.entity.force, loadingList[1].type, totalStacks, minTraincars, maxTraincars)
     if not train then
-      if maxTraincars > 0 then
-        if log_level >= 3 then printmsg("No train with length "..maxTraincars.." to transport "..totalStacks.." stacks found in Depot") end
-      else
-        if log_level >= 3 then printmsg("No train to transport "..totalStacks.." stacks found in Depot") end
+      if log_level >= 3 then 
+        if minTraincars > 0 and maxTraincars > 0 then
+          printmsg("No train with "..minTraincars.." <= length <= "..maxTraincars.." to transport "..totalStacks.." stacks found in Depot") 
+        elseif minTraincars > 0 then
+          printmsg("No train with length >= "..minTraincars.." to transport "..totalStacks.." stacks found in Depot") 
+        elseif maxTraincars > 0 then
+          printmsg("No train with length <= "..maxTraincars.." to transport "..totalStacks.." stacks found in Depot") 
+        else
+          printmsg("No train to transport "..totalStacks.." stacks found in Depot")
+        end
       end
       goto skipOrder
     end
@@ -410,21 +423,22 @@ function ProcessRequest(request)
           else
             -- remove item and try again
             totalStacks = totalStacks - loadingList[i].stacks
-            table.remove(loadingList[i])
+            table.remove(loadingList, i)
           end
         end
       end
     end
 
-    if log_level >= 2 then
+
+    if log_level >= 4 then
+      for i=1, #loadingList do
+        printmsg("Creating Delivery: "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks "..loadingList[i].type..","..loadingList[i].name..", "..from.." >> "..to)
+      end
+    elseif log_level >= 2 then
       if #loadingList == 1 then
         printmsg("Creating Delivery: ".. loadingList[1].count .." ".. loadingList[1].name..", "..from.." >> "..to)
       else
         printmsg("Creating merged Delivery: "..totalStacks.." stacks total, "..from.." >> "..to)
-      end
-    elseif log_level >= 4 then
-      for i=1, #loadingList do
-        printmsg("Creating Delivery: "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks "..loadingList[i].type..","..loadingList[i].name..", "..from.." >> "..to)
       end
     end
 
@@ -478,8 +492,8 @@ function GetStations(force, item, min_count)
     local stop = global.LogisticTrainStops[stopID]
     if stop and stop.entity.force.name == force.name then
       if count > 0 and (use_Best_Effort or count >= min_count) then
-        if log_level >= 4 then printmsg("(GetStations): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." maxTraincars: "..stop.maxTraincars) end
-        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, item = item, count = count, maxTraincars = stop.maxTraincars}
+        if log_level >= 4 then printmsg("(GetStations): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars) end
+        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars}
       end
     end
   end
@@ -497,31 +511,35 @@ function GetStations(force, item, min_count)
 end
 
 -- return available train with smallest suitable inventory or largest available inventory
+-- if minTraincars is set, number of locos + wagons has to be bigger
 -- if maxTraincars is set, number of locos + wagons has to be smaller
-function GetFreeTrain(force, type, size, maxTraincars)
+function GetFreeTrain(force, type, size, minTraincars, maxTraincars)
   local train = nil
+  if minTraincars == nil or minTraincars < 0 then minTraincars = 0 end
+  if maxTraincars == nil or maxTraincars < 0 then maxTraincars = 0 end
   local largestInventory = 0
   local smallestInventory = 0
   for DispTrainKey, DispTrain in pairs (global.Dispatcher.availableTrains) do
     if DispTrain.valid and DispTrain.station then
       local locomotive = GetMainLocomotive(DispTrain)
-      if locomotive.force.name == force.name then
+      if locomotive.force.name == force.name then -- train force matches
         local inventorySize = 0
-        if maxTraincars == nil or maxTraincars <= 0 or #DispTrain.carriages <= maxTraincars then -- train length fits
+        if (minTraincars == 0 or #DispTrain.carriages >= minTraincars) and (maxTraincars == 0 or #DispTrain.carriages <= maxTraincars) then -- train length fits
           -- get total inventory of train for requested item type
           inventorySize = GetInventorySize(DispTrain, type)
-
           if inventorySize >= size then
             -- train can be used for delivery
             if inventorySize < smallestInventory or smallestInventory == 0 then
               smallestInventory = inventorySize
               train = {id=DispTrainKey, inventorySize=inventorySize}
+              if log_level >= 4 then printmsg("(GetFreeTrain): found suitable train "..locomotive.backer_name..", length: "..minTraincars.."<="..#DispTrain.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size) end
             end
           elseif smallestInventory == 0 and inventorySize > 0 and (inventorySize > largestInventory or largestInventory == 0) then
             -- store as biggest available train
             largestInventory = inventorySize
             train = {id=DispTrainKey, inventorySize=inventorySize}
-          end
+            if log_level >= 4 then printmsg("(GetFreeTrain): found potential train "..locomotive.backer_name..", length: "..minTraincars.."<="..#DispTrain.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size) end
+          end          
         end
       end
     else
@@ -883,6 +901,8 @@ function UpdateStop(stopID)
   circuitValues["virtual,"..ISDEPOT] = nil
   local minDelivery = circuitValues["virtual,"..MINDELIVERYSIZE] or min_delivery_size
   circuitValues["virtual,"..MINDELIVERYSIZE] = nil
+  local minTraincars = circuitValues["virtual,"..MINTRAINLENGTH] or 0
+  circuitValues["virtual,"..MINTRAINLENGTH] = nil
   local maxTraincars = circuitValues["virtual,"..MAXTRAINLENGTH] or 0
   circuitValues["virtual,"..MAXTRAINLENGTH] = nil
   local priority = circuitValues["virtual,"..PRIORITY] or 0
@@ -919,6 +939,7 @@ function UpdateStop(stopID)
       global.LogisticTrainStops[stopID].errorCode = 0
 
       global.LogisticTrainStops[stopID].minDelivery = nil
+      global.LogisticTrainStops[stopID].minTraincars = minTraincars
       global.LogisticTrainStops[stopID].maxTraincars = maxTraincars
       global.LogisticTrainStops[stopID].priority = 0
       if stop.parkedTrain then
@@ -1027,6 +1048,7 @@ function UpdateStop(stopID)
       global.LogisticTrainStops[stopID].errorCode = 0
 
       global.LogisticTrainStops[stopID].minDelivery = minDelivery
+      global.LogisticTrainStops[stopID].minTraincars = minTraincars
       global.LogisticTrainStops[stopID].maxTraincars = maxTraincars
       global.LogisticTrainStops[stopID].priority = priority
 
@@ -1061,6 +1083,7 @@ function GetCircuitValues(entity)
   local items = {}
   local validSignals = {
     [MINDELIVERYSIZE] = true,
+    [MINTRAINLENGTH] = true,
     [MAXTRAINLENGTH] = true,
     [PRIORITY] = true,
     [ISDEPOT] = true,
