@@ -389,13 +389,13 @@ function ProcessRequest(request)
     -- find train
     local train = GetFreeTrain(toStop.entity.force, loadingList[1].type, totalStacks, minTraincars, maxTraincars)
     if not train then
-      if log_level >= 3 then 
+      if log_level >= 3 then
         if minTraincars > 0 and maxTraincars > 0 then
-          printmsg("No train with "..minTraincars.." <= length <= "..maxTraincars.." to transport "..totalStacks.." stacks found in Depot") 
+          printmsg("No train with "..minTraincars.." <= length <= "..maxTraincars.." to transport "..totalStacks.." stacks found in Depot")
         elseif minTraincars > 0 then
-          printmsg("No train with length >= "..minTraincars.." to transport "..totalStacks.." stacks found in Depot") 
+          printmsg("No train with length >= "..minTraincars.." to transport "..totalStacks.." stacks found in Depot")
         elseif maxTraincars > 0 then
-          printmsg("No train with length <= "..maxTraincars.." to transport "..totalStacks.." stacks found in Depot") 
+          printmsg("No train with length <= "..maxTraincars.." to transport "..totalStacks.." stacks found in Depot")
         else
           printmsg("No train to transport "..totalStacks.." stacks found in Depot")
         end
@@ -539,7 +539,7 @@ function GetFreeTrain(force, type, size, minTraincars, maxTraincars)
             largestInventory = inventorySize
             train = {id=DispTrainKey, inventorySize=inventorySize}
             if log_level >= 4 then printmsg("(GetFreeTrain): found potential train "..locomotive.backer_name..", length: "..minTraincars.."<="..#DispTrain.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size) end
-          end          
+          end
         end
       end
     else
@@ -728,7 +728,7 @@ function CreateStop(entity)
   StopIDList[#StopIDList+1] = entity.unit_number
   UpdateStopOutput(global.LogisticTrainStops[entity.unit_number])
 
-  if #StopIDList == 1 then    
+  if #StopIDList == 1 then
     stopsPerTick = 1 --initialize ticker indexes
     stopIdStartIndex = 1
     script.on_event(defines.events.on_tick, ticker) --subscribe ticker on first created train stop
