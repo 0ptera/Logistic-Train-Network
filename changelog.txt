@@ -1,3 +1,6 @@
+0.8.1
+- fixed: control.lua:224 Attempt to perform arithmetic on global 'stopIdStartIndex' (a nil value)
+
 0.8.0
 - added Minimum Train Size signal
 - removed blue science pack from technology, increased red/green cost

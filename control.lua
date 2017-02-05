@@ -728,11 +728,9 @@ function CreateStop(entity)
   StopIDList[#StopIDList+1] = entity.unit_number
   UpdateStopOutput(global.LogisticTrainStops[entity.unit_number])
 
-  count = 0
-  for id, stop in pairs (global.LogisticTrainStops) do --can not get size with #
-    count = count+1
-  end
-  if count == 1 then
+  if #StopIDList == 1 then    
+    stopsPerTick = 1 --initialize ticker indexes
+    stopIdStartIndex = 1
     script.on_event(defines.events.on_tick, ticker) --subscribe ticker on first created train stop
     if log_level >= 4 then printmsg("on_tick subscribed") end
   end
@@ -757,11 +755,7 @@ function RemoveStop(entity)
     end
   end
 
-  count = 0
-  for id, stop in pairs (global.LogisticTrainStops) do --can not get size with #
-    count = count+1
-  end
-  if count == 0 then
+  if StopIDList == nil or #StopIDList == 0 then
     script.on_event(defines.events.on_tick, nil) --unsubscribe ticker on last removed train stop
     if  log_level >= 4 then printmsg("on_tick unsubscribed: Removed last Logistic Train Stop") end
   end
