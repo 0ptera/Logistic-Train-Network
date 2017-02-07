@@ -1,4 +1,5 @@
-0.8.2
+0.9.0
+- added message_filter_size, suppress message if among the last n messages
 - added delivery count into provider ranking to prevent trains from queuing up in front of providers with Provider Priority set
 
 0.8.1

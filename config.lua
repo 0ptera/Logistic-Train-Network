@@ -6,6 +6,9 @@ log_level = 2
 -- console: in game console, log: logfile in factorio root directory or both (default)
 log_output = "both"
 
+-- how many messages back are filtered for duplicates
+message_filter_size = 20
+
 -- update interval in ticks
 -- default 60
 dispatcher_update_interval = 60

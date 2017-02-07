@@ -1,4 +1,4 @@
-local lastMessage
+local lastMessages = {}
 
 remote.add_interface("LTN",
     {
@@ -42,11 +42,17 @@ remote.add_interface("LTN",
 )
 
 function printmsg(msg)
-  if lastMessage == msg then
-    -- don't spam the same message
-    return
+  --suppress message if among the last n messages
+  for i=#lastMessages, 1, -1 do
+    if lastMessages[i] == msg then --don't spam the same message
+      return
+    end
   end
-  lastMessage = msg
+  lastMessages[#lastMessages+1] = msg
+  if #lastMessages > message_filter_size then --remove oldest message
+    table.remove(lastMessages, 1)
+  end
+  
   if log_output == "console" or log_output == "both" then
     game.print("[LTN] " .. msg)
   end
