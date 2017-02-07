@@ -1,3 +1,6 @@
+0.8.2
+- added delivery count into provider ranking to prevent trains from queuing up in front of providers with Provider Priority set
+
 0.8.1
 - fixed: stopsPerTick, stopIdStartIndex not initialized in new games
 

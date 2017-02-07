@@ -317,6 +317,12 @@ function ProcessRequest(request)
       goto skipRequestItem
     end
 
+    if log_level >= 3 then
+      for n, provider in pairs (providers) do
+        printmsg("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(provider.activeDeliveries).." deliveries, "..tostring(provider.count).." "..item)
+      end
+    end
+
     -- only one delivery is created so use only the best provider
     local providerStation = providers[1]
 
@@ -493,7 +499,7 @@ function GetStations(force, item, min_count)
     if stop and stop.entity.force.name == force.name then
       if count > 0 and (use_Best_Effort or count >= min_count) then
         if log_level >= 4 then printmsg("(GetStations): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars) end
-        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars}
+        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveries = stop.activeDeliveries, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars}
       end
     end
   end
@@ -501,11 +507,13 @@ function GetStations(force, item, min_count)
   -- sort by priority and count
   local sort = table.sort
   sort(stations, function(a, b)
-      if a.priority ~= b.priority then
+      if a.activeDeliveries ~= b.activeDeliveries then --sort by #deliveries 1st
+        return a.activeDeliveries < b.activeDeliveries
+      end
+      if a.priority ~= b.priority then --sort by priority 2nd
           return a.priority > b.priority
       end
-
-      return a.count > b.count
+      return a.count > b.count --finally sort by item count
     end)
   return stations
 end
