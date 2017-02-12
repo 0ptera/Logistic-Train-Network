@@ -3,11 +3,13 @@
 log_level = 2
 
 -- set notification target
--- console: in game console, log: logfile in factorio root directory or both (default)
+-- console: in game console, log: logfile in factorio root directory, both: default
 log_output = "both"
 
 -- how many messages back are filtered for duplicates
-message_filter_size = 20
+-- default 10
+-- disabled 0
+message_filter_size = 10
 
 -- update interval in ticks
 -- default 60
@@ -17,13 +19,13 @@ dispatcher_update_interval = 60
 -- default 1000
 min_delivery_size = 1000
 
--- duration in ticks deliveries can take before assuming the train was lost 
+-- duration in ticks deliveries can take before assuming the train was lost
 -- default 18000 = 5min
 delivery_timeout = 18000
 
--- duration in ticks of inactivity before leaving un-loading stations 
+-- duration in ticks of inactivity before leaving (un-)loading stations
 -- default 18000 = 5min
--- off 0 (trains will wait forever to un-load
+-- off 0: trains will wait forever to (un-)load
 stop_timeout = 18000
 
 -- when false provider stations holding less than request stations min_delivery_size are ignored

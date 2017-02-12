@@ -679,17 +679,21 @@ function CreateStop(entity)
   local input, output
   -- revive ghosts (should preserve connections)
   --local ghosts = entity.surface.find_entities_filtered{area={{entity.position.x-2, entity.position.y-2},{entity.position.x+2, entity.position.y+2}} , name="entity-ghost"}
-  local ghosts = entity.surface.find_entities_filtered{area={{entity.position.x-2, entity.position.y-2},{entity.position.x+2, entity.position.y+2}} }
+  local ghosts = entity.surface.find_entities({{entity.position.x-1.1, entity.position.y-1.1},{entity.position.x+1.1, entity.position.y+1.1}} )
   for _,ghost in pairs (ghosts) do
     if ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-input" then
+      printmsg("reviving ghost input at "..ghost.position.x..", "..ghost.position.y)
       _, input = ghost.revive()
     elseif ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-output" then
+      printmsg("reviving ghost output at "..ghost.position.x..", "..ghost.position.y)
       _, output = ghost.revive()
     -- something has built I/O already (e.g.) Creative Mode Instant Blueprint
     elseif ghost.name == "logistic-train-stop-input" then
       input = ghost
+      printmsg("Found existing input at "..ghost.position.x..", "..ghost.position.y)
     elseif ghost.name == "logistic-train-stop-output" then
       output = ghost
+      printmsg("Found existing output at "..ghost.position.x..", "..ghost.position.y)
     end
   end
 

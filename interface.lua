@@ -43,14 +43,16 @@ remote.add_interface("LTN",
 
 function printmsg(msg)
   --suppress message if among the last n messages
-  for i=#lastMessages, 1, -1 do
-    if lastMessages[i] == msg then --don't spam the same message
-      return
+  if message_filter_size > 0 then
+    for i=#lastMessages, 1, -1 do
+      if lastMessages[i] == msg then --don't spam the same message
+        return
+      end
     end
-  end
-  lastMessages[#lastMessages+1] = msg
-  if #lastMessages > message_filter_size then --remove oldest message
-    table.remove(lastMessages, 1)
+    lastMessages[#lastMessages+1] = msg
+    if #lastMessages > message_filter_size then --remove oldest message
+      table.remove(lastMessages, 1)
+    end
   end
   
   if log_output == "console" or log_output == "both" then

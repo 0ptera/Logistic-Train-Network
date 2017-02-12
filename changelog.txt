@@ -1,3 +1,7 @@
+0.9.1
+- fixed: Stops might link with wrong I/O entities in sandbox mode
+- config: message_filter_size takes 0 as valid option to disable message filtering
+
 0.9.0
 - added message_filter_size, suppress message if among the last n messages
 - added delivery count into provider ranking to prevent trains from queuing up in front of providers with Provider Priority set
