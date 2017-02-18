@@ -360,6 +360,7 @@ function ProcessRequest(request)
       if orders[i].fromID == fromID and itype == "item" and orders[i].loadingList[1].type == "item" then
         orders[i].loadingList[#orders[i].loadingList+1] = loadingList
         orders[i].totalStacks = orders[i].totalStacks + stacks
+        orders[i].totalCount = orders[i].totalCount + deliverySize
         insertnew = false
         if log_level >= 3 then  printmsg("inserted into order "..i.."/"..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars) end
         break
@@ -367,13 +368,20 @@ function ProcessRequest(request)
     end
     -- create new order for fluids and different provider-requester pairs
     if insertnew then
-      orders[#orders+1] = {toID=toID, fromID=fromID, minDelivery=minDelivery, minTraincars=minTraincars, maxTraincars=maxTraincars, shipmentCount=1, totalStacks=stacks, loadingList={loadingList} }
+      orders[#orders+1] = {toID=toID, fromID=fromID, minDelivery=minDelivery, minTraincars=minTraincars, maxTraincars=maxTraincars, shipmentCount=1, totalStacks=stacks, totalCount=deliverySize, loadingList={loadingList} }
       if log_level >= 3 then  printmsg("added new order "..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars) end
     end
 
     ::skipRequestItem:: -- use goto since lua doesn't know continue
   end -- find providers for requested items
 
+  local sort = table.sort
+  sort(orders, function(a,b) 
+    local StationFromOrder = function(order) 
+      local stop = global.LogisticTrainStops[order.fromID]
+      return {activeDeliveries=stop.activeDeliveries, priority=stop.priority, count=order.totalCount}
+    end
+    return CompareStations(StationFromOrder(a), StationFromOrder(b)) end)
 
   -- find trains for orders
   for orderIndex=1, #orders do
@@ -485,6 +493,17 @@ function ProcessRequest(request)
   return nil
 end
 
+-- compare stations by active deliveries, priority, and itemcount
+function CompareStations(a, b)
+  if a.activeDeliveries ~= b.activeDeliveries then --sort by #deliveries 1st
+    return a.activeDeliveries < b.activeDeliveries
+  end
+  if a.priority ~= b.priority then --sort by priority 2nd
+      return a.priority > b.priority
+  end
+  return a.count > b.count --finally sort by item count
+end
+
 -- return all stations providing item, ordered by priority and item-count
 function GetStations(force, item, min_count)
   local stations = {}
@@ -506,15 +525,7 @@ function GetStations(force, item, min_count)
   end
   -- sort by priority and count
   local sort = table.sort
-  sort(stations, function(a, b)
-      if a.activeDeliveries ~= b.activeDeliveries then --sort by #deliveries 1st
-        return a.activeDeliveries < b.activeDeliveries
-      end
-      if a.priority ~= b.priority then --sort by priority 2nd
-          return a.priority > b.priority
-      end
-      return a.count > b.count --finally sort by item count
-    end)
+  sort(stations, CompareStations)
   return stations
 end
 
