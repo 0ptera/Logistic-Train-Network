@@ -34,16 +34,19 @@ remote.add_interface("LTN",
               return
             end
         end,
-        
+
         log_status = function()
             game.player.print("[LTN] <log_status> log-level: " .. log_level .. " - log-output: " .. log_output)
         end
     }
 )
 
-function printmsg(msg)
+function printmsg(msg, useFilter)
+  if useFilter == nil then
+    useFilter = true
+  end
   --suppress message if among the last n messages
-  if message_filter_size > 0 then
+  if useFilter and message_filter_size > 0 then
     for i=#lastMessages, 1, -1 do
       if lastMessages[i] == msg then --don't spam the same message
         return
@@ -54,7 +57,7 @@ function printmsg(msg)
       table.remove(lastMessages, 1)
     end
   end
-  
+
   if log_output == "console" or log_output == "both" then
     game.print("[LTN] " .. msg)
   end
