@@ -246,12 +246,6 @@ function ticker(event)
       end
     end
 
-    -- sort requests by age
-    local sort = table.sort
-    sort(global.Dispatcher.Requests, function(a, b)
-        return a.age < b.age
-      end)
-
     -- remove no longer active requests from global.Dispatcher.RequestAge[stopID]
     local newRequestAge = {}
     for _,request in pairs (global.Dispatcher.Requests) do
@@ -262,6 +256,11 @@ function ticker(event)
     end
     global.Dispatcher.RequestAge = newRequestAge
 
+    -- sort requests by age
+    local sort = table.sort
+    sort(global.Dispatcher.Requests, function(a, b)
+        return a.age < b.age
+      end)
 
     -- find best provider, merge shipments, find train, generate delivery, reset age
     if next(global.Dispatcher.availableTrains) ~= nil then -- no need to parse requests without available trains
@@ -299,7 +298,7 @@ function ProcessRequest(request)
   for item, count in pairs (request.itemlist) do
     -- split merged key into type & name
     local itype, iname = match(item, "([^,]+),([^,]+)")
-    if not (itype and iname) then
+    if not (itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname])) then
       if log_level >= 1 then printmsg("Error(ProcessRequest): could not parse item "..item, true) end
       goto skipRequestItem
     end
