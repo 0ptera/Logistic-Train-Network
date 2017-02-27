@@ -69,6 +69,7 @@ function initialize()
   -- initialize logger
   global.log_level = nil
   global.log_output = nil
+  global.messageBuffer = {}
 
   -- initialize stops
   global.LogisticTrainStops = global.LogisticTrainStops or {}

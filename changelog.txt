@@ -1,3 +1,7 @@
+0.9.4
+- fixed MP desync from message filter
+- added warning when changing log settings in game (only use config.lua for MP games)
+
 0.9.3
 - changed license
 - fixed possible error when removing mods adding items

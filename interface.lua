@@ -1,5 +1,3 @@
-local lastMessages = {}
-
 remote.add_interface("LTN",
     {
         help = function()
@@ -18,6 +16,7 @@ remote.add_interface("LTN",
                 return
             end
             log_level = level
+            game.player.print("[LTN] Warning! Having different log settings will cause desync. Use log_level in config.lua for MP instead.")
             remote.call('LTN', 'log_status')
         end,
 
@@ -28,6 +27,7 @@ remote.add_interface("LTN",
             end
             if log_set == "console" or log_set == "log" or log_set == "both" then
               log_output = log_set
+              game.player.print("[LTN] Warning! Having different log settings will cause desync. Use log_level in config.lua for MP instead.")
               remote.call('LTN', 'log_status')
             else
               game.player.print("[LTN] log_output: Wrong parameter "..log_set)
@@ -47,14 +47,14 @@ function printmsg(msg, useFilter)
   end
   --suppress message if among the last n messages
   if useFilter and message_filter_size > 0 then
-    for i=#lastMessages, 1, -1 do
-      if lastMessages[i] == msg then --don't spam the same message
+    for i=#global.messageBuffer, 1, -1 do
+      if global.messageBuffer[i] == msg then --don't spam the same message
         return
       end
     end
-    lastMessages[#lastMessages+1] = msg
-    if #lastMessages > message_filter_size then --remove oldest message
-      table.remove(lastMessages, 1)
+    global.messageBuffer[#global.messageBuffer+1] = msg
+    if #global.messageBuffer > message_filter_size then --remove oldest message
+      table.remove(global.messageBuffer, 1)
     end
   end
 
