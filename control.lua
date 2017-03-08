@@ -8,11 +8,11 @@ MAXTRAINLENGTH = "max-train-length"
 PRIORITY = "stop-priority"
 ISDEPOT = "ltn-depot"
 
-ErrorCodes = {
+local ErrorCodes = {
   "red",    -- circuit/signal error
   "pink"    -- duplicate stop name
 }
-StopIDList = {} -- stopIDs list for on_tick updates
+local StopIDList = {} -- stopIDs list for on_tick updates
 
 local match = string.match
 local ceil = math.ceil
@@ -36,73 +36,58 @@ script.on_load(function()
 end)
 
 script.on_init(function()
+  -- local oldVersion = {}
+  local newVersionString = game.active_mods[MOD_NAME] or ""
+  -- local newVersion = {}
+  -- for w in (newVersionString .. "."):gmatch("([^.]*).") do
+    -- table.insert(newVersion, w)
+  -- end
+
   initialize()
-  local version = game.active_mods[MOD_NAME] or 0
-  log("[LTN] on_init: ".. MOD_NAME.." "..version.." initialized.")
+
+  log("[LTN] on_init: ".. MOD_NAME.." "..newVersionString.." initialized.")
   if global.useRailTanker then
     log("[LTN] Rail Tanker "..game.active_mods["RailTanker"].." found, fluid deliveries enabled.")
   end
 end)
 
 script.on_configuration_changed(function(data)
-  initialize()
-  local loadmsg = MOD_NAME.." "..game.active_mods[MOD_NAME].." initialized."
+  local loadmsg = ""
   if data and data.mod_changes[MOD_NAME] then
-    if data.mod_changes[MOD_NAME].old_version and data.mod_changes[MOD_NAME].new_version then
-      loadmsg = MOD_NAME.." version changed from "..data.mod_changes[MOD_NAME].old_version.." to "..data.mod_changes[MOD_NAME].new_version.."."
-    end
+    local oldVersionString = data.mod_changes[MOD_NAME].old_version or ""
+    -- local oldVersion = {}
+    -- for w in (oldVersionString .. "."):gmatch("([^.]*).") do
+      -- table.insert(oldVersion, w)
+    -- end
+    local newVersionString = data.mod_changes[MOD_NAME].new_version or ""
+    -- local newVersion = {}
+    -- for w in (newVersionString .. "."):gmatch("([^.]*).") do
+      -- table.insert(newVersion, w)
+    -- end
+
+    initialize()
+
+    log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..newVersionString.." initialized. Previous version: "..oldVersionString)
   end
-  log("[LTN] on_configuration_changed: "..loadmsg)
   if global.useRailTanker then
     log("[LTN] Rail Tanker "..game.active_mods["RailTanker"].." found, fluid deliveries enabled.")
   end
 end)
 
-function initialize()
-  -- check if RailTanker is installed
+function initialize(oldVersion, newVersion)
+  ---- check if RailTanker is installed
   if game.active_mods["RailTanker"] then
     global.useRailTanker = true
   else
     global.useRailTanker = false
   end
 
-  -- initialize logger
+  ---- initialize logger
   global.log_level = nil
   global.log_output = nil
   global.messageBuffer = {}
 
-  -- initialize stops
-  global.LogisticTrainStops = global.LogisticTrainStops or {}
-  if next(global.LogisticTrainStops) ~= nil then
-    for stopID, stop in pairs (global.LogisticTrainStops) do
-      global.LogisticTrainStops[stopID].activeDeliveries = global.LogisticTrainStops[stopID].activeDeliveries or 0
-      global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or 0
-      -- update to 0.3.8
-      if stop.lampControl == nil then
-        local lampctrl = stop.entity.surface.create_entity
-        {
-          name = "logistic-train-stop-lamp-control",
-          position = stop.input.position,
-          force = stop.entity.force
-        }
-        lampctrl.operable = false -- disable gui
-        lampctrl.minable = false
-        lampctrl.destructible = false -- don't bother checking if alive
-        lampctrl.connect_neighbour({target_entity=stop.input, wire=defines.wire_type.green})
-        lampctrl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}}
-        global.LogisticTrainStops[stopID].lampControl = lampctrl
-        global.LogisticTrainStops[stopID].input.operable = false
-        global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().use_colors = true
-        global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().circuit_condition = {condition = {comparator=">",first_signal={type="virtual",name="signal-anything"}}}
-      end
-
-      UpdateStopOutput(stop) --make sure output is set
-      --UpdateStop(stopID)
-    end
-    script.on_event(defines.events.on_tick, ticker) --subscribe ticker when train stops exist
-  end
-
-  -- initialize Dispatcher
+  ---- initialize Dispatcher
   global.Dispatcher = global.Dispatcher or {}
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
   global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
@@ -129,6 +114,47 @@ function initialize()
         global.Dispatcher.Deliveries[trainID].shipment = {}
       end
     end
+  end
+
+  ---- initialize stops
+  global.LogisticTrainStops = global.LogisticTrainStops or {}
+  if next(global.LogisticTrainStops) ~= nil then
+    for stopID, stop in pairs (global.LogisticTrainStops) do
+      global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or 0
+      -- update to 0.3.8
+      if stop.lampControl == nil then
+        local lampctrl = stop.entity.surface.create_entity
+        {
+          name = "logistic-train-stop-lamp-control",
+          position = stop.input.position,
+          force = stop.entity.force
+        }
+        lampctrl.operable = false -- disable gui
+        lampctrl.minable = false
+        lampctrl.destructible = false -- don't bother checking if alive
+        lampctrl.connect_neighbour({target_entity=stop.input, wire=defines.wire_type.green})
+        lampctrl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}}
+        global.LogisticTrainStops[stopID].lampControl = lampctrl
+        global.LogisticTrainStops[stopID].input.operable = false
+        global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().use_colors = true
+        global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().circuit_condition = {condition = {comparator=">",first_signal={type="virtual",name="signal-anything"}}}
+      end
+
+      -- update to 0.9.5
+      global.LogisticTrainStops[stopID].activeDeliveries = global.LogisticTrainStops[stopID].activeDeliveries or {}
+      if type(stop.activeDeliveries) ~= "table" then
+        stop.activeDeliveries = {}
+        for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
+          if delivery.from == stop.entity.backer_name or delivery.to == stop.entity.backer_name then
+            table.insert(stop.activeDeliveries, trainID)
+          end
+        end
+      end
+
+      UpdateStopOutput(stop) --make sure output is set
+      --UpdateStop(stopID)
+    end
+    script.on_event(defines.events.on_tick, ticker) --subscribe ticker when train stops exist
   end
 
 end
@@ -319,7 +345,7 @@ function ProcessRequest(request)
 
     if log_level >= 3 then
       for n, provider in pairs (providers) do
-        printmsg("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(provider.activeDeliveries).." deliveries, "..tostring(provider.count).." "..item, false)
+        printmsg("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(#provider.activeDeliveries).." deliveries, "..tostring(provider.count).." "..item, false)
       end
     end
 
@@ -472,12 +498,12 @@ function ProcessRequest(request)
     -- trains will pick a stop by their own logic so we have to parse by name
     for stopID, stop in pairs (global.LogisticTrainStops) do
       if stop.entity.backer_name == from or stop.entity.backer_name == to then
-        global.LogisticTrainStops[stopID].activeDeliveries = stop.activeDeliveries + 1
+        table.insert(global.LogisticTrainStops[stopID].activeDeliveries, train.id)
       end
     end
 
     -- stop after first delivery was created
-    do return delivery end -- eplicit block needed ... lua really sucks ...
+    do return delivery end -- explicit block needed ... lua really sucks ...
 
     ::skipOrder:: -- use goto since lua doesn't know continue
   end --for orders
@@ -499,7 +525,7 @@ function GetStations(force, item, min_count)
     if stop and stop.entity.force.name == force.name then
       if count > 0 and (use_Best_Effort or count >= min_count) then
         if log_level >= 4 then printmsg("(GetStations): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars, false) end
-        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveries = stop.activeDeliveries, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars}
+        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveries = #stop.activeDeliveries, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars}
       end
     end
   end
@@ -623,9 +649,9 @@ end
 function removeDelivery(trainID)
   if global.Dispatcher.Deliveries[trainID] then
     for stopID, stop in pairs(global.LogisticTrainStops) do
-      if global.Dispatcher.Deliveries[trainID].from == stop.entity.backer_name or global.Dispatcher.Deliveries[trainID].to == stop.entity.backer_name then
-        if stop.activeDeliveries > 0 then
-          global.LogisticTrainStops[stopID].activeDeliveries = stop.activeDeliveries - 1
+      for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
+        if stop.activeDeliveries[i] == trainID then
+          table.remove(stop.activeDeliveries, i)
         end
       end
     end
@@ -732,8 +758,8 @@ function CreateStop(entity)
     output = output,
     lampControl = lampctrl,
     isDepot = false,
-    activeDeliveries = 0, --#deliveries to/from stop
-    errorCode = 0,        --key to errorCodes table
+    activeDeliveries = {},  --delivery IDs to/from stop
+    errorCode = 0,          --key to errorCodes table
     parkedTrain = nil,
     parkedTrainID = nil
   }
@@ -821,9 +847,16 @@ function UpdateStopParkedTrain(train)
           if stop.errorCode == 0 then
             setLamp(stopID, "green")
           end
-        else
+        else -- normal stop
           local delivery = global.Dispatcher.Deliveries[trainID]
           if delivery then
+            -- remove delivery from stop
+            for i=#stop.activeDeliveries, 1, -1 do
+              if stop.activeDeliveries[i] == trainID then
+                table.remove(stop.activeDeliveries, i)
+              end
+            end
+
             if delivery.from == stop.entity.backer_name then
               -- update delivery counts to train inventory
               local inventory = train.get_contents()
@@ -838,19 +871,11 @@ function UpdateStopParkedTrain(train)
                 end
               end
               delivery.pickupDone = true -- remove reservations from this delivery
-
-              if stop.activeDeliveries > 0 then
-                global.LogisticTrainStops[stopID].activeDeliveries = stop.activeDeliveries - 1
-              end
             elseif global.Dispatcher.Deliveries[trainID].to == stop.entity.backer_name then
-              if stop.activeDeliveries > 0 then
-                global.LogisticTrainStops[stopID].activeDeliveries = stop.activeDeliveries - 1
-              end
-                -- Delivery complete > remove
-                global.Dispatcher.Deliveries[trainID] = nil
+              -- remove completed delivery
+              global.Dispatcher.Deliveries[trainID] = nil
             end
           end
-
         end
 
         -- remove train reference
@@ -1061,13 +1086,7 @@ function UpdateStop(stopID)
       -- create Requests {stopID, age, itemlist={[item], count}}
       global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[stopID], stopID = stopID, itemlist = requestItems}
 
-      -- reset delivery counter in case train became invalid during delivery
-      -- only reset when 0 so provider can be cleared once train leaves
-      if deliveryCounter == 0 then
-        stop.activeDeliveries = 0
-      end
-
-      if stop.activeDeliveries > 0 then
+      if #stop.activeDeliveries > 0 then
         setLamp(stopID, "yellow")
       else
         setLamp(stopID, "green")
