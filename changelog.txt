@@ -1,3 +1,6 @@
+0.9.6
+- added Ignore Minimum Delivery Size signal for providers
+
 0.9.5
 - lamp shows status "active delivery" (yellow) reliable after changing stop name or removing train during delivery
 - stacker depots no longer trigger delivery time out warnings

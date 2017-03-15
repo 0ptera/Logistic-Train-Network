@@ -12,7 +12,7 @@ data:extend({
     icon = "__"..MOD_NAME.."__/graphics/icons/min-train-length.png",
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-aa[min-train-length]"
-  },  
+  },
   {
     type = "virtual-signal",
     name = "max-train-length",
@@ -38,6 +38,13 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-depot",
     icon = "__"..MOD_NAME.."__/graphics/icons/depot.png",
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-ae[ltn-depot]"
+  },
+  {
+    type = "virtual-signal",
+    name = "ltn-no-min-delivery-size",
+    icon = "__"..MOD_NAME.."__/graphics/icons/no-min-shipment-size.png",
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-ae[ltn-depot]"
   }

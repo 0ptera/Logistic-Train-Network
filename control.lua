@@ -7,6 +7,7 @@ MINTRAINLENGTH = "min-train-length"
 MAXTRAINLENGTH = "max-train-length"
 PRIORITY = "stop-priority"
 ISDEPOT = "ltn-depot"
+IGNOREMINDELIVERYSIZE = "ltn-no-min-delivery-size"
 
 local ErrorCodes = {
   "red",    -- circuit/signal error
@@ -523,7 +524,7 @@ function GetStations(force, item, min_count)
   if not(stopID == "sumCount" or stopID == "sumStops") then --skip sumCount, sumStops
     local stop = global.LogisticTrainStops[stopID]
     if stop and stop.entity.force.name == force.name then
-      if count > 0 and (use_Best_Effort or count >= min_count) then
+      if count > 0 and (use_Best_Effort or stop.ignoreMinDeliverySize or count >= min_count) then
         if log_level >= 4 then printmsg("(GetStations): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars, false) end
         stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveries = #stop.activeDeliveries, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars}
       end
@@ -758,6 +759,7 @@ function CreateStop(entity)
     output = output,
     lampControl = lampctrl,
     isDepot = false,
+    ignoreMinDeliverySize = false,
     activeDeliveries = {},  --delivery IDs to/from stop
     errorCode = 0,          --key to errorCodes table
     parkedTrain = nil,
@@ -938,6 +940,8 @@ function UpdateStop(stopID)
   circuitValues["virtual,"..MAXTRAINLENGTH] = nil
   local priority = circuitValues["virtual,"..PRIORITY] or 0
   circuitValues["virtual,"..PRIORITY] = nil
+  local ignoreMinDeliverySize = circuitValues["virtual,"..IGNOREMINDELIVERYSIZE] or 0
+  circuitValues["virtual,"..IGNOREMINDELIVERYSIZE] = nil
 
   -- check if it's a depot
   if isDepot > 0 then
@@ -1082,6 +1086,11 @@ function UpdateStop(stopID)
       global.LogisticTrainStops[stopID].minTraincars = minTraincars
       global.LogisticTrainStops[stopID].maxTraincars = maxTraincars
       global.LogisticTrainStops[stopID].priority = priority
+      if ignoreMinDeliverySize > 0 then
+        global.LogisticTrainStops[stopID].ignoreMinDeliverySize = true
+      else
+        global.LogisticTrainStops[stopID].ignoreMinDeliverySize = true
+      end
 
       -- create Requests {stopID, age, itemlist={[item], count}}
       global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[stopID], stopID = stopID, itemlist = requestItems}
