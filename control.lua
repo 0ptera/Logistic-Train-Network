@@ -977,6 +977,7 @@ function UpdateStop(stopID)
       global.LogisticTrainStops[stopID].minTraincars = minTraincars
       global.LogisticTrainStops[stopID].maxTraincars = maxTraincars
       global.LogisticTrainStops[stopID].priority = 0
+      global.LogisticTrainStops[stopID].ignoreMinDeliverySize = false
       if stop.parkedTrain then
         setLamp(stopID, "blue")
       else
@@ -1089,7 +1090,7 @@ function UpdateStop(stopID)
       if ignoreMinDeliverySize > 0 then
         global.LogisticTrainStops[stopID].ignoreMinDeliverySize = true
       else
-        global.LogisticTrainStops[stopID].ignoreMinDeliverySize = true
+        global.LogisticTrainStops[stopID].ignoreMinDeliverySize = false
       end
 
       -- create Requests {stopID, age, itemlist={[item], count}}

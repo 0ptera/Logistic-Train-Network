@@ -1,3 +1,8 @@
+0.9.7
+- fixed: all stops constantly being set to Ignore Minimum Delivery Size
+- sorted signal order
+- reduced default stop_timeout to 2min
+
 0.9.6
 - added Ignore Minimum Delivery Size signal for providers
 

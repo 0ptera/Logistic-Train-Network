@@ -24,9 +24,9 @@ min_delivery_size = 1000
 delivery_timeout = 18000
 
 -- duration in ticks of inactivity before leaving (un-)loading stations
--- default 18000 = 5min
+-- default 7200 = 2min
 -- off 0: trains will wait forever to (un-)load
-stop_timeout = 18000
+stop_timeout = 7200
 
 -- when false provider stations holding less than request stations min_delivery_size are ignored
 -- default false
