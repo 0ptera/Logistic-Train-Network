@@ -1,3 +1,6 @@
+0.9.8
+- fixed: error on schedules with circuit wait conditions containing virtual signals
+
 0.9.7
 - fixed: all stops constantly being set to Ignore Minimum Delivery Size
 - sorted signal order

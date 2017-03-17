@@ -642,7 +642,7 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
       record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "or", ticks = stop_timeout } -- send stuck trains away
     end
   elseif condType == "inactivity" then
-    record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp } -- 1s inactivity allowing trains to be refuelled in depot
+    record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp }
   end
   return record
 end
@@ -1199,14 +1199,13 @@ function UpdateStopOutput(trainStop)
       local conditions = trainStop.parkedTrain.schedule.records[trainStop.parkedTrain.schedule.current].wait_conditions
       if conditions ~= nil then
         for _, c in pairs(conditions) do
-          if c.condition and c.condition.comparator and c.condition.first_signal and c.condition.constant then
+          if c.condition and c.type == "item_count" then
             if c.condition.comparator == ">" then --train expects to be loaded with x of this item
               table.insert(signals, {index = index, signal = c.condition.first_signal, count = c.condition.constant + 1 })
-               index = index+1
-            elseif (c.condition.comparator == "<" and c.condition.constant == 1) or
-                   (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
+              index = index+1
+            elseif (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
               table.insert(signals, {index = index, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_item_count(c.condition.first_signal.name) * -1 })
-               index = index+1
+              index = index+1
             end
           end
         end
