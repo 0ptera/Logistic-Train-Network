@@ -1,3 +1,6 @@
+0.9.9
+- fixed: attempt to get length of field 'activeDeliveries' (a number value) on log level >= 3
+
 0.9.8
 - fixed: error on schedules with circuit wait conditions containing virtual signals
 

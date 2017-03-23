@@ -346,7 +346,7 @@ function ProcessRequest(request)
 
     if log_level >= 3 then
       for n, provider in pairs (providers) do
-        printmsg("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(#provider.activeDeliveries).." deliveries, "..tostring(provider.count).." "..item, false)
+        printmsg("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(provider.activeDeliveryCount).." deliveries, "..tostring(provider.count).." "..item, false)
       end
     end
 
@@ -526,7 +526,7 @@ function GetStations(force, item, min_count)
     if stop and stop.entity.force.name == force.name then
       if count > 0 and (use_Best_Effort or stop.ignoreMinDeliverySize or count >= min_count) then
         if log_level >= 4 then printmsg("(GetStations): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars, false) end
-        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveries = #stop.activeDeliveries, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars}
+        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = #stop.activeDeliveries, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars}
       end
     end
   end
@@ -534,8 +534,8 @@ function GetStations(force, item, min_count)
   -- sort by priority and count
   local sort = table.sort
   sort(stations, function(a, b)
-      if a.activeDeliveries ~= b.activeDeliveries then --sort by #deliveries 1st
-        return a.activeDeliveries < b.activeDeliveries
+      if a.activeDeliveryCount ~= b.activeDeliveryCount then --sort by #deliveries 1st
+        return a.activeDeliveryCount < b.activeDeliveryCount
       end
       if a.priority ~= b.priority then --sort by priority 2nd
           return a.priority > b.priority
