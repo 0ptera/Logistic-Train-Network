@@ -83,6 +83,13 @@ function initialize(oldVersion, newVersion)
     global.useRailTanker = false
   end
 
+  ---- disable instant blueprint in creative mode
+  if game.active_mods["creative-mode"] then
+    remote.call("creative-mode", "exclude_from_instant_blueprint", "logistic-train-stop-input")
+    remote.call("creative-mode", "exclude_from_instant_blueprint", "logistic-train-stop-output")
+    remote.call("creative-mode", "exclude_from_instant_blueprint", "logistic-train-stop-lamp-control")
+  end
+  
   ---- initialize logger
   global.log_level = nil
   global.log_output = nil
@@ -162,7 +169,7 @@ end
 
 script.on_event(defines.events.on_built_entity, function(event)
   local entity = event.created_entity
-	if entity.name == "logistic-train-stop" then
+	if entity.valid and entity.name == "logistic-train-stop" then
 		CreateStop(entity)
     return
 	end
@@ -178,7 +185,7 @@ end)
 
 script.on_event(defines.events.on_robot_built_entity, function(event)
   local entity = event.created_entity
-	if entity.name == "logistic-train-stop" then
+	if entity.valid and entity.name == "logistic-train-stop" then
 		CreateStop(entity)
 	end
 end)

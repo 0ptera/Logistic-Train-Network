@@ -1,3 +1,7 @@
+0.9.10
+- adapted to creative mode 0.2.8
+- fixed invalid entity in on_robot_built_entity
+
 0.9.9
 - fixed: attempt to get length of field 'activeDeliveries' (a number value) on log level >= 3
 
