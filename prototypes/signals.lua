@@ -47,5 +47,13 @@ data:extend({
     icon = "__"..MOD_NAME.."__/graphics/icons/no-min-shipment-size.png",
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-ae[ltn-depot]"
+  },
+  {
+    type = "virtual-signal",
+    name = "ltn-only-consume",
+    icon = "__"..MOD_NAME.."__/graphics/icons/depot.png",
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-ae[ltn-depot]"
   }
+
 })

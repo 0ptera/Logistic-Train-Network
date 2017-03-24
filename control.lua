@@ -7,6 +7,7 @@ MINTRAINLENGTH = "min-train-length"
 MAXTRAINLENGTH = "max-train-length"
 PRIORITY = "stop-priority"
 ISDEPOT = "ltn-depot"
+ISCONSUMERONLY = "ltn-only-consume"
 IGNOREMINDELIVERYSIZE = "ltn-no-min-delivery-size"
 
 local ErrorCodes = {
@@ -523,7 +524,7 @@ function GetStations(force, item, min_count)
   for stopID, count in pairs (providers) do
   if not(stopID == "sumCount" or stopID == "sumStops") then --skip sumCount, sumStops
     local stop = global.LogisticTrainStops[stopID]
-    if stop and stop.entity.force.name == force.name then
+    if stop and stop.entity.force.name == force.name and not stop.isConsumerOnly then
       if count > 0 and (use_Best_Effort or stop.ignoreMinDeliverySize or count >= min_count) then
         if log_level >= 4 then printmsg("(GetStations): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars, false) end
         stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveries = #stop.activeDeliveries, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars}
@@ -759,6 +760,7 @@ function CreateStop(entity)
     output = output,
     lampControl = lampctrl,
     isDepot = false,
+    isConsumerOnly = false,
     ignoreMinDeliverySize = false,
     activeDeliveries = {},  --delivery IDs to/from stop
     errorCode = 0,          --key to errorCodes table
@@ -942,6 +944,8 @@ function UpdateStop(stopID)
   circuitValues["virtual,"..PRIORITY] = nil
   local ignoreMinDeliverySize = circuitValues["virtual,"..IGNOREMINDELIVERYSIZE] or 0
   circuitValues["virtual,"..IGNOREMINDELIVERYSIZE] = nil
+  local isConsumerOnly = circuitValues["virtual,"..ISCONSUMERONLY] or 0
+  circuitValues["virtual,"..ISCONSUMERONLY] = nil
 
   -- check if it's a depot
   if isDepot > 0 then
@@ -986,6 +990,14 @@ function UpdateStop(stopID)
 
   elseif isUniqueStopName(stop) then
     stop.isDepot = false
+
+    if isConsumerOnly > 0 then
+      stop.isConsumerOnly = true
+      setLamp(stopID, "cyan")
+    else
+      setLamp(stopID, "green")
+      stop.isConsumerOnly = false
+    end
 
     -- reset duplicate name error
     if stop.errorCode == 2 then
@@ -1098,7 +1110,7 @@ function UpdateStop(stopID)
       if #stop.activeDeliveries > 0 then
         setLamp(stopID, "yellow")
       else
-        setLamp(stopID, "green")
+        if stop.isConsumerOnly then setLamp(stopID, "cyan") else setLamp(stopID, "green") end
       end
 
     end
@@ -1121,6 +1133,7 @@ function GetCircuitValues(entity)
     [MAXTRAINLENGTH] = true,
     [PRIORITY] = true,
     [ISDEPOT] = true,
+    [ISCONSUMERONLY] = true,
     ["signal-red"] = true,
     ["signal-green"] = true,
     ["signal-blue"] = true,
