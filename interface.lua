@@ -45,25 +45,20 @@ function printmsg(msg, useFilter)
   if useFilter == nil then
     useFilter = true
   end
-  --suppress message if among the last n messages
-  if useFilter and message_filter_size > 0 then
-    for i=#global.messageBuffer, 1, -1 do
-      if global.messageBuffer[i] == msg then --don't spam the same message
-        return
-      end
+  local tick = game.tick
+
+  -- print message
+  if global.messageBuffer[msg] == nil or global.messageBuffer[msg].filter == false then
+    if log_output == "console" or log_output == "both" then
+      game.print("[LTN] " .. msg)
     end
-    global.messageBuffer[#global.messageBuffer+1] = msg
-    if #global.messageBuffer > message_filter_size then --remove oldest message
-      table.remove(global.messageBuffer, 1)
+    if log_output == "log" or log_output == "both" then
+      log("[LTN] " .. msg)
     end
   end
 
-  if log_output == "console" or log_output == "both" then
-    game.print("[LTN] " .. msg)
-  end
-  if log_output == "log" or log_output == "both" then
-    log("[LTN] " .. msg)
-  end
+  -- store message in buffer
+  global.messageBuffer[msg] = global.messageBuffer[msg] or {tick=tick, filter=useFilter}
 end
 
 return printmsg, log_output, log_level

@@ -1,3 +1,7 @@
+0.9.11
+- message filter uses message age instead of message count to suppress messages
+- increased detailed messages about order generation from log level 3 to 4
+
 0.9.10
 - adapted to creative mode 0.2.8
 - fixed invalid entity in on_robot_built_entity

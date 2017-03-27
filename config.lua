@@ -6,10 +6,9 @@ log_level = 2
 -- console: in game console, log: logfile in factorio root directory, both: default
 log_output = "both"
 
--- how many messages back are filtered for duplicates
--- default 10
--- disabled 0
-message_filter_size = 10
+-- message age in ticks before filtered messages are shown again
+-- default 18000 = 5min
+message_filter_age = 18000
 
 -- update interval in ticks
 -- default 60

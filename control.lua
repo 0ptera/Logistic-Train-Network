@@ -89,7 +89,7 @@ function initialize(oldVersion, newVersion)
     remote.call("creative-mode", "exclude_from_instant_blueprint", "logistic-train-stop-output")
     remote.call("creative-mode", "exclude_from_instant_blueprint", "logistic-train-stop-lamp-control")
   end
-  
+
   ---- initialize logger
   global.log_level = nil
   global.log_output = nil
@@ -248,12 +248,19 @@ function ticker(event)
   global.tickCount = global.tickCount or 1
 
   if global.tickCount == 1 then
+    stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1)) -- 59 ticks for stop Updates, 60th tick for dispatcher
+    stopIdStartIndex = 1
+
     -- clear Dispatcher.Storage
     global.Dispatcher.Provided = {}
     global.Dispatcher.Requests = {}
 
-    stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1)) -- 59 ticks for stop Updates, 60th tick for dispatcher
-    stopIdStartIndex = 1
+    -- remove messages older than message_filter_age from messageBuffer
+    for bufferedMsg, v in pairs(global.messageBuffer) do
+      if (tick - v.tick) > message_filter_age then
+        global.messageBuffer[bufferedMsg] = nil
+      end
+    end
   end
 
   stopIdLastIndex = stopIdStartIndex + stopsPerTick - 1
@@ -395,14 +402,14 @@ function ProcessRequest(request)
         orders[i].loadingList[#orders[i].loadingList+1] = loadingList
         orders[i].totalStacks = orders[i].totalStacks + stacks
         insertnew = false
-        if log_level >= 3 then  printmsg("inserted into order "..i.."/"..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars, false) end
+        if log_level >= 4 then  printmsg("inserted into order "..i.."/"..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars, false) end
         break
       end
     end
     -- create new order for fluids and different provider-requester pairs
     if insertnew then
       orders[#orders+1] = {toID=toID, fromID=fromID, minDelivery=minDelivery, minTraincars=minTraincars, maxTraincars=maxTraincars, shipmentCount=1, totalStacks=stacks, loadingList={loadingList} }
-      if log_level >= 3 then  printmsg("added new order "..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars, false) end
+      if log_level >= 4 then  printmsg("added new order "..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars, false) end
     end
 
     ::skipRequestItem:: -- use goto since lua doesn't know continue
@@ -814,7 +821,7 @@ function UpdateStopParkedTrain(train)
   local trainName = GetTrainName(train)
 
   if not trainID then --train has no locomotive
-    if log_level >= 1 then printmsg("Error (UpdateStopParkedTrain): couldn't assign train id", true) end
+    if log_level >= 1 then printmsg("Error (UpdateStopParkedTrain): couldn't assign train id", false) end
     --TODO: Update all stops?
     return
   end
