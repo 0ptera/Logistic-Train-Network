@@ -25,7 +25,7 @@ for k, wagon in pairs(data.raw["cargo-wagon"]) do
   }
   -- fix RailTanker 1.4.0 shows cargo-wagon icon on entity
   if wagon.name == "rail-tanker" then
-    signal.icon = "__"..MOD_NAME.."__/graphics/icons/rail-tanker.png"
+    signal.icon = "__LogisticTrainNetwork__/graphics/icons/rail-tanker.png"
   end
   data:extend({signal})
   i=i+1

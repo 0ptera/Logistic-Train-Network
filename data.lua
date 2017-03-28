@@ -1,5 +1,3 @@
-MOD_NAME = "LogisticTrainNetwork"
-
 require ("lib")
 require ("config")
 require ("prototypes.technology")

@@ -3,7 +3,7 @@ data:extend({
   {
     type = "technology",
     name = "logistic-train-network",
-    icon = "__"..MOD_NAME.."__/graphics/icons/logistic-train-network-small.png",
+    icon = "__LogisticTrainNetwork__/graphics/icons/logistic-train-network-small.png",
     prerequisites = {"automated-rail-transportation"},
     effects =
     {
