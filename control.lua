@@ -30,13 +30,22 @@ script.on_load(function()
     stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1))
     stopIdStartIndex = 1
 	end
-  log("[LTN] on_load: complete")
   if global.useRailTanker then
     log("[LTN] fluid deliveries enabled")
   end
+  log("[LTN] on_load: complete")
 end)
 
 script.on_init(function()
+  ---- check if RailTanker is installed
+  if game.active_mods["RailTanker"] then
+    global.useRailTanker = true
+    log("[LTN] Rail Tanker "..game.active_mods["RailTanker"].." found, fluid deliveries enabled.")
+  else
+    global.useRailTanker = false
+    log("[LTN] Rail Tanker not found, fluid deliveries disabled.")
+  end
+
   -- local oldVersion = {}
   local newVersionString = game.active_mods[MOD_NAME] or ""
   -- local newVersion = {}
@@ -47,13 +56,18 @@ script.on_init(function()
   initialize()
 
   log("[LTN] on_init: ".. MOD_NAME.." "..newVersionString.." initialized.")
-  if global.useRailTanker then
-    log("[LTN] Rail Tanker "..game.active_mods["RailTanker"].." found, fluid deliveries enabled.")
-  end
 end)
 
 script.on_configuration_changed(function(data)
-  local loadmsg = ""
+  ---- check if RailTanker is installed
+  if game.active_mods["RailTanker"] then
+    global.useRailTanker = true
+    log("[LTN] Rail Tanker "..game.active_mods["RailTanker"].." found, fluid deliveries enabled.")
+  else
+    global.useRailTanker = false
+    log("[LTN] Rail Tanker not found, fluid deliveries disabled.")
+  end
+
   if data and data.mod_changes[MOD_NAME] then
     local oldVersionString = data.mod_changes[MOD_NAME].old_version or ""
     -- local oldVersion = {}
@@ -70,19 +84,9 @@ script.on_configuration_changed(function(data)
 
     log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..newVersionString.." initialized. Previous version: "..oldVersionString)
   end
-  if global.useRailTanker then
-    log("[LTN] Rail Tanker "..game.active_mods["RailTanker"].." found, fluid deliveries enabled.")
-  end
 end)
 
 function initialize(oldVersion, newVersion)
-  ---- check if RailTanker is installed
-  if game.active_mods["RailTanker"] then
-    global.useRailTanker = true
-  else
-    global.useRailTanker = false
-  end
-
   ---- disable instant blueprint in creative mode
   if game.active_mods["creative-mode"] then
     remote.call("creative-mode", "exclude_from_instant_blueprint", "logistic-train-stop-input")
@@ -1126,26 +1130,27 @@ function UpdateStop(stopID)
 
 end
 
+local validSignals = {
+  [MINDELIVERYSIZE] = true,
+  [MINTRAINLENGTH] = true,
+  [MAXTRAINLENGTH] = true,
+  [PRIORITY] = true,
+  [ISDEPOT] = true,
+  [IGNOREMINDELIVERYSIZE] = true,
+  ["signal-red"] = true,
+  ["signal-green"] = true,
+  ["signal-blue"] = true,
+  ["signal-yellow"] = true,
+  ["signal-pink"] = true,
+  ["signal-cyan"] = true,
+  ["signal-white"] = true,
+  ["signal-grey"] = true,
+  ["signal-black"] = true
+}
 function GetCircuitValues(entity)
   local greenWire = entity.get_circuit_network(defines.wire_type.green)
   local redWire =  entity.get_circuit_network(defines.wire_type.red)
   local items = {}
-  local validSignals = {
-    [MINDELIVERYSIZE] = true,
-    [MINTRAINLENGTH] = true,
-    [MAXTRAINLENGTH] = true,
-    [PRIORITY] = true,
-    [ISDEPOT] = true,
-    ["signal-red"] = true,
-    ["signal-green"] = true,
-    ["signal-blue"] = true,
-    ["signal-yellow"] = true,
-    ["signal-pink"] = true,
-    ["signal-cyan"] = true,
-    ["signal-white"] = true,
-    ["signal-grey"] = true,
-    ["signal-black"] = true
-  }
   if greenWire then
     for _, v in pairs (greenWire.signals) do
       if v.signal.type ~= "virtual" or validSignals[v.signal.name] then
@@ -1167,20 +1172,20 @@ function GetCircuitValues(entity)
   return items
 end
 
+local ColorLookup = {
+  red = "signal-red",
+  green = "signal-green",
+  blue = "signal-blue",
+  yellow = "signal-yellow",
+  pink = "signal-pink",
+  cyan = "signal-cyan",
+  white = "signal-white",
+  grey = "signal-grey",
+  black = "signal-black"
+}
 function setLamp(stopID, color)
-  local colors = {
-    red = "signal-red",
-    green = "signal-green",
-    blue = "signal-blue",
-    yellow = "signal-yellow",
-    pink = "signal-pink",
-    cyan = "signal-cyan",
-    white = "signal-white",
-    grey = "signal-grey",
-    black = "signal-black"
-  }
-  if colors[color] and global.LogisticTrainStops[stopID] then
-    global.LogisticTrainStops[stopID].lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name=colors[color]}, count = 1 }}}
+  if ColorLookup[color] and global.LogisticTrainStops[stopID] then
+    global.LogisticTrainStops[stopID].lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name=ColorLookup[color]}, count = 1 }}}
     return true
   end
   return false

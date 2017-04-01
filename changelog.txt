@@ -1,5 +1,9 @@
+0.9.13
+- fixed: ignore min delivery size signal being ignored
+- fixed: error when disabling RailTanker Mod
+
 0.9.12
-- fixed variable conflicts https://forums.factorio.com/viewtopic.php?f=23&t=43392
+- fixed possible variable conflicts https://forums.factorio.com/viewtopic.php?f=23&t=43392
 
 0.9.11
 - message filter uses message age instead of message count to suppress messages
