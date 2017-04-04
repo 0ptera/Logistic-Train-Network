@@ -2,12 +2,13 @@ require "config"
 require "interface"
 
 MOD_NAME = "LogisticTrainNetwork"
-MINDELIVERYSIZE = "min-delivery-size"
 MINTRAINLENGTH = "min-train-length"
 MAXTRAINLENGTH = "max-train-length"
+MAXTRAINS = "ltn-max-trains"
+MINDELIVERYSIZE = "min-delivery-size"
 PRIORITY = "stop-priority"
-ISDEPOT = "ltn-depot"
 IGNOREMINDELIVERYSIZE = "ltn-no-min-delivery-size"
+ISDEPOT = "ltn-depot"
 
 local ErrorCodes = {
   "red",    -- circuit/signal error
@@ -162,6 +163,9 @@ function initialize(oldVersion, newVersion)
           end
         end
       end
+
+      -- update to 0.10.0
+      global.LogisticTrainStops[stopID].trainLimit = global.LogisticTrainStops[stopID].trainLimit or 0
 
       UpdateStopOutput(stop) --make sure output is set
       --UpdateStop(stopID)
@@ -333,12 +337,18 @@ end
 function ProcessRequest(request)
   local stopID = request.stopID
   local requestStation = global.LogisticTrainStops[stopID]
+
   if not requestStation or not (requestStation.entity and requestStation.entity.valid) then
     return nil -- station was removed since request was generated
   end
+
   local minDelivery = requestStation.minDelivery
   local orders = {}
   local deliveries = nil
+
+  if requestStation.trainLimit > 0 and #requestStation.activeDeliveries >= requestStation.trainLimit then
+    return nil -- reached train limit
+  end
 
   -- find providers for requested items
   for item, count in pairs (request.itemlist) do
@@ -542,9 +552,10 @@ function GetStations(force, item, min_count)
   if not(stopID == "sumCount" or stopID == "sumStops") then --skip sumCount, sumStops
     local stop = global.LogisticTrainStops[stopID]
     if stop and stop.entity.force.name == force.name then
-      if count > 0 and (use_Best_Effort or stop.ignoreMinDeliverySize or count >= min_count) then
+      local activeDeliveryCount = #stop.activeDeliveries
+      if count > 0 and (use_Best_Effort or stop.ignoreMinDeliverySize or count >= min_count) and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
         if log_level >= 4 then printmsg("(GetStations): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars, false) end
-        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = #stop.activeDeliveries, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars}
+        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars}
       end
     end
   end
@@ -778,6 +789,7 @@ function CreateStop(entity)
     lampControl = lampctrl,
     isDepot = false,
     ignoreMinDeliverySize = false,
+    trainLimit = 0,
     activeDeliveries = {},  --delivery IDs to/from stop
     errorCode = 0,          --key to errorCodes table
     parkedTrain = nil,
@@ -950,12 +962,14 @@ function UpdateStop(stopID)
   -- read configuration signals and remove them from the signal list (should leave only item and fluid signal types)
   local isDepot = circuitValues["virtual,"..ISDEPOT] or 0
   circuitValues["virtual,"..ISDEPOT] = nil
-  local minDelivery = circuitValues["virtual,"..MINDELIVERYSIZE] or min_delivery_size
-  circuitValues["virtual,"..MINDELIVERYSIZE] = nil
   local minTraincars = circuitValues["virtual,"..MINTRAINLENGTH] or 0
   circuitValues["virtual,"..MINTRAINLENGTH] = nil
   local maxTraincars = circuitValues["virtual,"..MAXTRAINLENGTH] or 0
   circuitValues["virtual,"..MAXTRAINLENGTH] = nil
+  local trainLimit = circuitValues["virtual,"..MAXTRAINS] or 0
+  circuitValues["virtual,"..MAXTRAINS] = nil
+  local minDelivery = circuitValues["virtual,"..MINDELIVERYSIZE] or min_delivery_size
+  circuitValues["virtual,"..MINDELIVERYSIZE] = nil
   local priority = circuitValues["virtual,"..PRIORITY] or 0
   circuitValues["virtual,"..PRIORITY] = nil
   local ignoreMinDeliverySize = circuitValues["virtual,"..IGNOREMINDELIVERYSIZE] or 0
@@ -1104,6 +1118,7 @@ function UpdateStop(stopID)
       global.LogisticTrainStops[stopID].minDelivery = minDelivery
       global.LogisticTrainStops[stopID].minTraincars = minTraincars
       global.LogisticTrainStops[stopID].maxTraincars = maxTraincars
+      global.LogisticTrainStops[stopID].trainLimit = trainLimit
       global.LogisticTrainStops[stopID].priority = priority
       if ignoreMinDeliverySize > 0 then
         global.LogisticTrainStops[stopID].ignoreMinDeliverySize = true
@@ -1131,11 +1146,12 @@ function UpdateStop(stopID)
 end
 
 local validSignals = {
-  [MINDELIVERYSIZE] = true,
+  [ISDEPOT] = true,
   [MINTRAINLENGTH] = true,
   [MAXTRAINLENGTH] = true,
+  [MAXTRAINS] = true,
+  [MINDELIVERYSIZE] = true,
   [PRIORITY] = true,
-  [ISDEPOT] = true,
   [IGNOREMINDELIVERYSIZE] = true,
   ["signal-red"] = true,
   ["signal-green"] = true,

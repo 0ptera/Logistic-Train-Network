@@ -6,7 +6,7 @@ for k, loco in pairs(data.raw["locomotive"]) do
     name = "LTN-"..loco.name,
     icon = loco.icon,
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-ba",
+    order = "z[LTN-signal]-u",
     localised_name = {"virtual-signal-name.LTN-locomotive", {"entity-name." .. loco.name}}
   }
   data:extend({signal})
@@ -20,7 +20,7 @@ for k, wagon in pairs(data.raw["cargo-wagon"]) do
     name = "LTN-"..wagon.name,
     icon = wagon.icon,
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-bb",
+    order = "z[LTN-signal]-v",
     localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
   }
   -- fix RailTanker 1.4.0 shows cargo-wagon icon on entity

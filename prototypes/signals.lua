@@ -11,7 +11,7 @@ data:extend({
     name = "ltn-depot",
     icon = "__LogisticTrainNetwork__/graphics/icons/depot.png",
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-aa[ltn-depot]"
+    order = "z[LTN-signal]-a[ltn-depot]"
   },
   {
     type = "virtual-signal",
@@ -26,6 +26,13 @@ data:extend({
     icon = "__LogisticTrainNetwork__/graphics/icons/max-train-length.png",
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-bb[max-train-length]"
+  },
+  {
+    type = "virtual-signal",
+    name = "ltn-max-trains",
+    icon = "__LogisticTrainNetwork__/graphics/icons/max-trains.png",
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-bc[ltn-max-trains]"
   },
   {
     type = "virtual-signal",

@@ -1,3 +1,6 @@
+0.10.0
+- added Limit Trains signal to Provider & Requester
+
 0.9.13
 - fixed: ignore min delivery size signal being ignored
 - fixed: error when disabling RailTanker Mod
