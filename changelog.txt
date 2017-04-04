@@ -1,5 +1,5 @@
 0.10.1
-- read wagon inventory size only once from data.raw
+- increased performance by reading wagons inventory size from data.raw (thanks to folk)
 
 0.10.0
 - added Limit Trains signal to Provider & Requester

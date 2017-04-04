@@ -642,8 +642,8 @@ function GetTrainInventorySize(train, type)
       inventorySize = inventorySize + capacity
     end
   end
-  if type == "fluid" then 
-    return fluidCapacity  
+  if type == "fluid" then
+    return fluidCapacity
   end
   return inventorySize
 end
