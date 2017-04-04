@@ -1,14 +1,16 @@
 require "config"
 require "interface"
 
-MOD_NAME = "LogisticTrainNetwork"
-MINTRAINLENGTH = "min-train-length"
-MAXTRAINLENGTH = "max-train-length"
-MAXTRAINS = "ltn-max-trains"
-MINDELIVERYSIZE = "min-delivery-size"
-PRIORITY = "stop-priority"
-IGNOREMINDELIVERYSIZE = "ltn-no-min-delivery-size"
-ISDEPOT = "ltn-depot"
+local MOD_NAME = "LogisticTrainNetwork"
+local INVSTRING = "ltn-inventories[[name]]"
+
+local MINTRAINLENGTH = "min-train-length"
+local MAXTRAINLENGTH = "max-train-length"
+local MAXTRAINS = "ltn-max-trains"
+local MINDELIVERYSIZE = "min-delivery-size"
+local PRIORITY = "stop-priority"
+local IGNOREMINDELIVERYSIZE = "ltn-no-min-delivery-size"
+local ISDEPOT = "ltn-depot"
 
 local ErrorCodes = {
   "red",    -- circuit/signal error
@@ -87,7 +89,7 @@ script.on_configuration_changed(function(data)
   end
 end)
 
-function initialize(oldVersion, newVersion)
+function initialize()
   ---- disable instant blueprint in creative mode
   if game.active_mods["creative-mode"] then
     remote.call("creative-mode", "exclude_from_instant_blueprint", "logistic-train-stop-input")
@@ -590,7 +592,7 @@ function GetFreeTrain(force, type, size, minTraincars, maxTraincars)
         local inventorySize = 0
         if (minTraincars == 0 or #DispTrain.carriages >= minTraincars) and (maxTraincars == 0 or #DispTrain.carriages <= maxTraincars) then -- train length fits
           -- get total inventory of train for requested item type
-          inventorySize = GetInventorySize(DispTrain, type)
+          inventorySize = GetTrainInventorySize(DispTrain, type)
           if inventorySize >= size then
             -- train can be used for delivery
             if inventorySize < smallestInventory or smallestInventory == 0 then
@@ -614,28 +616,38 @@ function GetFreeTrain(force, type, size, minTraincars, maxTraincars)
   return train
 end
 
-function GetInventorySize(train, type)
+local InventoryLookup = {}
+function getInventorySize(name)
+  local reference = game.entity_prototypes[INVSTRING:gsub("%[name%]", tostring(name))]
+  if type(reference) == "table" then
+    InventoryLookup[name] = tonumber(reference.order)
+    return tonumber(reference.order)
+   end
+   return 0
+end
+
+function GetTrainInventorySize(train, type)
   local inventorySize = 0
+  local fluidCapacity = 0
   if not train.valid then
     return inventorySize
   end
 
   for _,wagon in pairs (train.cargo_wagons) do
-    -- RailTanker
-    if type == "fluid" and global.useRailTanker and wagon.name == "rail-tanker" then
-      inventorySize = inventorySize + 2500
-    -- normal cargo wagons
-    elseif type == "item" and wagon.name ~= "rail-tanker" then
-      local slots = #wagon.get_inventory(defines.inventory.cargo_wagon)
-      if slots then
-        inventorySize = inventorySize + slots
-      else
-        if log_level >= 1 then printmsg("Error(GetInventorySize): Could not read inventory size of ".. wagon.name, true) end
-      end
+    local capacity = InventoryLookup[wagon.name] or getInventorySize(wagon.name)
+    --log("wagon.name:"..wagon.name.." capacity:"..capacity)
+    if wagon.name == "rail-tanker" then
+      fluidCapacity = fluidCapacity + capacity
+    else
+      inventorySize = inventorySize + capacity
     end
+  end
+  if type == "fluid" then 
+    return fluidCapacity  
   end
   return inventorySize
 end
+
 
 -- return new schedule_record
 -- itemlist = {first_signal.type, first_signal.name, constant}

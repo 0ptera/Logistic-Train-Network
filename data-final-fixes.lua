@@ -9,7 +9,7 @@ for k, loco in pairs(data.raw["locomotive"]) do
     order = "z[LTN-signal]-u",
     localised_name = {"virtual-signal-name.LTN-locomotive", {"entity-name." .. loco.name}}
   }
-  data:extend({signal})
+  data:extend({signal})    
   i=i+1
 end
 log("[LTN] "..i.." locomotives added")
@@ -23,11 +23,23 @@ for k, wagon in pairs(data.raw["cargo-wagon"]) do
     order = "z[LTN-signal]-v",
     localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
   }
-  -- fix RailTanker 1.4.0 shows cargo-wagon icon on entity
+  
+  local inventorySize = wagon.inventory_size
   if wagon.name == "rail-tanker" then
-    signal.icon = "__LogisticTrainNetwork__/graphics/icons/rail-tanker.png"
+    signal.icon = "__LogisticTrainNetwork__/graphics/icons/rail-tanker.png" -- fix RailTanker 1.4.0 showing cargo-wagon icon on entity
+    inventorySize = 2500
   end
+  
+  local inventory = {
+    type = "flying-text",
+    name = "ltn-inventories["..wagon.name.."]",
+    time_to_live = 0,
+    speed = 1,    
+    order = tostring(inventorySize)
+  }
+  
   data:extend({signal})
+  data:extend({inventory})
   i=i+1
 end
 log("[LTN] "..i.." wagons added")
