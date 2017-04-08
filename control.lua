@@ -169,6 +169,9 @@ function initialize()
       -- update to 0.10.0
       global.LogisticTrainStops[stopID].trainLimit = global.LogisticTrainStops[stopID].trainLimit or 0
 
+      -- update to 0.10.2
+      global.LogisticTrainStops[stopID].parkedTrainFacesStop = global.LogisticTrainStops[stopID].parkedTrainFacesStop or true
+
       UpdateStopOutput(stop) --make sure output is set
       --UpdateStop(stopID)
     end
@@ -368,7 +371,7 @@ function ProcessRequest(request)
     end
 
      -- get providers ordered by priority
-    local providers = GetStations(requestStation.entity.force, item, minDelivery)
+    local providers = GetProviders(requestStation.entity.force, item, minDelivery)
     if not providers or #providers < 1 then
       if log_level >= 2 then printmsg("Notice: no station supplying "..item.." found", true) end
       goto skipRequestItem
@@ -543,7 +546,7 @@ function ProcessRequest(request)
 end
 
 -- return all stations providing item, ordered by priority and item-count
-function GetStations(force, item, min_count)
+function GetProviders(force, item, min_count)
   local stations = {}
   local providers = global.Dispatcher.Provided[item]
   if not providers then
@@ -556,7 +559,7 @@ function GetStations(force, item, min_count)
     if stop and stop.entity.force.name == force.name then
       local activeDeliveryCount = #stop.activeDeliveries
       if count > 0 and (use_Best_Effort or stop.ignoreMinDeliverySize or count >= min_count) and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
-        if log_level >= 4 then printmsg("(GetStations): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars, false) end
+        if log_level >= 4 then printmsg("(GetProviders): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars, false) end
         stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars}
       end
     end
@@ -710,22 +713,27 @@ function CreateStop(entity)
     return
   end
 
+  local posIn, posOut, rot
   --log("Stop created at "..entity.position.x.."/"..entity.position.y..", orientation "..entity.direction)
   if entity.direction == 0 then --SN
     posIn = {entity.position.x, entity.position.y-1}
     posOut = {entity.position.x-1, entity.position.y-1}
+    --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y-3},{entity.position.x-1, entity.position.y+3}} }
     rot = 0
-  elseif entity.direction == 2 then --EW
+  elseif entity.direction == 2 then --WE
     posIn = {entity.position.x, entity.position.y}
     posOut = {entity.position.x, entity.position.y-1}
+    --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y-3},{entity.position.x+3, entity.position.y-1}} }
     rot = 2
   elseif entity.direction == 4 then --NS
     posIn = {entity.position.x-1, entity.position.y}
     posOut = {entity.position.x, entity.position.y}
+    --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x+1, entity.position.y-3},{entity.position.x+3, entity.position.y+3}} }
     rot = 4
-  elseif entity.direction == 6 then --WE
+  elseif entity.direction == 6 then --EW
     posIn = {entity.position.x-1, entity.position.y-1}
     posOut = {entity.position.x-1, entity.position.y}
+    --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y+1},{entity.position.x+3, entity.position.y+3}} }
     rot = 6
   else --invalid orientation
     if log_level >= 1 then printmsg("Error(CreateStop): invalid Train Stop Orientation "..entity.direction, false) end
@@ -855,34 +863,76 @@ function UpdateStopParkedTrain(train)
   end
 
   if train.valid and train.manual_mode == false and train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
-    for stopID, stop in pairs(global.LogisticTrainStops) do
-      if stopID == train.station.unit_number then -- add train to station
-        stop.parkedTrain = train
-        --global.LogisticTrainStops[stopID].parkedTrain = event.train
-        stop.parkedTrainID = trainID
-        --global.LogisticTrainStops[stopID].parkedTrainID = trainID
-        if log_level >= 3 then printmsg("Train "..trainName.." arrived at ".. stop.entity.backer_name, false) end
+    local stopID = train.station.unit_number
+    local stop = global.LogisticTrainStops[stopID]
+    if stop then
+      stop.parkedTrain = train
+      --global.LogisticTrainStops[stopID].parkedTrain = event.train
+      stop.parkedTrainID = trainID
+      --global.LogisticTrainStops[stopID].parkedTrainID = trainID
+      if log_level >= 3 then printmsg("Train "..trainName.." arrived at ".. stop.entity.backer_name, false) end
 
-        if stop.isDepot then
-          -- remove delivery
-          removeDelivery(trainID)
-
-          -- make train available for new deliveries
-          global.Dispatcher.availableTrains[trainID] = train
-
-          -- reset schedule
-          local schedule = {current = 1, records = {}}
-          schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "inactivity", 300)
-          train.schedule = schedule
-          if stop.errorCode == 0 then
-            setLamp(stopID, "blue")
-          end
-        end
-
-        UpdateStopOutput(stop)
-        return
+      -- log("Front_Rail: "..train.front_rail.unit_number.."("..train.front_rail.position.x..","..train.front_rail.position.y..") direction:"..train.rail_direction_from_front_rail)
+      -- log("Back_Rail: "..train.back_rail.unit_number.."("..train.back_rail.position.x..","..train.back_rail.position.y..") direction:"..train.rail_direction_from_back_rail)
+      --log("Front Stock: "..train.front_stock.unit_number.."("..train.front_stock.position.x..","..train.front_stock.position.y..")")
+      --log("Back Stock: "..train.back_stock.unit_number.."("..train.back_stock.position.x..","..train.back_stock.position.y..")")
+      local frontDistance = GetDistance(train.front_stock.position, train.station.position)
+      local backDistance = GetDistance(train.back_stock.position, train.station.position)
+      log("Front Stock Distance: "..frontDistance..", Back Stock Distance: "..backDistance)
+      if frontDistance > backDistance then
+        stop.parkedTrainFacesStop = false
+      else
+        stop.parkedTrainFacesStop = true
       end
+
+      if stop.isDepot then
+        -- remove delivery
+        removeDelivery(trainID)
+
+        -- make train available for new deliveries
+        global.Dispatcher.availableTrains[trainID] = train
+
+        -- reset schedule
+        local schedule = {current = 1, records = {}}
+        schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "inactivity", 300)
+        train.schedule = schedule
+        if stop.errorCode == 0 then
+          setLamp(stopID, "blue")
+        end
+      end
+
+      UpdateStopOutput(stop)
+      return
     end
+
+    -- for stopID, stop in pairs(global.LogisticTrainStops) do
+      -- if stopID == train.station.unit_number then -- add train to station
+        -- stop.parkedTrain = train
+        -- --global.LogisticTrainStops[stopID].parkedTrain = event.train
+        -- stop.parkedTrainID = trainID
+        -- --global.LogisticTrainStops[stopID].parkedTrainID = trainID
+        -- if log_level >= 3 then printmsg("Train "..trainName.." arrived at ".. stop.entity.backer_name, false) end
+
+        -- if stop.isDepot then
+          -- -- remove delivery
+          -- removeDelivery(trainID)
+
+          -- -- make train available for new deliveries
+          -- global.Dispatcher.availableTrains[trainID] = train
+
+          -- -- reset schedule
+          -- local schedule = {current = 1, records = {}}
+          -- schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "inactivity", 300)
+          -- train.schedule = schedule
+          -- if stop.errorCode == 0 then
+            -- setLamp(stopID, "blue")
+          -- end
+        -- end
+
+        -- UpdateStopOutput(stop)
+        -- return
+      -- end
+    -- end
   else --remove train from station
     for stopID, stop in pairs(global.LogisticTrainStops) do
       if stop.parkedTrainID == trainID then
@@ -1228,14 +1278,28 @@ function UpdateStopOutput(trainStop)
     -- get train composition
     local carriages = trainStop.parkedTrain.carriages
 		local carriagesDec = {}
-		for i=1, #carriages do
-			local name = carriages[i].name
-			if carriagesDec[name] then
-				carriagesDec[name] = carriagesDec[name] + 2^(i-1)
-			else
-				carriagesDec[name] = 2^(i-1)
-			end
-		end
+		if trainStop.parkedTrainFacesStop then --train faces forwards >> iterate normal
+      for i=1, #carriages do
+        local name = carriages[i].name
+        if carriagesDec[name] then
+          carriagesDec[name] = carriagesDec[name] + 2^(i-1)
+        else
+          carriagesDec[name] = 2^(i-1)
+        end
+      end
+    else --train faces backwards >> iterate backwards
+      n = 0
+      for i=#carriages, 1, -1 do
+        local name = carriages[i].name
+        if carriagesDec[name] then
+          carriagesDec[name] = carriagesDec[name] + 2^n
+        else
+          carriagesDec[name] = 2^n
+        end
+        n=n+1
+      end
+    end
+
     for k ,v in pairs (carriagesDec) do
       table.insert(signals, {index = index, signal = {type="virtual",name="LTN-"..k}, count = v })
       index = index+1
@@ -1295,4 +1359,9 @@ function GetTrainName(train)
   return loco and loco.backer_name
 end
 
-
+--local square = math.sqrt
+function GetDistance(a, b)
+  local x, y = a.x-b.x, a.y-b.y
+  --return square(x*x+y*y) -- sqrt shouldn't be necessary for comparing distances
+  return (x*x+y*y)
+end

@@ -1,3 +1,6 @@
+0.10.2
+- train composition signals factor in train direction, so the lowest bit always represents the entity next to the stop
+
 0.10.1
 - increased performance by reading wagons inventory size from data.raw (thanks to folk)
 
