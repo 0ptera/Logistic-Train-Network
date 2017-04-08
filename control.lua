@@ -857,7 +857,7 @@ function UpdateStopParkedTrain(train)
   local trainName = GetTrainName(train)
 
   if not trainID then --train has no locomotive
-    if log_level >= 1 then printmsg("Error (UpdateStopParkedTrain): couldn't assign train id", false) end
+    if log_level >= 4 then printmsg("Notice (UpdateStopParkedTrain): couldn't assign train id", false) end
     --TODO: Update all stops?
     return
   end
@@ -872,13 +872,9 @@ function UpdateStopParkedTrain(train)
       --global.LogisticTrainStops[stopID].parkedTrainID = trainID
       if log_level >= 3 then printmsg("Train "..trainName.." arrived at ".. stop.entity.backer_name, false) end
 
-      -- log("Front_Rail: "..train.front_rail.unit_number.."("..train.front_rail.position.x..","..train.front_rail.position.y..") direction:"..train.rail_direction_from_front_rail)
-      -- log("Back_Rail: "..train.back_rail.unit_number.."("..train.back_rail.position.x..","..train.back_rail.position.y..") direction:"..train.rail_direction_from_back_rail)
-      --log("Front Stock: "..train.front_stock.unit_number.."("..train.front_stock.position.x..","..train.front_stock.position.y..")")
-      --log("Back Stock: "..train.back_stock.unit_number.."("..train.back_stock.position.x..","..train.back_stock.position.y..")")
       local frontDistance = GetDistance(train.front_stock.position, train.station.position)
       local backDistance = GetDistance(train.back_stock.position, train.station.position)
-      log("Front Stock Distance: "..frontDistance..", Back Stock Distance: "..backDistance)
+      if log_level >= 4 then printmsg("Front Stock Distance: "..frontDistance..", Back Stock Distance: "..backDistance, false) end
       if frontDistance > backDistance then
         stop.parkedTrainFacesStop = false
       else
@@ -905,34 +901,6 @@ function UpdateStopParkedTrain(train)
       return
     end
 
-    -- for stopID, stop in pairs(global.LogisticTrainStops) do
-      -- if stopID == train.station.unit_number then -- add train to station
-        -- stop.parkedTrain = train
-        -- --global.LogisticTrainStops[stopID].parkedTrain = event.train
-        -- stop.parkedTrainID = trainID
-        -- --global.LogisticTrainStops[stopID].parkedTrainID = trainID
-        -- if log_level >= 3 then printmsg("Train "..trainName.." arrived at ".. stop.entity.backer_name, false) end
-
-        -- if stop.isDepot then
-          -- -- remove delivery
-          -- removeDelivery(trainID)
-
-          -- -- make train available for new deliveries
-          -- global.Dispatcher.availableTrains[trainID] = train
-
-          -- -- reset schedule
-          -- local schedule = {current = 1, records = {}}
-          -- schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "inactivity", 300)
-          -- train.schedule = schedule
-          -- if stop.errorCode == 0 then
-            -- setLamp(stopID, "blue")
-          -- end
-        -- end
-
-        -- UpdateStopOutput(stop)
-        -- return
-      -- end
-    -- end
   else --remove train from station
     for stopID, stop in pairs(global.LogisticTrainStops) do
       if stop.parkedTrainID == trainID then
