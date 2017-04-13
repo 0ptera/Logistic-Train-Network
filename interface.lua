@@ -42,23 +42,33 @@ remote.add_interface("LTN",
 )
 
 function printmsg(msg, useFilter)
-  if useFilter == nil then
-    useFilter = true
+  local msgKey = ""
+  if type(msg) == "table" then
+    for k, v in pairs(msg) do
+      if type(v) == "table" then
+        msgKey = msgKey..v[1]..", "
+      else
+        msgKey = msgKey..v..", "
+      end
+    end
+  else
+    msgKey = msg
   end
+
   local tick = game.tick
 
   -- print message
-  if global.messageBuffer[msg] == nil or global.messageBuffer[msg].filter == false then
+  if global.messageBuffer[msgKey] == nil or not useFilter then
     if log_output == "console" or log_output == "both" then
-      game.print("[LTN] " .. msg)
+      game.print(msg)
     end
     if log_output == "log" or log_output == "both" then
-      log("[LTN] " .. msg)
+      log("[LTN] " .. msgKey)
     end
   end
 
   -- store message in buffer
-  global.messageBuffer[msg] = global.messageBuffer[msg] or {tick=tick, filter=useFilter}
+  global.messageBuffer[msgKey] = global.messageBuffer[msgKey] or {tick=tick}
 end
 
 return printmsg, log_output, log_level
