@@ -53,6 +53,13 @@ data:extend({
     name = "ltn-no-min-delivery-size",
     icon = "__LogisticTrainNetwork__/graphics/icons/no-min-shipment-size.png",
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-db[ltn-depot]"
+    order = "z[LTN-signal]-db[ltn-no-min-delivery-size]"
+  },
+  {
+    type = "virtual-signal",
+    name = "ltn-locked-slots",
+    icon = "__LogisticTrainNetwork__/graphics/icons/locked-slot.png",
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-dc[ltn-locked-slots]"
   }
 })

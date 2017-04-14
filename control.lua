@@ -10,7 +10,28 @@ local MAXTRAINS = "ltn-max-trains"
 local MINDELIVERYSIZE = "min-delivery-size"
 local PRIORITY = "stop-priority"
 local IGNOREMINDELIVERYSIZE = "ltn-no-min-delivery-size"
+local LOCKEDSLOTS = "ltn-locked-slots"
 local ISDEPOT = "ltn-depot"
+
+local validSignals = {
+  [MINTRAINLENGTH] = true,
+  [MAXTRAINLENGTH] = true,
+  [MAXTRAINS] = true,
+  [MINDELIVERYSIZE] = true,
+  [PRIORITY] = true,
+  [IGNOREMINDELIVERYSIZE] = true,
+  [LOCKEDSLOTS] = true,
+  [ISDEPOT] = true,
+  ["signal-red"] = true,
+  ["signal-green"] = true,
+  ["signal-blue"] = true,
+  ["signal-yellow"] = true,
+  ["signal-pink"] = true,
+  ["signal-cyan"] = true,
+  ["signal-white"] = true,
+  ["signal-grey"] = true,
+  ["signal-black"] = true
+}
 
 local ErrorCodes = {
   "red",    -- circuit/signal error
@@ -171,6 +192,7 @@ function initialize()
       -- update to 0.10.2
       global.LogisticTrainStops[stopID].trainLimit = global.LogisticTrainStops[stopID].trainLimit or 0
       global.LogisticTrainStops[stopID].parkedTrainFacesStop = global.LogisticTrainStops[stopID].parkedTrainFacesStop or true
+      global.LogisticTrainStops[stopID].lockedSlots = global.LogisticTrainStops[stopID].lockedSlots or 0
 
       UpdateStopOutput(stop) --make sure output is set
       --UpdateStop(stopID)
@@ -434,7 +456,7 @@ function ProcessRequest(request)
     end
     -- create new order for fluids and different provider-requester pairs
     if insertnew then
-      orders[#orders+1] = {toID=toID, fromID=fromID, minDelivery=minDelivery, minTraincars=minTraincars, maxTraincars=maxTraincars, shipmentCount=1, totalStacks=stacks, loadingList={loadingList} }
+      orders[#orders+1] = {toID=toID, fromID=fromID, minDelivery=minDelivery, minTraincars=minTraincars, maxTraincars=maxTraincars, totalStacks=stacks, lockedSlots=providerStation.lockedSlots, loadingList={loadingList} }
       if log_level >= 4 then  printmsg("added new order "..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars, false) end
     end
 
@@ -446,6 +468,7 @@ function ProcessRequest(request)
   for orderIndex=1, #orders do
     local loadingList = orders[orderIndex].loadingList
     local totalStacks = orders[orderIndex].totalStacks
+    local lockedSlots = orders[orderIndex].lockedSlots
     local minTraincars = orders[orderIndex].minTraincars
     local maxTraincars = orders[orderIndex].maxTraincars
 
@@ -460,14 +483,14 @@ function ProcessRequest(request)
     local from = fromStop.entity.backer_name
 
     -- find train
-    local train = GetFreeTrain(fromStop.entity, loadingList[1].type, totalStacks, minTraincars, maxTraincars)
+    local train = GetFreeTrain(fromStop.entity, minTraincars, maxTraincars, loadingList[1].type, totalStacks, lockedSlots)
     if not train then
-      if log_level >= 3 then 
-        if #loadingList == 1 then 
+      if log_level >= 3 then
+        if #loadingList == 1 then
           printmsg({"ltn-message.no-train-found", minTraincars, maxTraincars, loadingList[1].localname}, true)
         else
           printmsg({"ltn-message.no-train-found-merged", minTraincars, maxTraincars, totalStacks}, true)
-        end        
+        end
       end
       goto skipOrder
     end
@@ -561,8 +584,8 @@ function GetProviders(force, item, min_count)
     if stop and stop.entity.force.name == force.name then
       local activeDeliveryCount = #stop.activeDeliveries
       if count > 0 and (use_Best_Effort or stop.ignoreMinDeliverySize or count >= min_count) and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
-        if log_level >= 4 then printmsg("(GetProviders): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars, false) end
-        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars}
+        if log_level >= 4 then printmsg("(GetProviders): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars.." locked Slots: "..stop.lockedSlots, false) end
+        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
       end
     end
   end
@@ -585,7 +608,7 @@ end
 -- return available train with smallest suitable inventory or largest available inventory
 -- if minTraincars is set, number of locos + wagons has to be bigger
 -- if maxTraincars is set, number of locos + wagons has to be smaller
-function GetFreeTrain(nextStop, type, size, minTraincars, maxTraincars)
+function GetFreeTrain(nextStop, minTraincars, maxTraincars, type, size, reserved)
   local train = nil
   if minTraincars == nil or minTraincars < 0 then minTraincars = 0 end
   if maxTraincars == nil or maxTraincars < 0 then maxTraincars = 0 end
@@ -599,7 +622,7 @@ function GetFreeTrain(nextStop, type, size, minTraincars, maxTraincars)
         local inventorySize = 0
         if (minTraincars == 0 or #DispTrain.carriages >= minTraincars) and (maxTraincars == 0 or #DispTrain.carriages <= maxTraincars) then -- train length fits
           -- get total inventory of train for requested item type
-          inventorySize = GetTrainInventorySize(DispTrain, type)
+          inventorySize = GetTrainInventorySize(DispTrain, type, reserved)
           if inventorySize >= size then
             -- train can be used for delivery
             if inventorySize <= smallestInventory or smallestInventory == 0 then
@@ -643,7 +666,7 @@ function getInventorySize(name)
    return 0
 end
 
-function GetTrainInventorySize(train, type)
+function GetTrainInventorySize(train, type, reserved)
   local inventorySize = 0
   local fluidCapacity = 0
   if not train.valid then
@@ -656,7 +679,7 @@ function GetTrainInventorySize(train, type)
     if wagon.name == "rail-tanker" then
       fluidCapacity = fluidCapacity + capacity
     else
-      inventorySize = inventorySize + capacity
+      inventorySize = inventorySize + capacity - reserved
     end
   end
   if type == "fluid" then
@@ -985,6 +1008,18 @@ function UpdateStopParkedTrain(train)
   end
 end
 
+local colorSignals = { -- lookup table for color signals
+  ["virtual,signal-red"] = true,
+  ["virtual,signal-green"] = true,
+  ["virtual,signal-blue"] = true,
+  ["virtual,signal-yellow"] = true,
+  ["virtual,signal-pink"] = true,
+  ["virtual,signal-cyan"] = true,
+  ["virtual,signal-white"] = true,
+  ["virtual,signal-grey"] = true,
+  ["virtual,signal-black"] = true
+}
+
 -- update stop input signals
 function UpdateStop(stopID)
   local stop = global.LogisticTrainStops[stopID]
@@ -1008,18 +1043,6 @@ function UpdateStop(stopID)
     return
   end
 
-  local colorSignals = { -- lookup table for color signals
-    ["virtual,signal-red"] = true,
-    ["virtual,signal-green"] = true,
-    ["virtual,signal-blue"] = true,
-    ["virtual,signal-yellow"] = true,
-    ["virtual,signal-pink"] = true,
-    ["virtual,signal-cyan"] = true,
-    ["virtual,signal-white"] = true,
-    ["virtual,signal-grey"] = true,
-    ["virtual,signal-black"] = true
-  }
-
   -- read configuration signals and remove them from the signal list (should leave only item and fluid signal types)
   local isDepot = circuitValues["virtual,"..ISDEPOT] or 0
   circuitValues["virtual,"..ISDEPOT] = nil
@@ -1035,7 +1058,8 @@ function UpdateStop(stopID)
   circuitValues["virtual,"..PRIORITY] = nil
   local ignoreMinDeliverySize = circuitValues["virtual,"..IGNOREMINDELIVERYSIZE] or 0
   circuitValues["virtual,"..IGNOREMINDELIVERYSIZE] = nil
-
+  local lockedSlots = circuitValues["virtual,"..LOCKEDSLOTS] or 0
+  circuitValues["virtual,"..LOCKEDSLOTS] = nil
   -- check if it's a depot
   if isDepot > 0 then
     stop.isDepot = true
@@ -1186,6 +1210,7 @@ function UpdateStop(stopID)
       else
         global.LogisticTrainStops[stopID].ignoreMinDeliverySize = false
       end
+      global.LogisticTrainStops[stopID].lockedSlots = lockedSlots
 
       -- create Requests {stopID, age, itemlist={[item], count}}
       global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[stopID], stopID = stopID, itemlist = requestItems}
@@ -1206,24 +1231,6 @@ function UpdateStop(stopID)
 
 end
 
-local validSignals = {
-  [ISDEPOT] = true,
-  [MINTRAINLENGTH] = true,
-  [MAXTRAINLENGTH] = true,
-  [MAXTRAINS] = true,
-  [MINDELIVERYSIZE] = true,
-  [PRIORITY] = true,
-  [IGNOREMINDELIVERYSIZE] = true,
-  ["signal-red"] = true,
-  ["signal-green"] = true,
-  ["signal-blue"] = true,
-  ["signal-yellow"] = true,
-  ["signal-pink"] = true,
-  ["signal-cyan"] = true,
-  ["signal-white"] = true,
-  ["signal-grey"] = true,
-  ["signal-black"] = true
-}
 function GetCircuitValues(entity)
   local greenWire = entity.get_circuit_network(defines.wire_type.green)
   local redWire =  entity.get_circuit_network(defines.wire_type.red)

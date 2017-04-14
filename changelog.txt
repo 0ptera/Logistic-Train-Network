@@ -2,6 +2,7 @@
 - Dispatcher uses linear distance between depot and provider when choosing between equally valid trains
 - localized console Messages for log levels 1, 2 and 3
 - localized Items & Fluids in Messages (thanks to MagmaMcFry)
+- added signal "Locked Slots per Wagon"
 
 0.10.2
 - train composition signals factor in train direction, so the lowest bit always represents the entity next to the stop
