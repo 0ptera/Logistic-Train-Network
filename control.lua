@@ -41,6 +41,7 @@ local StopIDList = {} -- stopIDs list for on_tick updates
 
 local match = string.match
 local ceil = math.ceil
+local sort = table.sort
 
 ---- Events ----
 
@@ -334,7 +335,6 @@ function ticker(event)
     global.Dispatcher.RequestAge = newRequestAge
 
     -- sort requests by age
-    local sort = table.sort
     sort(global.Dispatcher.Requests, function(a, b)
         return a.age < b.age
       end)
@@ -591,7 +591,6 @@ function GetProviders(force, item, min_count)
   end
   end
   -- sort by priority and count
-  local sort = table.sort
   sort(stations, function(a, b)
       if a.activeDeliveryCount ~= b.activeDeliveryCount then --sort by #deliveries 1st
         return a.activeDeliveryCount < b.activeDeliveryCount
@@ -691,12 +690,12 @@ end
 function GetStationDistance(stationA, stationB)
   local stationPair = stationA.unit_number..","..stationB.unit_number
   if global.StopDistances[stationPair] then
-    log(stationPair.." found, distance: "..global.StopDistances[stationPair])
+    --log(stationPair.." found, distance: "..global.StopDistances[stationPair])
     return global.StopDistances[stationPair]
   else
     local dist = GetDistance(stationA.position, stationB.position)
     global.StopDistances[stationPair] = dist
-    log(stationPair.." calculated, distance: "..dist)
+    --log(stationPair.." calculated, distance: "..dist)
     return dist
   end
 end
