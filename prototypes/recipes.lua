@@ -5,13 +5,6 @@ ltn_stop.ingredients = {
 }
 ltn_stop.enabled = false
 
-local ltn_radar = copyPrototype("recipe", "radar", "ltn-control-radar")
-ltn_radar.ingredients = {
-  {"radar", 1},
-  {"advanced-circuit", 2}
-}
-ltn_radar.enabled = false
-
 data:extend({
   ltn_stop
 })

@@ -1,11 +1,11 @@
 {
   "name": "LogisticTrainNetwork",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "title": "Logistic Train Network",
   "author": "Optera",
   "contact": "https://forums.factorio.com/memberlist.php?mode=viewprofile&u=21729",
-  "homepage": "https://forums.factorio.com/viewtopic.php?f=97&t=36976",
-  "description": "Don't waste train capacity with manual schedules. Build a fully automated train based logistic network.",
+  "homepage": "https://forums.factorio.com/viewtopic.php?f=94&t=36976",
+  "description": "Adds new train stops forming a highly configurable logistic network.",
   "factorio_version": "0.14",
 	"dependencies": ["?RailTanker >= 1.4.0", "?creative-mode >= 0.2.8"]
 }

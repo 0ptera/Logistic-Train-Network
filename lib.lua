@@ -11,6 +11,13 @@ function copyPrototype(type, name, newName)
   if p.result then
     p.result = newName
   end
+  if p.results then
+		for _,result in pairs(p.results) do
+			if result.name == name then
+				result.name = newName
+			end
+		end
+	end
   return p
 end
 
