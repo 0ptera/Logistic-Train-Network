@@ -1,4 +1,4 @@
-1.0.2
+1.1.0
 - added finish_loading to config: prevents trains from leaving while inserters are working by adding 2s inactivity
 
 1.0.1
