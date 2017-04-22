@@ -1,3 +1,9 @@
+1.0.2
+- added finish_loading to config: prevents trains from leaving while inserters are working by adding 2s inactivity
+
+1.0.1
+- fixed possible errors with mods changing the base train stop recipe
+
 1.0.0
 - Dispatcher uses linear distance between depot and provider when choosing between equally valid trains
 - localized console Messages for log levels 1, 2 and 3

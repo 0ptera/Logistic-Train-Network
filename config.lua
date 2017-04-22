@@ -18,14 +18,18 @@ dispatcher_update_interval = 60
 -- default 1000
 min_delivery_size = 1000
 
--- duration in ticks deliveries can take before assuming the train was lost
--- default 18000 = 5min
-delivery_timeout = 18000
+-- Prevent trains from leaving while inserters are working by adding 2s inactivity to all (un-)loading stations.
+-- default true
+finish_loading = true
 
--- duration in ticks of inactivity before leaving (un-)loading stations
+-- duration in ticks of inactivity before leaving (un-)loading stations (timeout)
 -- default 7200 = 2min
 -- off 0: trains will wait forever to (un-)load
 stop_timeout = 7200
+
+-- duration in ticks deliveries can take before assuming the train was lost
+-- default 18000 = 5min
+delivery_timeout = 18000
 
 -- when false provider stations holding less than request stations min_delivery_size are ignored
 -- default false
