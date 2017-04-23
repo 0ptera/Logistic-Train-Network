@@ -730,9 +730,11 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
       record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", condition = cond }
     end
 
+    --[[
     if finish_loading then -- let inserters finish
       record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "and", ticks = 120 }
     end
+    --]]
 
     if stop_timeout > 0 then -- if stop_timeout is set add inactivity condition
       record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "or", ticks = stop_timeout } -- send stuck trains away

@@ -25,7 +25,7 @@ finish_loading = true
 -- duration in ticks of inactivity before leaving (un-)loading stations (timeout)
 -- default 7200 = 2min
 -- off 0: trains will wait forever to (un-)load
-stop_timeout = 7200
+stop_timeout = 120
 
 -- duration in ticks deliveries can take before assuming the train was lost
 -- default 18000 = 5min
