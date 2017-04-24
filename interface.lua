@@ -47,7 +47,7 @@ function printmsg(msg, useFilter)
     for k, v in pairs(msg) do
       if type(v) == "table" then
         msgKey = msgKey..v[1]..", "
-      else
+      elseif type(v) == "string" then
         msgKey = msgKey..v..", "
       end
     end

@@ -2,6 +2,8 @@
 - deconstruction of broken stops properly removes stop and surrounding I/O entities
 - automatically remove orphaned lamp control entities
 - speed up loading by skipping parts of initialization according to old_version
+- messages differing only in item count are treated as the same message by the message filter
+- decreased delivery-removed-timeout and delivery-removed-train-invalid from loglevel 2 to 1
 
 1.1.0
 - added finish_loading to config: prevents trains from leaving while inserters are working by adding 2s inactivity

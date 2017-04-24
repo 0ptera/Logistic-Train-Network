@@ -71,11 +71,11 @@ script.on_init(function()
     log("[LTN] Rail Tanker not found, fluid deliveries disabled.")
   end
 
-  -- format version string to "0000.0000.0000"
+  -- format version string to "00.00.00"
   local oldVersion, newVersion = nil
   local newVersionString = game.active_mods[MOD_NAME]
   if newVersionString then
-    newVersion = string.format("%04d.%04d.%04d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
+    newVersion = string.format("%02d.%02d.%02d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
   end
 
   initialize(oldVersion, newVersion)
@@ -94,15 +94,15 @@ script.on_configuration_changed(function(data)
   end
 
   if data and data.mod_changes[MOD_NAME] then
-    -- format version string to "0000.0000.0000"
+    -- format version string to "00.00.00"
     local oldVersion, newVersion = nil
     local oldVersionString = data.mod_changes[MOD_NAME].old_version
     if oldVersionString then
-      oldVersion = string.format("%04d.%04d.%04d", string.match(oldVersionString, "(%d+).(%d+).(%d+)"))
+      oldVersion = string.format("%02d.%02d.%02d", string.match(oldVersionString, "(%d+).(%d+).(%d+)"))
     end
     local newVersionString = data.mod_changes[MOD_NAME].new_version
     if newVersionString then
-      newVersion = string.format("%04d.%04d.%04d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
+      newVersion = string.format("%02d.%02d.%02d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
     end
 
     initialize(oldVersion, newVersion)
@@ -135,7 +135,7 @@ function initialize(oldVersion, newVersion)
   global.Dispatcher.RequestAge = global.Dispatcher.RequestAge or {}
 
   -- clean obsolete global
-  if oldVersion and oldVersion < "0001.0000.0000" then
+  if oldVersion and oldVersion < "01.00.00" then
     global.Dispatcher.Requested = nil
     global.Dispatcher.Orders = nil
     global.Dispatcher.OrderAge = nil
@@ -143,7 +143,7 @@ function initialize(oldVersion, newVersion)
   end
 
   -- update to 0.4
-  if oldVersion and oldVersion < "0000.0004.0000" then
+  if oldVersion and oldVersion < "00.04.00" then
     log("[LTN] Updating Dispatcher.Deliveries to 0.4.0.")
     for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
       if delivery.shipment == nil then
@@ -207,7 +207,7 @@ function initialize(oldVersion, newVersion)
   end
 
   -- update to 1.1.1 remove orphaned lamp controls
-  if oldVersion and oldVersion < "0001.0001.0001" then
+  if oldVersion and oldVersion < "01.01.01" then
     local lcDeleted = 0
     for _, surface in pairs(game.surfaces) do
       local lcEntities = surface.find_entities_filtered{name="logistic-train-stop-lamp-control"}
@@ -335,10 +335,10 @@ function ticker(event)
     --clean up deliveries in case train was destroyed or removed
     for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
       if not delivery.train or not delivery.train.valid then
-        if log_level >= 2 then printmsg({"ltn-message.delivery-removed-train-invalid", delivery.from, delivery.to}) end
+        if log_level >= 1 then printmsg({"ltn-message.delivery-removed-train-invalid", delivery.from, delivery.to}) end
         removeDelivery(trainID)
       elseif tick-delivery.started > delivery_timeout then
-        if log_level >= 2 then printmsg({"ltn-message.delivery-removed-timeout", delivery.from, delivery.to, tick-delivery.started}) end
+        if log_level >= 1 then printmsg({"ltn-message.delivery-removed-timeout", delivery.from, delivery.to, tick-delivery.started}) end
         removeDelivery(trainID)
       end
     end
@@ -427,7 +427,7 @@ function ProcessRequest(request)
 
     -- only one delivery is created so use only the best provider
     local providerStation = providers[1]
-    if log_level >= 3 then printmsg({"ltn-message.provider-found", providerStation.entity.backer_name, tostring(providerStation.priority), tostring(providerStation.activeDeliveryCount), tostring(providerStation.count), localname}, true)
+    if log_level >= 3 then printmsg({"ltn-message.provider-found", providerStation.entity.backer_name, tostring(providerStation.priority), tostring(providerStation.activeDeliveryCount), providerStation.count, localname}, true)
     elseif log_level >= 4 then
       for n, provider in pairs (providers) do
         printmsg("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(provider.activeDeliveryCount).." deliveries, "..tostring(provider.count).." "..localname.." available.")
@@ -506,14 +506,14 @@ function ProcessRequest(request)
     if not train then
       if log_level >= 3 then
         if #loadingList == 1 then
-          printmsg({"ltn-message.no-train-found", minTraincars, maxTraincars, loadingList[1].localname}, true)
+          printmsg({"ltn-message.no-train-found", tostring(minTraincars), tostring(maxTraincars), loadingList[1].localname}, true)
         else
-          printmsg({"ltn-message.no-train-found-merged", minTraincars, maxTraincars, totalStacks}, true)
+          printmsg({"ltn-message.no-train-found-merged", tostring(minTraincars), tostring(maxTraincars), tostring(totalStacks)}, true)
         end
       end
       goto skipOrder
     end
-    if log_level >= 3 then printmsg({"ltn-message.train-found", train.inventorySize, totalStacks}) end
+    if log_level >= 3 then printmsg({"ltn-message.train-found", tostring(train.inventorySize), tostring(totalStacks)}) end
 
     -- recalculate delivery amount to fit in train
     if train.inventorySize < totalStacks then
@@ -870,7 +870,7 @@ function CreateStop(entity)
     }
   end
   output.operable = false -- disable gui
-  output.minable = true
+  output.minable = false
   output.destructible = false -- don't bother checking if alive
 
   global.LogisticTrainStops[entity.unit_number] = {
@@ -928,7 +928,7 @@ function RemoveStop(entity)
     local ghosts = entity.surface.find_entities({{entity.position.x-1.1, entity.position.y-1.1},{entity.position.x+1.1, entity.position.y+1.1}} )
     for _,ghost in pairs (ghosts) do
       if ghost.name == "logistic-train-stop-input" or ghost.name == "logistic-train-stop-output" or ghost.name == "logistic-train-stop-lamp-control" then
-        printmsg("removing broken "..ghost.name.." at "..ghost.position.x..", "..ghost.position.y)
+        --printmsg("removing broken "..ghost.name.." at "..ghost.position.x..", "..ghost.position.y)
         ghost.destroy()
       end
     end
@@ -1060,14 +1060,12 @@ function UpdateStop(stopID)
 
   -- remove invalid stops
   if not stop or not (stop.entity and stop.entity.valid) or not (stop.input and stop.input.valid) or not (stop.output and stop.output.valid) or not (stop.lampControl and stop.lampControl.valid) then
-    if log_level >= 1 then printmsg("(UpdateStop) Invalid stop: "..stopID) end
-
+    if log_level >= 1 then printmsg({"ltn-message.error-invalid-stop", stopID}) end
     for i=#StopIDList, 0, -1 do
       if StopIDList[i] == stopID then
         table.remove(StopIDList, i)
       end
     end
-
     return
   end
 
