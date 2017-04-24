@@ -71,16 +71,16 @@ script.on_init(function()
     log("[LTN] Rail Tanker not found, fluid deliveries disabled.")
   end
 
-  -- local oldVersion = {}
-  local newVersionString = game.active_mods[MOD_NAME] or ""
-  -- local newVersion = {}
-  -- for w in (newVersionString .. "."):gmatch("([^.]*).") do
-    -- table.insert(newVersion, w)
-  -- end
+  -- format version string to "0000.0000.0000"
+  local oldVersion, newVersion = nil
+  local newVersionString = game.active_mods[MOD_NAME]
+  if newVersionString then
+    newVersion = string.format("%04d.%04d.%04d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
+  end
 
-  initialize()
+  initialize(oldVersion, newVersion)
 
-  log("[LTN] on_init: ".. MOD_NAME.." "..newVersionString.." initialized.")
+  log("[LTN] on_init: ".. MOD_NAME.." "..tostring(newVersionString).." initialized.")
 end)
 
 script.on_configuration_changed(function(data)
@@ -94,24 +94,24 @@ script.on_configuration_changed(function(data)
   end
 
   if data and data.mod_changes[MOD_NAME] then
-    local oldVersionString = data.mod_changes[MOD_NAME].old_version or ""
-    -- local oldVersion = {}
-    -- for w in (oldVersionString .. "."):gmatch("([^.]*).") do
-      -- table.insert(oldVersion, w)
-    -- end
-    local newVersionString = data.mod_changes[MOD_NAME].new_version or ""
-    -- local newVersion = {}
-    -- for w in (newVersionString .. "."):gmatch("([^.]*).") do
-      -- table.insert(newVersion, w)
-    -- end
+    -- format version string to "0000.0000.0000"
+    local oldVersion, newVersion = nil
+    local oldVersionString = data.mod_changes[MOD_NAME].old_version
+    if oldVersionString then
+      oldVersion = string.format("%04d.%04d.%04d", string.match(oldVersionString, "(%d+).(%d+).(%d+)"))
+    end
+    local newVersionString = data.mod_changes[MOD_NAME].new_version
+    if newVersionString then
+      newVersion = string.format("%04d.%04d.%04d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
+    end
 
-    initialize()
-
-    log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..newVersionString.." initialized. Previous version: "..oldVersionString)
+    initialize(oldVersion, newVersion)
+    log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..tostring(newVersionString).." initialized. Previous version: "..tostring(oldVersionString))
   end
 end)
 
-function initialize()
+function initialize(oldVersion, newVersion)
+  --log("oldVersion: "..tostring(oldVersion)..", newVersion: "..tostring(newVersion))
   ---- disable instant blueprint in creative mode
   if game.active_mods["creative-mode"] then
     remote.call("creative-mode", "exclude_from_instant_blueprint", "logistic-train-stop-input")
@@ -130,33 +130,36 @@ function initialize()
   global.Dispatcher = global.Dispatcher or {}
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
   global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
-
-  --update to 0.5.0
   global.Dispatcher.Provided = global.Dispatcher.Provided or {}
-
-  -- update to 0.6.0
   global.Dispatcher.Requests = global.Dispatcher.Requests or {}
   global.Dispatcher.RequestAge = global.Dispatcher.RequestAge or {}
 
   -- clean obsolete global
-  global.Dispatcher.Requested = nil
-  global.Dispatcher.Orders = nil
-  global.Dispatcher.OrderAge = nil
-  global.Dispatcher.Storage = nil
+  if oldVersion and oldVersion < "0001.0000.0000" then
+    global.Dispatcher.Requested = nil
+    global.Dispatcher.Orders = nil
+    global.Dispatcher.OrderAge = nil
+    global.Dispatcher.Storage = nil
+  end
 
   -- update to 0.4
-  for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
-    if delivery.shipment == nil then
-      if delivery.item and delivery.count then
-        global.Dispatcher.Deliveries[trainID].shipment = {[delivery.item] = delivery.count}
-      else
-        global.Dispatcher.Deliveries[trainID].shipment = {}
+  if oldVersion and oldVersion < "0000.0004.0000" then
+    log("[LTN] Updating Dispatcher.Deliveries to 0.4.0.")
+    for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
+      if delivery.shipment == nil then
+        if delivery.item and delivery.count then
+          global.Dispatcher.Deliveries[trainID].shipment = {[delivery.item] = delivery.count}
+        else
+          global.Dispatcher.Deliveries[trainID].shipment = {}
+        end
       end
     end
   end
 
   ---- initialize stops
   global.LogisticTrainStops = global.LogisticTrainStops or {}
+  local validLampControls = {}
+
   if next(global.LogisticTrainStops) ~= nil then
     for stopID, stop in pairs (global.LogisticTrainStops) do
       global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or 0
@@ -178,6 +181,8 @@ function initialize()
         global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().use_colors = true
         global.LogisticTrainStops[stopID].input.get_or_create_control_behavior().circuit_condition = {condition = {comparator=">",first_signal={type="virtual",name="signal-anything"}}}
       end
+      -- update to 1.1.1 remove orphaned lamp controls
+      validLampControls[stop.lampControl.unit_number] = true
 
       -- update to 0.9.5
       global.LogisticTrainStops[stopID].activeDeliveries = global.LogisticTrainStops[stopID].activeDeliveries or {}
@@ -201,6 +206,20 @@ function initialize()
     script.on_event(defines.events.on_tick, ticker) --subscribe ticker when train stops exist
   end
 
+  -- update to 1.1.1 remove orphaned lamp controls
+  if oldVersion and oldVersion < "0001.0001.0001" then
+    local lcDeleted = 0
+    for _, surface in pairs(game.surfaces) do
+      local lcEntities = surface.find_entities_filtered{name="logistic-train-stop-lamp-control"}
+      for k, v in pairs(lcEntities) do
+        if not validLampControls[v.unit_number] then
+          v.destroy()
+          lcDeleted = lcDeleted+1
+        end
+      end
+    end
+    log("[LTN] removed "..lcDeleted.. " orphaned lamp control entities.")
+  end
 end
 
 script.on_event(defines.events.on_built_entity, function(event)
@@ -851,7 +870,7 @@ function CreateStop(entity)
     }
   end
   output.operable = false -- disable gui
-  output.minable = false
+  output.minable = true
   output.destructible = false -- don't bother checking if alive
 
   global.LogisticTrainStops[entity.unit_number] = {
@@ -882,11 +901,6 @@ function RemoveStop(entity)
   local stopID = entity.unit_number
   local stop = global.LogisticTrainStops[stopID]
 
-  -- remove available train
-  if stop.isDepot and stop.parkedTrainID then
-    global.Dispatcher.availableTrains[stop.parkedTrainID] = nil
-  end
-
   -- clean lookup tables
   for i=#StopIDList, 0, -1 do
     if StopIDList[i] == stopID then
@@ -899,9 +913,27 @@ function RemoveStop(entity)
     end
   end
 
-  -- destroy entities
-  global.LogisticTrainStops[stopID].input.destroy()
-  global.LogisticTrainStops[stopID].output.destroy()
+  -- remove available train
+  if stop and stop.isDepot and stop.parkedTrainID then
+    global.Dispatcher.availableTrains[stop.parkedTrainID] = nil
+  end
+
+  -- destroy IO entities
+  if stop and stop.input and stop.input.valid and stop.output and stop.output.valid and stop.lampControl and stop.lampControl.valid then
+    stop.input.destroy()
+    stop.output.destroy()
+    stop.lampControl.destroy()
+  else
+    -- destroy broken IO entities
+    local ghosts = entity.surface.find_entities({{entity.position.x-1.1, entity.position.y-1.1},{entity.position.x+1.1, entity.position.y+1.1}} )
+    for _,ghost in pairs (ghosts) do
+      if ghost.name == "logistic-train-stop-input" or ghost.name == "logistic-train-stop-output" or ghost.name == "logistic-train-stop-lamp-control" then
+        printmsg("removing broken "..ghost.name.." at "..ghost.position.x..", "..ghost.position.y)
+        ghost.destroy()
+      end
+    end
+  end
+
   global.LogisticTrainStops[stopID] = nil
 
   if StopIDList == nil or #StopIDList == 0 then
@@ -1028,6 +1060,14 @@ function UpdateStop(stopID)
 
   -- remove invalid stops
   if not stop or not (stop.entity and stop.entity.valid) or not (stop.input and stop.input.valid) or not (stop.output and stop.output.valid) or not (stop.lampControl and stop.lampControl.valid) then
+    if log_level >= 1 then printmsg("(UpdateStop) Invalid stop: "..stopID) end
+
+    for i=#StopIDList, 0, -1 do
+      if StopIDList[i] == stopID then
+        table.remove(StopIDList, i)
+      end
+    end
+
     return
   end
 
