@@ -1,3 +1,6 @@
+1.1.2
+- intermediate 0.15 support	(not thoroughly tested)
+
 1.1.1
 - deconstruction of broken stops properly removes stop and surrounding I/O entities
 - automatically remove orphaned lamp control entities

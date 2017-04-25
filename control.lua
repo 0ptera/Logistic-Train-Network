@@ -1275,15 +1275,15 @@ function GetCircuitValues(entity)
   local greenWire = entity.get_circuit_network(defines.wire_type.green)
   local redWire =  entity.get_circuit_network(defines.wire_type.red)
   local items = {}
-  if greenWire then
-    for _, v in pairs (greenWire.signals) do
+  if greenWire and greenWire.signals then
+    for _, v in pairs(greenWire.signals) do
       if v.signal.type ~= "virtual" or validSignals[v.signal.name] then
         items[v.signal.type..","..v.signal.name] = v.count
       end
     end
   end
-  if redWire then
-    for _, v in pairs (redWire.signals) do
+  if redWire and redWire.signals then
+    for _, v in pairs(redWire.signals) do
       if v.signal.type ~= "virtual" or validSignals[v.signal.name] then
         if items[v.signal.type..","..v.signal.name] ~= nil then
           items[v.signal.type..","..v.signal.name] = items[v.signal.type..","..v.signal.name] + v.count
