@@ -23,26 +23,6 @@ local IGNOREMINDELIVERYSIZE = "ltn-no-min-delivery-size"
 local LOCKEDSLOTS = "ltn-locked-slots"
 local ISDEPOT = "ltn-depot"
 
-local validSignals = {
-  [MINTRAINLENGTH] = true,
-  [MAXTRAINLENGTH] = true,
-  [MAXTRAINS] = true,
-  [MINDELIVERYSIZE] = true,
-  [PRIORITY] = true,
-  [IGNOREMINDELIVERYSIZE] = true,
-  [LOCKEDSLOTS] = true,
-  [ISDEPOT] = true,
-  ["signal-red"] = true,
-  ["signal-green"] = true,
-  ["signal-blue"] = true,
-  ["signal-yellow"] = true,
-  ["signal-pink"] = true,
-  ["signal-cyan"] = true,
-  ["signal-white"] = true,
-  ["signal-grey"] = true,
-  ["signal-black"] = true
-}
-
 local ErrorCodes = {
   "red",    -- circuit/signal error
   "pink"    -- duplicate stop name
@@ -80,12 +60,11 @@ local function initialize(oldVersion, newVersion)
   global.Dispatcher.RequestAge = global.Dispatcher.RequestAge or {}
 
   -- clean obsolete global
-  if oldVersion and oldVersion < "01.00.00" then
-    global.Dispatcher.Requested = nil
-    global.Dispatcher.Orders = nil
-    global.Dispatcher.OrderAge = nil
-    global.Dispatcher.Storage = nil
-  end
+  global.Dispatcher.Requested = nil
+  global.Dispatcher.Orders = nil
+  global.Dispatcher.OrderAge = nil
+  global.Dispatcher.Storage = nil
+  global.useRailTanker = nil  
 
   -- update to 0.4
   if oldVersion and oldVersion < "00.04.00" then
@@ -177,22 +156,10 @@ script.on_load(function()
     stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1))
     stopIdStartIndex = 1
 	end
-  if global.useRailTanker then
-    log("[LTN] fluid deliveries enabled")
-  end
   log("[LTN] on_load: complete")
 end)
 
 script.on_init(function()
-  ---- check if RailTanker is installed
-  if game.active_mods["RailTanker"] then
-    global.useRailTanker = true
-    log("[LTN] Rail Tanker "..game.active_mods["RailTanker"].." found, fluid deliveries enabled.")
-  else
-    global.useRailTanker = false
-    log("[LTN] Rail Tanker not found, fluid deliveries disabled.")
-  end
-
   -- format version string to "00.00.00"
   local oldVersion, newVersion = nil
   local newVersionString = game.active_mods[MOD_NAME]
@@ -206,15 +173,6 @@ script.on_init(function()
 end)
 
 script.on_configuration_changed(function(data)
-  ---- check if RailTanker is installed
-  if game.active_mods["RailTanker"] then
-    global.useRailTanker = true
-    log("[LTN] Rail Tanker "..game.active_mods["RailTanker"].." found, fluid deliveries enabled.")
-  else
-    global.useRailTanker = false
-    log("[LTN] Rail Tanker not found, fluid deliveries disabled.")
-  end
-
   if data and data.mod_changes[MOD_NAME] then
     -- format version string to "00.00.00"
     local oldVersion, newVersion = nil
@@ -646,12 +604,6 @@ function ProcessRequest(request)
       localname = game.item_prototypes[iname].localised_name
     end
 
-    -- ignore fluids without rail tanker
-    if itype == "fluid" and not global.useRailTanker then
-      if log_level >= 1 then printmsg({"ltn-message.error-no-railtanker", localname}) end
-      goto skipRequestItem
-    end
-
     -- get providers ordered by priority
     local providers = GetProviders(requestStation.entity.force, item, minDelivery)
     if not providers or #providers < 1 then
@@ -932,8 +884,6 @@ function GetTrainInventorySize(train, type, reserved)
       --log("(GetTrainInventorySize) wagon.name:"..wagon.name.." capacity:"..capacity)
       if wagon.type == "fluid-wagon" then
         fluidCapacity = fluidCapacity + capacity
-      elseif wagon.name == "rail-tanker" then
-        fluidCapacity = fluidCapacity + capacity
       else
         inventorySize = inventorySize + capacity - reserved
       end
@@ -967,16 +917,9 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
   if condType == "item_count" then
     -- write itemlist to conditions
     for i=1, #itemlist do
-      --convert to RT fake item if needed
-      local rtname = nil
-      local rttype = nil
-      if itemlist[i].type == "fluid" and global.useRailTanker then
-        rtname = itemlist[i].name .. "-in-tanker"
-        rttype = "item"
-        if not game.item_prototypes[rtname] then
-          if log_level >= 1 then printmsg({"ltn-message.error-parse-item", rtname}) end
-          return nil
-        end
+      local condFluid = nil
+      if itemlist[i].type == "fluid" then
+        condFluid = "fluid_count"
       end
 
       -- make > into >=
@@ -984,8 +927,8 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
         countOverride = itemlist[i].count - 1
       end
 
-      local cond = {comparator = condComp, first_signal = {type = rttype or itemlist[i].type, name = rtname or itemlist[i].name}, constant = countOverride or itemlist[i].count}
-      record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", condition = cond }
+      local cond = {comparator = condComp, first_signal = {type = itemlist[i].type, name = itemlist[i].name}, constant = countOverride or itemlist[i].count}
+      record.wait_conditions[#record.wait_conditions+1] = {type = condFluid or condType, compare_type = "and", condition = cond }
     end
 
     if finish_loading then -- let inserters finish
@@ -1091,9 +1034,9 @@ function UpdateStopParkedTrain(train)
                 local itype, iname = match(item, "([^,]+),([^,]+)")
                 if itype and (itype == "item" or itype == "fluid") and iname then
                   --use RT fake item
-                  if itype == "fluid" then
-                    iname = iname .. "-in-tanker"
-                  end
+                  -- if itype == "fluid" then
+                    -- iname = iname .. "-in-tanker"
+                  -- end
                   delivery.shipment[item] = inventory[iname]
                 end
               end
@@ -1118,6 +1061,8 @@ function UpdateStopParkedTrain(train)
 end
 
 do --UpdateStop
+
+
 local colorSignals = { -- lookup table for color signals
   ["virtual,signal-red"] = true,
   ["virtual,signal-green"] = true,
@@ -1142,6 +1087,25 @@ local function isUniqueStopName(checkStop)
   return true
 end
 
+local validSignals = {
+  [MINTRAINLENGTH] = true,
+  [MAXTRAINLENGTH] = true,
+  [MAXTRAINS] = true,
+  [MINDELIVERYSIZE] = true,
+  [PRIORITY] = true,
+  [IGNOREMINDELIVERYSIZE] = true,
+  [LOCKEDSLOTS] = true,
+  [ISDEPOT] = true,
+  ["signal-red"] = true,
+  ["signal-green"] = true,
+  ["signal-blue"] = true,
+  ["signal-yellow"] = true,
+  ["signal-pink"] = true,
+  ["signal-cyan"] = true,
+  ["signal-white"] = true,
+  ["signal-grey"] = true,
+  ["signal-black"] = true
+}
 local function getCircuitValues(entity)
   local greenWire = entity.get_circuit_network(defines.wire_type.green)
   local redWire =  entity.get_circuit_network(defines.wire_type.red)
@@ -1284,20 +1248,27 @@ function UpdateStop(stopID)
             if stop.parkedTrain and stop.parkedTrainID == trainID then
               -- calculate items +- train inventory
               local itype, iname = match(item, "([^,]+),([^,]+)")
-              if itype and (itype == "item" or itype == "fluid") and iname then
-                --use RT fake item
+              if itype and iname then
+                local traincount = 0
                 if itype == "fluid" then
-                  iname = iname .. "-in-tanker"
+                  --traincount = stop.parkedTrain.get_fluid_count(iname)
+                  traincount = GetFluidCount(stop.parkedTrain, iname)
+                else 
+                  traincount = stop.parkedTrain.get_item_count(iname)
                 end
-
-                local traincount = stop.parkedTrain.get_item_count(iname)
+                
                 if delivery.to == stop.entity.backer_name then
                   if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with train inventory: "..item.." "..count.." + "..traincount) end
                   count = count + traincount
                   deliveryCounter = deliveryCounter + 1
                 elseif delivery.from == stop.entity.backer_name then
-                  if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." - "..deliverycount - traincount) end
-                  count = count - (deliverycount - traincount)
+                  if traincount < deliverycount then
+                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." - "..deliverycount - traincount) end
+                    count = count - (deliverycount - traincount)
+                  else --train loaded more than delivery
+                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." - "..traincount) end
+                    count = count - traincount
+                  end
                   deliveryCounter = deliveryCounter + 1
                   if count < 0 then count = 0 end --make sure we don't turn it into a request
                 end
@@ -1447,13 +1418,25 @@ function UpdateStopOutput(trainStop)
       local conditions = trainStop.parkedTrain.schedule.records[trainStop.parkedTrain.schedule.current].wait_conditions
       if conditions ~= nil then
         for _, c in pairs(conditions) do
-          if c.condition and c.type == "item_count" then
-            if c.condition.comparator == ">" then --train expects to be loaded with x of this item
-              table.insert(signals, {index = index, signal = c.condition.first_signal, count = c.condition.constant + 1 })
-              index = index+1
-            elseif (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
-              table.insert(signals, {index = index, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_item_count(c.condition.first_signal.name) * -1 })
-              index = index+1
+          if c.condition then
+            if c.type == "item_count" then
+              if c.condition.comparator == ">" then --train expects to be loaded with x of this item
+                table.insert(signals, {index = index, signal = c.condition.first_signal, count = c.condition.constant + 1 })
+                index = index+1
+              elseif (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
+                table.insert(signals, {index = index, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_item_count(c.condition.first_signal.name) * -1 })
+                index = index+1
+              end
+            elseif c.type == "fluid_count" then
+              if c.condition.comparator == ">" then --train expects to be loaded with x of this item
+                table.insert(signals, {index = index, signal = c.condition.first_signal, count = c.condition.constant + 1 })
+                index = index+1
+              elseif (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item                
+                --table.insert(signals, {index = index, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_fluid_count(c.condition.first_signal.name) * -1 })
+                local fluidcount = GetFluidCount(trainStop.parkedTrain, c.condition.first_signal.name)
+                table.insert(signals, {index = index, signal = c.condition.first_signal, count = fluidcount * -1 })
+                index = index+1
+              end
             end
           end
         end
@@ -1482,6 +1465,23 @@ end
 function GetTrainName(train)
   local loco = GetMainLocomotive(train)
   return loco and loco.backer_name
+end
+
+function GetFluidCount(train, fluid)
+  local count = 0
+  for k, wagon in pairs(train.carriages) do
+    if wagon.type == "fluid-wagon" then
+      for i=1, #wagon.fluidbox do
+        if wagon.fluidbox[i] then
+          --log("(GetFluidCount) fluid: "..fluid..", fluidbox: "..tostring(wagon.fluidbox[i].type).." "..tostring(wagon.fluidbox[i].amount))
+          if wagon.fluidbox[i].type == fluid then
+            count = count + wagon.fluidbox[i].amount
+          end
+        end
+      end
+    end    
+  end
+  return count
 end
 
 --local square = math.sqrt

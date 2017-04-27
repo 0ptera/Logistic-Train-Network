@@ -27,7 +27,7 @@ for k, wagon in pairs(data.raw["cargo-wagon"]) do
   local inventorySize = wagon.inventory_size
   if wagon.name == "rail-tanker" then
     signal.icon = "__LogisticTrainNetwork__/graphics/icons/rail-tanker.png" -- fix RailTanker 1.4.0 showing cargo-wagon icon on entity
-    inventorySize = 2500
+    inventorySize = 0
   end
 
   local inventory = {
