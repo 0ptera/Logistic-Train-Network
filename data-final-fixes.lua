@@ -42,4 +42,28 @@ for k, wagon in pairs(data.raw["cargo-wagon"]) do
   data:extend({inventory})
   i=i+1
 end
+for k, wagon in pairs(data.raw["fluid-wagon"]) do
+  local signal = {
+    type = "virtual-signal",
+    name = "LTN-"..wagon.name,
+    icon = wagon.icon,
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-v",
+    localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
+  }
+
+  local inventorySize = wagon.total_capacity
+
+  local inventory = {
+    type = "flying-text",
+    name = "ltn-inventories["..wagon.name.."]",
+    time_to_live = 0,
+    speed = 1,
+    order = tostring(inventorySize)
+  }
+
+  data:extend({signal})
+  data:extend({inventory})
+  i=i+1
+end
 log("[LTN] "..i.." wagons added")

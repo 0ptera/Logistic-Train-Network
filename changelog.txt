@@ -1,3 +1,14 @@
+--todo
+- replaced RailTanker with FluidWagon for fluid transport (RailTanker will be ignored so i can drop the fake item conversions)
+- short circuit detection uses network id
+	- removed grey detection signal from output
+- duplicate station name checks using on_entity_renamed
+
+
+1.2.0
+- moved config.lua to mod settings
+
+
 1.1.2
 - intermediate 0.15 support	(not thoroughly tested)
 
