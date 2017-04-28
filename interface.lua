@@ -1,45 +1,26 @@
-remote.add_interface("LTN",
-    {
-        help = function()
-            game.player.print("-----  LogisticTrainNetwork: Remote functions  -----")
-            game.player.print("|  remote.call('LTN', 'help')  - This help")
-            game.player.print("|  remote.call('LTN', 'log_level', level)  - Set Log-Level to level n.")
-            game.player.print("|     4: everything, 3: scheduler messages, 2: basic messages, 1 errors only, 0: off")
-            game.player.print("|  remote.call('LTN', 'log_output', 'console, log, both') - A set: 'console,log' or 'log' or 'console'")
-            game.player.print("|  remote.call('LTN', 'log_status') - show current log status")
-            game.player.print("")
-        end,
+log_level = settings.global["ltn-interface-log-level"].value
+log_output = settings.global["ltn-interface-log-output"].value
+message_filter_age = settings.global["ltn-interface-message-filter-age"].value
+dispatcher_update_interval = settings.global["ltn-dispatcher-update-interval"].value
+min_delivery_size = settings.global["ltn-dispatcher-min-delivery-size"].value
+stop_timeout = settings.global["ltn-dispatcher-stop-timeout"].value
+delivery_timeout = settings.global["ltn-dispatcher-delivery-timeout"].value
+finish_loading = settings.global["ltn-dispatcher-finish-loading"].value
+use_Best_Effort = settings.global["ltn-dispatcher-use-best-effort"].value
 
-        log_level = function(level)
-            if level == nil or type(level) ~= 'number' then
-                game.player.print("[LTN] log_level: Wrong parameter type")
-                return
-            end
-            log_level = level
-            game.player.print("[LTN] Warning! Having different log settings will cause desync. Use log_level in config.lua for MP instead.")
-            remote.call('LTN', 'log_status')
-        end,
-
-        log_output = function(log_set)
-            if log_set == nil or type(log_set) ~= 'string' then
-                game.player.print("[LTN] log_output: Wrong parameter type")
-                return
-            end
-            if log_set == "console" or log_set == "log" or log_set == "both" then
-              log_output = log_set
-              game.player.print("[LTN] Warning! Having different log settings will cause desync. Use log_level in config.lua for MP instead.")
-              remote.call('LTN', 'log_status')
-            else
-              game.player.print("[LTN] log_output: Wrong parameter "..log_set)
-              return
-            end
-        end,
-
-        log_status = function()
-            game.player.print("[LTN] <log_status> log-level: " .. log_level .. " - log-output: " .. log_output)
-        end
-    }
-)
+script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
+  if not event then return end
+  --log("(on_runtime_mod_setting_changed) setting = "..event.setting)
+  log_level = settings.global["ltn-interface-log-level"].value
+  log_output = settings.global["ltn-interface-log-output"].value
+  message_filter_age = settings.global["ltn-interface-message-filter-age"].value
+  dispatcher_update_interval = settings.global["ltn-dispatcher-update-interval"].value
+  min_delivery_size = settings.global["ltn-dispatcher-min-delivery-size"].value
+  stop_timeout = settings.global["ltn-dispatcher-stop-timeout"].value
+  delivery_timeout = settings.global["ltn-dispatcher-delivery-timeout"].value
+  finish_loading = settings.global["ltn-dispatcher-finish-loading"].value
+  use_Best_Effort = settings.global["ltn-dispatcher-use-best-effort"].value
+end)
 
 function printmsg(msg, useFilter)
   local msgKey = ""
@@ -71,4 +52,4 @@ function printmsg(msg, useFilter)
   global.messageBuffer[msgKey] = global.messageBuffer[msgKey] or {tick=tick}
 end
 
-return printmsg, log_output, log_level
+return printmsg

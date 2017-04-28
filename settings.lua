@@ -2,6 +2,7 @@ data:extend({
   {
     type = "int-setting",
     name = "ltn-interface-log-level",
+    order = "aa",
     setting_type = "runtime-global",
     default_value = 2,
     maximum_value = 4,
@@ -11,6 +12,7 @@ data:extend({
   {
     type = "string-setting",
     name = "ltn-interface-log-output",
+    order = "ab",
     setting_type = "runtime-global",
     default_value = "both",
     allowed_values = {"both", "console", "log"},
@@ -19,6 +21,7 @@ data:extend({
   {
     type = "int-setting",
     name = "ltn-interface-message-filter-age",
+    order = "ac",
     setting_type = "runtime-global",
     default_value = 18000,
     minimum_value = 0,
@@ -27,6 +30,7 @@ data:extend({
   {
     type = "int-setting",
     name = "ltn-dispatcher-update-interval",
+    order = "ba",
     setting_type = "runtime-global",
     default_value = 60,
     minimum_value = 2,
@@ -35,15 +39,24 @@ data:extend({
   {
     type = "int-setting",
     name = "ltn-dispatcher-min-delivery-size",
+    order = "bb",
     setting_type = "runtime-global",
     default_value = 1000,
     minimum_value = 1,
     per_user = false,
   },
-
+  {
+    type = "bool-setting",
+    name = "ltn-dispatcher-use-best-effort",
+    order = "bc",
+    setting_type = "runtime-global",
+    default_value = false,
+    per_user = false,
+  },
   {
     type = "int-setting",
     name = "ltn-dispatcher-stop-timeout",
+    order = "ca",
     setting_type = "runtime-global",
     default_value = 7200,
     minimum_value = 0,
@@ -52,6 +65,7 @@ data:extend({
   {
     type = "int-setting",
     name = "ltn-dispatcher-delivery-timeout",
+    order = "cb",
     setting_type = "runtime-global",
     default_value = 18000,
     minimum_value = 3600,
@@ -60,15 +74,9 @@ data:extend({
   {
     type = "bool-setting",
     name = "ltn-dispatcher-finish-loading",
+    order = "cc",
     setting_type = "runtime-global",
     default_value = true,
     per_user = false,
-  },
-  {
-    type = "bool-setting",
-    name = "ltn-dispatcher-use-best-effort",
-    setting_type = "runtime-global",
-    default_value = false,
-    per_user = false,
-  },
+  }
 })
