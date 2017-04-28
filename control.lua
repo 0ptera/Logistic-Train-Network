@@ -1,4 +1,4 @@
---require "config"
+require "config"
 require "interface"
 
 local MOD_NAME = "LogisticTrainNetwork"
@@ -35,8 +35,6 @@ local function initialize(oldVersion, newVersion)
   end
 
   ---- initialize logger
-  global.log_level = nil
-  global.log_output = nil
   global.messageBuffer = {}
 
   global.StopDistances = global.StopDistances or {} -- station distance lookup table

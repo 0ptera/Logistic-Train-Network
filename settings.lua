@@ -7,7 +7,7 @@ data:extend({
     default_value = 2,
     maximum_value = 4,
     minimum_value = 0,
-    per_user = false,
+    per_user = true,
   },
   {
     type = "string-setting",
@@ -16,7 +16,7 @@ data:extend({
     setting_type = "runtime-global",
     default_value = "both",
     allowed_values = {"both", "console", "log"},
-    per_user = false,
+    per_user = true,
   },
   {
     type = "int-setting",
@@ -25,16 +25,7 @@ data:extend({
     setting_type = "runtime-global",
     default_value = 18000,
     minimum_value = 0,
-    per_user = false,
-  },
-  {
-    type = "int-setting",
-    name = "ltn-dispatcher-update-interval",
-    order = "ba",
-    setting_type = "runtime-global",
-    default_value = 60,
-    minimum_value = 2,
-    per_user = false,
+    per_user = true,
   },
   {
     type = "int-setting",
@@ -43,7 +34,7 @@ data:extend({
     setting_type = "runtime-global",
     default_value = 1000,
     minimum_value = 1,
-    per_user = false,
+    per_user = true,
   },
   {
     type = "bool-setting",
@@ -51,7 +42,7 @@ data:extend({
     order = "bc",
     setting_type = "runtime-global",
     default_value = false,
-    per_user = false,
+    per_user = true,
   },
   {
     type = "int-setting",
@@ -60,7 +51,7 @@ data:extend({
     setting_type = "runtime-global",
     default_value = 7200,
     minimum_value = 0,
-    per_user = false,
+    per_user = true,
   },
   {
     type = "int-setting",
@@ -69,7 +60,7 @@ data:extend({
     setting_type = "runtime-global",
     default_value = 18000,
     minimum_value = 3600,
-    per_user = false,
+    per_user = true,
   },
   {
     type = "bool-setting",
@@ -77,6 +68,6 @@ data:extend({
     order = "cc",
     setting_type = "runtime-global",
     default_value = true,
-    per_user = false,
+    per_user = true,
   }
 })
