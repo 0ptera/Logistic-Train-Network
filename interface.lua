@@ -9,8 +9,6 @@ use_Best_Effort = settings.global["ltn-dispatcher-use-best-effort"].value
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if not event then return end
-  --for playerID, player in pairs(game.players) do
-  log("(on_runtime_mod_setting_changed) setting = "..tostring(event.setting))
   if event.setting == "ltn-interface-log-level" then log_level = settings.global["ltn-interface-log-level"].value end
   if event.setting == "ltn-interface-log-output" then log_output = settings.global["ltn-interface-log-output"].value end
   if event.setting == "ltn-interface-message-filter-age" then message_filter_age = settings.global["ltn-interface-message-filter-age"].value end
@@ -19,7 +17,6 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if event.setting == "ltn-dispatcher-delivery-timeout" then delivery_timeout = settings.global["ltn-dispatcher-delivery-timeout"].value end
   if event.setting == "ltn-dispatcher-finish-loading" then finish_loading = settings.global["ltn-dispatcher-finish-loading"].value end
   if event.setting == "ltn-dispatcher-use-best-effort" then use_Best_Effort = settings.global["ltn-dispatcher-use-best-effort"].value end
-  --end
 end)
 
 function printmsg(msg, useFilter)

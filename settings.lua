@@ -5,9 +5,7 @@ data:extend({
     order = "aa",
     setting_type = "runtime-global",
     default_value = 2,
-    maximum_value = 4,
-    minimum_value = 0,
-    per_user = true,
+    allowed_values = {0, 1, 2, 3, 4}    
   },
   {
     type = "string-setting",
@@ -15,8 +13,7 @@ data:extend({
     order = "ab",
     setting_type = "runtime-global",
     default_value = "both",
-    allowed_values = {"both", "console", "log"},
-    per_user = true,
+    allowed_values = {"both", "console", "log"}
   },
   {
     type = "int-setting",
@@ -24,8 +21,7 @@ data:extend({
     order = "ac",
     setting_type = "runtime-global",
     default_value = 18000,
-    minimum_value = 0,
-    per_user = true,
+    minimum_value = 0
   },
   {
     type = "int-setting",
@@ -33,16 +29,14 @@ data:extend({
     order = "bb",
     setting_type = "runtime-global",
     default_value = 1000,
-    minimum_value = 1,
-    per_user = true,
+    minimum_value = 1
   },
   {
     type = "bool-setting",
     name = "ltn-dispatcher-use-best-effort",
     order = "bc",
     setting_type = "runtime-global",
-    default_value = false,
-    per_user = true,
+    default_value = false
   },
   {
     type = "int-setting",
@@ -50,8 +44,7 @@ data:extend({
     order = "ca",
     setting_type = "runtime-global",
     default_value = 7200,
-    minimum_value = 0,
-    per_user = true,
+    minimum_value = 0
   },
   {
     type = "int-setting",
@@ -59,15 +52,13 @@ data:extend({
     order = "cb",
     setting_type = "runtime-global",
     default_value = 18000,
-    minimum_value = 3600,
-    per_user = true,
+    minimum_value = 3600
   },
   {
     type = "bool-setting",
     name = "ltn-dispatcher-finish-loading",
     order = "cc",
     setting_type = "runtime-global",
-    default_value = true,
-    per_user = true,
+    default_value = true
   }
 })

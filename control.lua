@@ -431,11 +431,11 @@ local function renamedStop(targetID, old_name, new_name)
     for trainID, delivery in pairs(global.Dispatcher.Deliveries) do
       if delivery.to == old_name then
         delivery.to = new_name
-        log("renamed delivery.to "..old_name.." > "..new_name)
+        --log("renamed delivery.to "..old_name.." > "..new_name)
       end
       if delivery.from == old_name then
         delivery.from = new_name
-        log("renamed delivery.from "..old_name.." > "..new_name)
+        --log("renamed delivery.from "..old_name.." > "..new_name)
       end
     end
   end
@@ -742,6 +742,7 @@ function ProcessRequest(request)
   local deliveries = nil
 
   if requestStation.trainLimit > 0 and #requestStation.activeDeliveries >= requestStation.trainLimit then
+    if log_level >= 4 then printmsg(requestStation.entity.backer_name.." skipped: "..#requestStation.activeDeliveries.." >= "..requestStation.trainLimit) end
     return nil -- reached train limit
   end
 
