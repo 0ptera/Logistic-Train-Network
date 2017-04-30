@@ -1,11 +1,11 @@
 {
   "name": "LogisticTrainNetwork",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "title": "Logistic Train Network",
   "author": "Optera",
   "contact": "https://forums.factorio.com/memberlist.php?mode=viewprofile&u=21729",
   "homepage": "https://forums.factorio.com/viewtopic.php?f=94&t=36976",
   "description": "Adds new train stops forming a highly configurable logistic network.",
   "factorio_version": "0.15",
-	"dependencies": ["?RailTanker >= 1.4.1", "?creative-mode >= 0.2.8"]
+	"dependencies": ["base >= 0.15.3", "?creative-mode >= 0.3.1"]
 }
