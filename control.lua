@@ -2,7 +2,6 @@ require "config"
 require "interface"
 
 local MOD_NAME = "LogisticTrainNetwork"
-local INVSTRING = "ltn-inventories[[name]]"
 
 local MINTRAINLENGTH = "min-train-length"
 local MAXTRAINLENGTH = "max-train-length"
@@ -640,15 +639,24 @@ local function GetStationDistance(stationA, stationB)
   end
 end
 
-local InventoryLookup = {}
-local function getInventorySize(name)
-  local reference = game.entity_prototypes[INVSTRING:gsub("%[name%]", tostring(name))]
-  if type(reference) == "table" then
-    InventoryLookup[name] = tonumber(reference.order)
-    return tonumber(reference.order)
-   end
-   return 0
+local InventoryLookup = { --preoccupy table with wagons to ignore at 0 capacity
+  ["rail-tanker"] = 0
+}
+
+local function getInventorySize(entity)
+  local capacity = 0
+  if entity.type == "cargo-wagon" then
+    capacity = entity.prototype.get_inventory_size(defines.inventory.cargo_wagon)
+  elseif entity.type == "fluid-wagon" then
+    for n=1, #entity.fluidbox do
+      capacity = capacity + entity.fluidbox.get_capacity(n)
+    end
+  end
+  --log("(getInventorySize) adding "..entity.name.." capcacity: "..capacity)
+  InventoryLookup[entity.name] = capacity
+  return capacity
 end
+
 
 local function GetTrainInventorySize(train, type, reserved)
   local inventorySize = 0
@@ -660,7 +668,7 @@ local function GetTrainInventorySize(train, type, reserved)
   --log("Train "..GetTrainName(train).." carriages: "..#train.carriages..", cargo_wagons: "..#train.cargo_wagons)
   for _,wagon in pairs (train.carriages) do
     if wagon.type ~= "locomotive" then
-      local capacity = InventoryLookup[wagon.name] or getInventorySize(wagon.name)
+      local capacity = InventoryLookup[wagon.name] or getInventorySize(wagon)
       --log("(GetTrainInventorySize) wagon.name:"..wagon.name.." capacity:"..capacity)
       if wagon.type == "fluid-wagon" then
         fluidCapacity = fluidCapacity + capacity

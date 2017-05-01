@@ -1,19 +1,28 @@
 data:extend({
+  -- {
+    -- type = "int-setting",
+    -- name = "ltn-interface-log-level",
+    -- order = "aa",
+    -- setting_type = "runtime-global",
+    -- default_value = 2,
+    -- allowed_values = {0, 1, 2, 3, 4}
+  -- },
+
   {
-    type = "int-setting",
+    type = "string-setting",
     name = "ltn-interface-log-level",
     order = "aa",
     setting_type = "runtime-global",
-    default_value = 2,
-    allowed_values = {0, 1, 2, 3, 4}    
+    default_value = "2: notifications",
+    allowed_values =  {"0: off", "1: errors", "2: notifications", "3: expanded scheduler messages", "4: debug"}
   },
   {
     type = "string-setting",
     name = "ltn-interface-log-output",
     order = "ab",
     setting_type = "runtime-global",
-    default_value = "both",
-    allowed_values = {"both", "console", "log"}
+    default_value = "console & logfile",
+    allowed_values = {"console & logfile", "console", "logfile"}
   },
   {
     type = "int-setting",

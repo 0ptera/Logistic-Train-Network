@@ -1,10 +1,15 @@
+1.2.1
+- updated mod setting descriptions
+- replaced floating-text hack to get inventory sizes with 0.15 functions
+- added support of icons{} to signal generation
+
 1.2.0
 - moved config.lua to mod settings
-- added support for any FluidWagon for fluid transport 
+- added support for any FluidWagon for fluid transport
 - removed support of RailTanker (RailTankers will be ignored, removed fake item conversions)
 - short circuit detection uses network id
   - removed grey detection signal from output
-	
+
 1.1.2
 - intermediate 0.15 support	(not thoroughly tested)
 
