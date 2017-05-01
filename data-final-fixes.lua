@@ -4,11 +4,17 @@ for k, loco in pairs(data.raw["locomotive"]) do
   local signal = {
     type = "virtual-signal",
     name = "LTN-"..loco.name,
-    icon = loco.icon,
+    icon = "__base__/graphics/icons/diesel-locomotive.png", --fallback
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-u",
     localised_name = {"virtual-signal-name.LTN-locomotive", {"entity-name." .. loco.name}}
   }
+  if loco.icon then
+    signal.icon = loco.icon
+  elseif loco.icons then
+    signal.icon = nil
+    signal.icons = loco.icons
+  end
   data:extend({signal})
   i=i+1
 end
@@ -18,52 +24,36 @@ for k, wagon in pairs(data.raw["cargo-wagon"]) do
   local signal = {
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
-    icon = wagon.icon,
+    icon = "__base__/graphics/icons/cargo-wagon.png", --fallback
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v",
     localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
   }
-
-  local inventorySize = wagon.inventory_size
-  if wagon.name == "rail-tanker" then
-    signal.icon = "__LogisticTrainNetwork__/graphics/icons/rail-tanker.png" -- fix RailTanker 1.4.0 showing cargo-wagon icon on entity
-    inventorySize = 0
+  if wagon.icon then
+    signal.icon = wagon.icon
+  elseif wagon.icons then
+    signal.icon = nil
+    signal.icons = wagon.icons
   end
-
-  local inventory = {
-    type = "flying-text",
-    name = "ltn-inventories["..wagon.name.."]",
-    time_to_live = 0,
-    speed = 1,
-    order = tostring(inventorySize)
-  }
-
   data:extend({signal})
-  data:extend({inventory})
   i=i+1
 end
 for k, wagon in pairs(data.raw["fluid-wagon"]) do
   local signal = {
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
-    icon = wagon.icon,
+    icon = "__base__/graphics/icons/fluid-wagon.png", --fallback
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v",
     localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
   }
-
-  local inventorySize = wagon.total_capacity
-
-  local inventory = {
-    type = "flying-text",
-    name = "ltn-inventories["..wagon.name.."]",
-    time_to_live = 0,
-    speed = 1,
-    order = tostring(inventorySize)
-  }
-
+  if wagon.icon then
+    signal.icon = wagon.icon
+  elseif wagon.icons then
+    signal.icon = nil
+    signal.icons = wagon.icons
+  end
   data:extend({signal})
-  data:extend({inventory})
   i=i+1
 end
 log("[LTN] "..i.." wagons added")
