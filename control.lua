@@ -1083,6 +1083,9 @@ local function getCircuitValues(entity)
 end
 
 -- return true if stop backer_name is unique
+-- todo use events instead:
+-- http://lua-api.factorio.com/latest/events.html#on_entity_renamed
+-- http://lua-api.factorio.com/latest/events.html#on_entity_settings_pasted
 local function isUniqueStopName(checkStop)
   local checkName = checkStop.entity.backer_name
   local checkID = checkStop.entity.unit_number
@@ -1142,8 +1145,6 @@ function UpdateStop(stopID)
     global.LogisticTrainStops[stopID].parkedTrain = nil
     global.LogisticTrainStops[stopID].parkedTrainID = nil
   end
-
-  -- TODO: check if input and output are connected through LuaCircuitNetwork
 
   -- get circuit values
   local circuitValues = getCircuitValues(stop.input)
@@ -1216,7 +1217,6 @@ function UpdateStop(stopID)
     end
 
     -- update input signals of stop
-    local deliveryCounter = 0
     local requestItems = {}
     global.Dispatcher.RequestAge[stopID] = global.Dispatcher.RequestAge[stopID] or game.tick
 
@@ -1244,18 +1244,17 @@ function UpdateStop(stopID)
                 end
 
                 if delivery.to == stop.entity.backer_name then
-                  if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with train inventory: "..item.." "..count.." + "..traincount) end
+                  if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested count with train inventory: "..item.." "..count.." + "..traincount) end
                   count = count + traincount
-                  deliveryCounter = deliveryCounter + 1
                 elseif delivery.from == stop.entity.backer_name then
-                  if traincount < deliverycount then
-                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." - "..deliverycount - traincount) end
+                  if traincount <= deliverycount then
+                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided count with train inventory: "..item.." "..count.." - "..deliverycount - traincount) end
                     count = count - (deliverycount - traincount)
                   else --train loaded more than delivery
-                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." - "..traincount) end
-                    count = count - traincount
+                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating delivery count with overloaded train inventory: "..item.." "..traincount) end
+                    -- update delivery to new size
+                    global.Dispatcher.Deliveries[trainID].shipment[item] = traincount
                   end
-                  deliveryCounter = deliveryCounter + 1
                   if count < 0 then count = 0 end --make sure we don't turn it into a request
                 end
               end
@@ -1263,13 +1262,11 @@ function UpdateStop(stopID)
             else
               -- calculate items +- deliveries
               if delivery.to == stop.entity.backer_name then
-                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with delivery: "..item.." "..count.." + "..deliverycount) end
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested count with delivery: "..item.." "..count.." + "..deliverycount) end
                 count = count + deliverycount
-                deliveryCounter = deliveryCounter + 1
               elseif delivery.from == stop.entity.backer_name and not delivery.pickupDone then
-                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with delivery: "..item.." "..count.." - "..deliverycount) end
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided count with delivery: "..item.." "..count.." - "..deliverycount) end
                 count = count - deliverycount
-                deliveryCounter = deliveryCounter + 1
                 if count < 0 then count = 0 end --make sure we don't turn it into a request
               end
 
