@@ -311,7 +311,7 @@ script.on_event(defines.events.on_built_entity, function(event)
   -- handle adding carriages to parked trains
   if entity.type == "locomotive" or entity.type == "cargo-wagon" then
     entity.train.manual_mode = true
-    UpdateStopParkedTrain(entity.train)
+    UpdateTrain(entity.train)
     --entity.train.manual_mode = false
     return
   end
@@ -381,7 +381,7 @@ script.on_event(defines.events.on_preplayer_mined_item, function(event)
   -- handle removing carriages from parked trains
   if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
     entity.train.manual_mode = true
-    UpdateStopParkedTrain(entity.train)
+    UpdateTrain(entity.train)
     --entity.train.manual_mode = false
     return
   end
@@ -404,14 +404,14 @@ script.on_event(defines.events.on_entity_died, function(event)
   -- handle removing carriages from parked trains
   if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
     entity.train.manual_mode = true
-    UpdateStopParkedTrain(entity.train)
+    UpdateTrain(entity.train)
     --entity.train.manual_mode = false
     return
   end
 end)
 
 script.on_event(defines.events.on_train_changed_state, function(event)
-  UpdateStopParkedTrain(event.train)
+  UpdateTrain(event.train)
 end)
 end
 
@@ -947,12 +947,12 @@ end
 ------------------------------------- STOP FUNCTIONS -------------------------------------
 
 -- update stop output when train enters/leaves
-function UpdateStopParkedTrain(train)
+function UpdateTrain(train)
   local trainID = GetTrainID(train)
   local trainName = GetTrainName(train)
 
   if not trainID then --train has no locomotive
-    if log_level >= 4 then printmsg("Notice (UpdateStopParkedTrain): couldn't assign train id", false) end
+    if log_level >= 4 then printmsg("Notice (UpdateTrain): couldn't assign train id", false) end
     --TODO: Update all stops?
     return
   end
@@ -1018,12 +1018,11 @@ function UpdateStopParkedTrain(train)
               local inventory = train.get_contents()
               for item, count in pairs (delivery.shipment) do
                 local itype, iname = match(item, "([^,]+),([^,]+)")
-                if itype and (itype == "item" or itype == "fluid") and iname then
-                  --use RT fake item
-                  -- if itype == "fluid" then
-                    -- iname = iname .. "-in-tanker"
-                  -- end
-                  delivery.shipment[item] = inventory[iname]
+                if itype and iname then
+                  -- workaround for get_contents() not returning fluids
+                  local traincount = inventory[iname] or GetFluidCount(stop.parkedTrain, iname)
+                  if log_level >= 4 then printmsg("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount) ) end
+                  delivery.shipment[item] = traincount
                 end
               end
               delivery.pickupDone = true -- remove reservations from this delivery
@@ -1083,6 +1082,9 @@ local function getCircuitValues(entity)
 end
 
 -- return true if stop backer_name is unique
+-- todo use events instead:
+-- http://lua-api.factorio.com/latest/events.html#on_entity_renamed
+-- http://lua-api.factorio.com/latest/events.html#on_entity_settings_pasted
 local function isUniqueStopName(checkStop)
   local checkName = checkStop.entity.backer_name
   local checkID = checkStop.entity.unit_number
@@ -1142,8 +1144,6 @@ function UpdateStop(stopID)
     global.LogisticTrainStops[stopID].parkedTrain = nil
     global.LogisticTrainStops[stopID].parkedTrainID = nil
   end
-
-  -- TODO: check if input and output are connected through LuaCircuitNetwork
 
   -- get circuit values
   local circuitValues = getCircuitValues(stop.input)
@@ -1216,7 +1216,6 @@ function UpdateStop(stopID)
     end
 
     -- update input signals of stop
-    local deliveryCounter = 0
     local requestItems = {}
     global.Dispatcher.RequestAge[stopID] = global.Dispatcher.RequestAge[stopID] or game.tick
 
@@ -1237,25 +1236,25 @@ function UpdateStop(stopID)
               if itype and iname then
                 local traincount = 0
                 if itype == "fluid" then
-                  --traincount = stop.parkedTrain.get_fluid_count(iname)
+                  -- traincount = stop.parkedTrain.get_fluid_count(iname)
+                  -- workaround for not existing API call get_fluid_count(name)
                   traincount = GetFluidCount(stop.parkedTrain, iname)
                 else
                   traincount = stop.parkedTrain.get_item_count(iname)
                 end
 
                 if delivery.to == stop.entity.backer_name then
-                  if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with train inventory: "..item.." "..count.." + "..traincount) end
+                  if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested count with train inventory: "..item.." "..count.." + "..traincount) end
                   count = count + traincount
-                  deliveryCounter = deliveryCounter + 1
                 elseif delivery.from == stop.entity.backer_name then
-                  if traincount < deliverycount then
-                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." - "..deliverycount - traincount) end
+                  if traincount <= deliverycount then
+                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided count with train inventory: "..item.." "..count.." - "..deliverycount - traincount) end
                     count = count - (deliverycount - traincount)
                   else --train loaded more than delivery
-                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with train inventory: "..item.." "..count.." - "..traincount) end
-                    count = count - traincount
+                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating delivery count with overloaded train inventory: "..item.." "..traincount) end
+                    -- update delivery to new size
+                    global.Dispatcher.Deliveries[trainID].shipment[item] = traincount
                   end
-                  deliveryCounter = deliveryCounter + 1
                   if count < 0 then count = 0 end --make sure we don't turn it into a request
                 end
               end
@@ -1263,13 +1262,11 @@ function UpdateStop(stopID)
             else
               -- calculate items +- deliveries
               if delivery.to == stop.entity.backer_name then
-                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested with delivery: "..item.." "..count.." + "..deliverycount) end
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested count with delivery: "..item.." "..count.." + "..deliverycount) end
                 count = count + deliverycount
-                deliveryCounter = deliveryCounter + 1
               elseif delivery.from == stop.entity.backer_name and not delivery.pickupDone then
-                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided with delivery: "..item.." "..count.." - "..deliverycount) end
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided count with delivery: "..item.." "..count.." - "..deliverycount) end
                 count = count - deliverycount
-                deliveryCounter = deliveryCounter + 1
                 if count < 0 then count = 0 end --make sure we don't turn it into a request
               end
 
