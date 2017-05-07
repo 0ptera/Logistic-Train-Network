@@ -311,7 +311,7 @@ script.on_event(defines.events.on_built_entity, function(event)
   -- handle adding carriages to parked trains
   if entity.type == "locomotive" or entity.type == "cargo-wagon" then
     entity.train.manual_mode = true
-    UpdateStopParkedTrain(entity.train)
+    UpdateTrain(entity.train)
     --entity.train.manual_mode = false
     return
   end
@@ -381,7 +381,7 @@ script.on_event(defines.events.on_preplayer_mined_item, function(event)
   -- handle removing carriages from parked trains
   if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
     entity.train.manual_mode = true
-    UpdateStopParkedTrain(entity.train)
+    UpdateTrain(entity.train)
     --entity.train.manual_mode = false
     return
   end
@@ -404,14 +404,14 @@ script.on_event(defines.events.on_entity_died, function(event)
   -- handle removing carriages from parked trains
   if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
     entity.train.manual_mode = true
-    UpdateStopParkedTrain(entity.train)
+    UpdateTrain(entity.train)
     --entity.train.manual_mode = false
     return
   end
 end)
 
 script.on_event(defines.events.on_train_changed_state, function(event)
-  UpdateStopParkedTrain(event.train)
+  UpdateTrain(event.train)
 end)
 end
 
@@ -947,12 +947,12 @@ end
 ------------------------------------- STOP FUNCTIONS -------------------------------------
 
 -- update stop output when train enters/leaves
-function UpdateStopParkedTrain(train)
+function UpdateTrain(train)
   local trainID = GetTrainID(train)
   local trainName = GetTrainName(train)
 
   if not trainID then --train has no locomotive
-    if log_level >= 4 then printmsg("Notice (UpdateStopParkedTrain): couldn't assign train id", false) end
+    if log_level >= 4 then printmsg("Notice (UpdateTrain): couldn't assign train id", false) end
     --TODO: Update all stops?
     return
   end
@@ -1018,12 +1018,11 @@ function UpdateStopParkedTrain(train)
               local inventory = train.get_contents()
               for item, count in pairs (delivery.shipment) do
                 local itype, iname = match(item, "([^,]+),([^,]+)")
-                if itype and (itype == "item" or itype == "fluid") and iname then
-                  --use RT fake item
-                  -- if itype == "fluid" then
-                    -- iname = iname .. "-in-tanker"
-                  -- end
-                  delivery.shipment[item] = inventory[iname]
+                if itype and iname then
+                  -- workaround for get_contents() not returning fluids
+                  local traincount = inventory[iname] or GetFluidCount(stop.parkedTrain, iname)
+                  if log_level >= 4 then printmsg("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount) ) end
+                  delivery.shipment[item] = traincount
                 end
               end
               delivery.pickupDone = true -- remove reservations from this delivery
@@ -1237,7 +1236,8 @@ function UpdateStop(stopID)
               if itype and iname then
                 local traincount = 0
                 if itype == "fluid" then
-                  --traincount = stop.parkedTrain.get_fluid_count(iname)
+                  -- traincount = stop.parkedTrain.get_fluid_count(iname)
+                  -- workaround for not existing API call get_fluid_count(name)
                   traincount = GetFluidCount(stop.parkedTrain, iname)
                 else
                   traincount = stop.parkedTrain.get_item_count(iname)

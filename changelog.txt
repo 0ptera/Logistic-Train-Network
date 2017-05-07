@@ -1,6 +1,7 @@
 1.2.2
 - overloading trains updates delivery size once per update interval (before update was only done once train leaves provider)
 - fixed overloading trains reserved too much of an item/fluid in provider
+- fixed fluid deliveries where accidentally deleted at departure from provider
 
 1.2.1
 - updated mod setting descriptions
