@@ -1,3 +1,8 @@
+1.2.3
+- fixed desync https://forums.factorio.com/viewtopic.php?f=23&t=46873
+- duplicate names are checked across all train-stops instead of only LTN Stops
+- improved performance of checking duplicate names by using events introduced with 0.15
+
 1.2.2
 - overloading trains updates delivery size once per update interval (before update was only done once train leaves provider)
 - fixed overloading trains reserved too much of an item/fluid in provider

@@ -17,6 +17,7 @@ local ErrorCodes = {
   "pink"    -- duplicate stop name
 }
 local StopIDList = {} -- stopIDs list for on_tick updates
+local stopsPerTick = 1 -- step width of StopIDList
 
 local match = string.match
 local ceil = math.ceil
@@ -37,6 +38,7 @@ local function initialize(oldVersion, newVersion)
   global.messageBuffer = {}
 
   global.StopDistances = global.StopDistances or {} -- station distance lookup table
+  global.stopIdStartIndex = global.stopIdStartIndex or 1 --global index should prevent desync by updating different stops
 
   ---- initialize Dispatcher
   global.Dispatcher = global.Dispatcher or {}
@@ -122,14 +124,30 @@ local function initialize(oldVersion, newVersion)
     local lcDeleted = 0
     for _, surface in pairs(game.surfaces) do
       local lcEntities = surface.find_entities_filtered{name="logistic-train-stop-lamp-control"}
+      if lcEntities then
       for k, v in pairs(lcEntities) do
         if not validLampControls[v.unit_number] then
           v.destroy()
           lcDeleted = lcDeleted+1
         end
       end
+      end
     end
     log("[LTN] removed "..lcDeleted.. " orphaned lamp control entities.")
+  end
+end
+
+-- has to run every time the mod configuration is changed to catch stops from other mods
+local function buildStopNameList()
+  global.TrainStopNames = global.TrainStopNames or {} -- dictionary of all train stops by all mods
+
+  for _, surface in pairs(game.surfaces) do
+    local foundStops = surface.find_entities_filtered{type="train-stop"}
+    if foundStops then
+      for k, stop in pairs(foundStops) do
+        AddStopName(stop.unit_number, stop.backer_name)
+      end
+    end
   end
 end
 
@@ -141,25 +159,25 @@ script.on_load(function()
       StopIDList[#StopIDList+1] = stopID
     end
     stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1))
-    stopIdStartIndex = 1
 	end
   log("[LTN] on_load: complete")
 end)
 
 script.on_init(function()
+  buildStopNameList()
+
   -- format version string to "00.00.00"
   local oldVersion, newVersion = nil
   local newVersionString = game.active_mods[MOD_NAME]
   if newVersionString then
     newVersion = string.format("%02d.%02d.%02d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
   end
-
   initialize(oldVersion, newVersion)
-
   log("[LTN] on_init: ".. MOD_NAME.." "..tostring(newVersionString).." initialized.")
 end)
 
 script.on_configuration_changed(function(data)
+  buildStopNameList()
   if data and data.mod_changes[MOD_NAME] then
     -- format version string to "00.00.00"
     local oldVersion, newVersion = nil
@@ -181,10 +199,53 @@ end
 
 ---- EVENTS ----
 
+-- add stop to TrainStopNames
+function AddStopName(stopID, stopName)
+  if stopName then -- is it possible to have stops without backer_name?
+    if global.TrainStopNames[stopName] then
+      -- prevent adding the same stop multiple times
+      local idExists = false
+      for i=1, #global.TrainStopNames[stopName] do
+        if stopID == global.TrainStopNames[stopName][i] then
+          idExists = true
+          -- log(stopID.." already exists for "..stopName)
+        end
+      end
+      if not idExists then
+        -- multiple stops of same name > add id to the list      
+        table.insert(global.TrainStopNames[stopName], stopID)
+        -- log("added "..stopID.." to "..stopName)
+      end
+    else
+      -- create new name-id entry
+      global.TrainStopNames[stopName] = {stopID}
+      -- log("creating entry "..stopName..": "..stopID)
+    end
+  end
+end
+
+-- remove stop from TrainStopNames
+function RemoveStopName(stopID, stopName)
+  if global.TrainStopNames[stopName] and #global.TrainStopNames[stopName] > 1 then
+    -- multiple stops of same name > remove id from the list
+    for i=#global.TrainStopNames[stopName], 1, -1 do
+      if global.TrainStopNames[stopName][i] == stopID then
+        table.remove(global.TrainStopNames[stopName], i)
+        -- log("removed "..stopID.." from "..stopName)
+      end
+    end
+  else
+    -- remove name-id entry
+    global.TrainStopNames[stopName] = nil
+    -- log("removed entry "..stopName..": "..stopID)
+  end
+end
+
+
 do --create stop
 local function createStop(entity)
   if global.LogisticTrainStops[entity.unit_number] then
-    if log_level >= 1 then printmsg({"ltn-message.error-duplicated-unit-number", entity.unit_number}) end
+    if log_level >= 1 then printmsg({"ltn-message.error-duplicated-unit_number", entity.unit_number}) end
     return
   end
 
@@ -295,7 +356,7 @@ local function createStop(entity)
 
   if #StopIDList == 1 then
     stopsPerTick = 1 --initialize ticker indexes
-    stopIdStartIndex = 1
+    global.stopIdStartIndex = 1
     script.on_event(defines.events.on_tick, ticker) --subscribe ticker on first created train stop
     if log_level >= 4 then printmsg("on_tick subscribed", false) end
   end
@@ -303,13 +364,16 @@ end
 
 script.on_event(defines.events.on_built_entity, function(event)
   local entity = event.created_entity
-	if entity.valid and entity.name == "logistic-train-stop" then
+  if entity.type == "train-stop" then
+     AddStopName(entity.unit_number, entity.backer_name)
+  end
+  if entity.valid and entity.name == "logistic-train-stop" then
 		createStop(entity)
     return
 	end
 
   -- handle adding carriages to parked trains
-  if entity.type == "locomotive" or entity.type == "cargo-wagon" then
+  if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
     entity.train.manual_mode = true
     UpdateTrain(entity.train)
     --entity.train.manual_mode = false
@@ -319,19 +383,22 @@ end)
 
 script.on_event(defines.events.on_robot_built_entity, function(event)
   local entity = event.created_entity
-	if entity.valid and entity.name == "logistic-train-stop" then
+  if entity.type == "train-stop" then
+     AddStopName(entity.unit_number, entity.backer_name)
+  end
+  if entity.valid and entity.name == "logistic-train-stop" then
 		createStop(entity)
 	end
 end)
 end
 
-do -- stop removed / train changed
+do -- stop removed
 function removeStop(entity)
   local stopID = entity.unit_number
   local stop = global.LogisticTrainStops[stopID]
 
   -- clean lookup tables
-  for i=#StopIDList, 0, -1 do
+  for i=#StopIDList, 1, -1 do
     if StopIDList[i] == stopID then
       table.remove(StopIDList, i)
     end
@@ -373,6 +440,9 @@ end
 
 script.on_event(defines.events.on_preplayer_mined_item, function(event)
   local entity = event.entity
+  if entity.type == "train-stop" then
+    RemoveStopName(entity.unit_number, entity.backer_name)
+  end
   if entity.name == "logistic-train-stop" then
     removeStop(entity)
     return
@@ -389,6 +459,9 @@ end)
 
 script.on_event(defines.events.on_robot_pre_mined, function(event)
   local entity = event.entity
+  if entity.type == "train-stop" then
+    RemoveStopName(entity.unit_number, entity.backer_name)
+  end
   if entity.name == "logistic-train-stop" then
     removeStop(entity)
   end
@@ -396,6 +469,9 @@ end)
 
 script.on_event(defines.events.on_entity_died, function(event)
   local entity = event.entity
+  if entity.type == "train-stop" then
+    RemoveStopName(entity.unit_number, entity.backer_name)
+  end
   if entity.name == "logistic-train-stop" then
     removeStop(entity)
     return
@@ -409,11 +485,15 @@ script.on_event(defines.events.on_entity_died, function(event)
     return
   end
 end)
+end
 
+
+do --train state changed
 script.on_event(defines.events.on_train_changed_state, function(event)
   UpdateTrain(event.train)
 end)
 end
+
 
 do --rename stop
 local function renamedStop(targetID, old_name, new_name)
@@ -441,16 +521,34 @@ local function renamedStop(targetID, old_name, new_name)
 end
 
 script.on_event(defines.events.on_entity_renamed, function(event)
+  local uid = event.entity.unit_number
+  local oldName = event.old_name
+  local newName = event.entity.backer_name
+
+  if event.entity.type == "train-stop" then
+    RemoveStopName(uid, oldName)
+    AddStopName(uid, newName)
+  end
+
   if event.entity.name == "logistic-train-stop" then
-    log("(on_entity_renamed) uid:"..event.entity.unit_number..", old name: "..event.old_name..", new name: "..event.entity.backer_name)
-    renamedStop(event.entity.unit_number, event.old_name, event.entity.backer_name)
+    --log("(on_entity_renamed) uid:"..uid..", old name: "..oldName..", new name: "..newName)
+    renamedStop(uid, oldName, newName)
   end
 end)
 
 script.on_event(defines.events.on_pre_entity_settings_pasted, function(event)
+  local uid = event.destination.unit_number
+  local oldName = event.destination.backer_name
+  local newName = event.source.backer_name
+
+  if event.destination.type == "train-stop" then
+    RemoveStopName(uid, oldName)
+    AddStopName(uid, newName)
+  end
+
   if event.destination.name == "logistic-train-stop" then
-    log("(on_pre_entity_settings_pasted) uid:"..event.destination.unit_number..", old name: "..event.destination.backer_name..", new name: "..event.source.backer_name)
-    renamedStop(event.destination.unit_number, event.destination.backer_name, event.source.backer_name)
+    --log("(on_pre_entity_settings_pasted) uid:"..uid..", old name: "..oldName..", new name: "..newName)
+    renamedStop(uid, oldName, newName)
   end
 end)
 end
@@ -469,7 +567,7 @@ function ticker(event)
 
   if global.tickCount == 1 then
     stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1)) -- 59 ticks for stop Updates, 60th tick for dispatcher
-    stopIdStartIndex = 1
+    global.stopIdStartIndex = 1
 
     -- clear Dispatcher.Storage
     global.Dispatcher.Provided = {}
@@ -483,16 +581,16 @@ function ticker(event)
     end
   end
 
-  stopIdLastIndex = stopIdStartIndex + stopsPerTick - 1
+  local stopIdLastIndex = global.stopIdStartIndex + stopsPerTick - 1
   if stopIdLastIndex > #StopIDList then
     stopIdLastIndex = #StopIDList
   end
-  for i = stopIdStartIndex, stopIdLastIndex, 1 do
+  for i = global.stopIdStartIndex, stopIdLastIndex, 1 do
     local stopID = StopIDList[i]
     if log_level >= 4 then printmsg(global.tickCount.."/"..tick.." updating stopID "..tostring(stopID), false) end
     UpdateStop(stopID)
   end
-  stopIdStartIndex = stopIdLastIndex + 1
+  global.stopIdStartIndex = stopIdLastIndex + 1
 
 
   if global.tickCount == dispatcher_update_interval then
@@ -1081,21 +1179,6 @@ local function getCircuitValues(entity)
   return items
 end
 
--- return true if stop backer_name is unique
--- todo use events instead:
--- http://lua-api.factorio.com/latest/events.html#on_entity_renamed
--- http://lua-api.factorio.com/latest/events.html#on_entity_settings_pasted
-local function isUniqueStopName(checkStop)
-  local checkName = checkStop.entity.backer_name
-  local checkID = checkStop.entity.unit_number
-  for stopID, stop in pairs (global.LogisticTrainStops) do
-    if checkName == stop.entity.backer_name and checkID ~= stopID then
-      return false
-    end
-  end
-  return true
-end
-
 -- return true if stop, output, lamp are on same logic network
 local function detectShortCircuit(checkStop)
   local scdetected = false
@@ -1131,7 +1214,7 @@ function UpdateStop(stopID)
   -- remove invalid stops
   if not stop or not (stop.entity and stop.entity.valid) or not (stop.input and stop.input.valid) or not (stop.output and stop.output.valid) or not (stop.lampControl and stop.lampControl.valid) then
     if log_level >= 1 then printmsg({"ltn-message.error-invalid-stop", stopID}) end
-    for i=#StopIDList, 0, -1 do
+    for i=#StopIDList, 1, -1 do
       if StopIDList[i] == stopID then
         table.remove(StopIDList, i)
       end
@@ -1202,7 +1285,8 @@ function UpdateStop(stopID)
       end
     end
 
-  elseif isUniqueStopName(stop) then
+  -- not a depot > check if the name is unique
+  elseif #global.TrainStopNames[stop.entity.backer_name] == 1 then
     stop.isDepot = false
 
     -- reset duplicate name error
