@@ -212,7 +212,7 @@ function AddStopName(stopID, stopName)
         end
       end
       if not idExists then
-        -- multiple stops of same name > add id to the list      
+        -- multiple stops of same name > add id to the list
         table.insert(global.TrainStopNames[stopName], stopID)
         -- log("added "..stopID.." to "..stopName)
       end
@@ -692,7 +692,7 @@ end
 
 do --ProcessRequest
 -- return all stations providing item, ordered by priority and item-count
-local function GetProviders(force, item, min_count)
+local function GetProviders(force, item, min_count, min_length, max_length)
   local stations = {}
   local providers = global.Dispatcher.Provided[item]
   if not providers then
@@ -702,7 +702,10 @@ local function GetProviders(force, item, min_count)
   for stopID, count in pairs (providers) do
   if not(stopID == "sumCount" or stopID == "sumStops") then --skip sumCount, sumStops
     local stop = global.LogisticTrainStops[stopID]
-    if stop and stop.entity.force.name == force.name then
+    --log("requester train length: "..min_length.."-"..max_length..", provider train length: "..stop.minTraincars.."-"..stop.maxTraincars)
+    if stop and stop.entity.force.name == force.name
+    and (stop.minTraincars == 0 or max_length == 0 or stop.minTraincars <= max_length)
+    and (stop.maxTraincars == 0 or min_length == 0 or stop.maxTraincars >= min_length) then --check if provider can actually service trains from requester
       local activeDeliveryCount = #stop.activeDeliveries
       if count > 0 and (use_Best_Effort or stop.ignoreMinDeliverySize or count >= min_count) and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
         if log_level >= 4 then printmsg("(GetProviders): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars.." locked Slots: "..stop.lockedSlots, false) end
@@ -844,6 +847,8 @@ function ProcessRequest(request)
   end
 
   local minDelivery = requestStation.minDelivery
+  local maxTraincars = requestStation.maxTraincars
+  local minTraincars = requestStation.minTraincars
   local orders = {}
   local deliveries = nil
 
@@ -869,7 +874,7 @@ function ProcessRequest(request)
     end
 
     -- get providers ordered by priority
-    local providers = GetProviders(requestStation.entity.force, item, minDelivery)
+    local providers = GetProviders(requestStation.entity.force, item, minDelivery, minTraincars, maxTraincars)
     if not providers or #providers < 1 then
       if log_level >= 2 then printmsg({"ltn-message.no-provider-found", localname}, true) end
       goto skipRequestItem
@@ -895,12 +900,10 @@ function ProcessRequest(request)
     end
 
     -- maxTraincars = shortest set max-train-length
-    local maxTraincars = requestStation.maxTraincars
     if providerStation.maxTraincars > 0 and (providerStation.maxTraincars < requestStation.maxTraincars or requestStation.maxTraincars == 0) then
       maxTraincars = providerStation.maxTraincars
     end
     -- minTraincars = longest set min-train-length
-    local minTraincars = requestStation.minTraincars
     if providerStation.minTraincars > 0 and (providerStation.minTraincars > requestStation.minTraincars or requestStation.minTraincars == 0) then
       minTraincars = providerStation.minTraincars
     end

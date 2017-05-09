@@ -1,5 +1,6 @@
 1.2.3
 - fixed desync https://forums.factorio.com/viewtopic.php?f=23&t=46873
+- fixed dispatcher picks providers with incompatible train length
 - duplicate names are checked across all train-stops instead of only LTN Stops
 - improved performance of checking duplicate names by using events introduced with 0.15
 
