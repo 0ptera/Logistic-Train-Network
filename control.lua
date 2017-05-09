@@ -17,6 +17,7 @@ local ErrorCodes = {
   "pink"    -- duplicate stop name
 }
 local StopIDList = {} -- stopIDs list for on_tick updates
+local stopsPerTick = 1 -- step width of StopIDList
 
 local match = string.match
 local ceil = math.ceil
@@ -37,6 +38,7 @@ local function initialize(oldVersion, newVersion)
   global.messageBuffer = {}
 
   global.StopDistances = global.StopDistances or {} -- station distance lookup table
+  global.stopIdStartIndex = global.stopIdStartIndex or 1 --global index should prevent desync by updating different stops
 
   ---- initialize Dispatcher
   global.Dispatcher = global.Dispatcher or {}
@@ -141,7 +143,6 @@ script.on_load(function()
       StopIDList[#StopIDList+1] = stopID
     end
     stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1))
-    stopIdStartIndex = 1
 	end
   log("[LTN] on_load: complete")
 end)
@@ -295,7 +296,7 @@ local function createStop(entity)
 
   if #StopIDList == 1 then
     stopsPerTick = 1 --initialize ticker indexes
-    stopIdStartIndex = 1
+    global.stopIdStartIndex = 1
     script.on_event(defines.events.on_tick, ticker) --subscribe ticker on first created train stop
     if log_level >= 4 then printmsg("on_tick subscribed", false) end
   end
@@ -469,7 +470,7 @@ function ticker(event)
 
   if global.tickCount == 1 then
     stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1)) -- 59 ticks for stop Updates, 60th tick for dispatcher
-    stopIdStartIndex = 1
+    global.stopIdStartIndex = 1
 
     -- clear Dispatcher.Storage
     global.Dispatcher.Provided = {}
@@ -483,16 +484,16 @@ function ticker(event)
     end
   end
 
-  stopIdLastIndex = stopIdStartIndex + stopsPerTick - 1
+  local stopIdLastIndex = global.stopIdStartIndex + stopsPerTick - 1
   if stopIdLastIndex > #StopIDList then
     stopIdLastIndex = #StopIDList
   end
-  for i = stopIdStartIndex, stopIdLastIndex, 1 do
+  for i = global.stopIdStartIndex, stopIdLastIndex, 1 do
     local stopID = StopIDList[i]
     if log_level >= 4 then printmsg(global.tickCount.."/"..tick.." updating stopID "..tostring(stopID), false) end
     UpdateStop(stopID)
   end
-  stopIdStartIndex = stopIdLastIndex + 1
+  global.stopIdStartIndex = stopIdLastIndex + 1
 
 
   if global.tickCount == dispatcher_update_interval then
