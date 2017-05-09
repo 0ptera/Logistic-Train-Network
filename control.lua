@@ -203,13 +203,23 @@ end
 function AddStopName(stopID, stopName)
   if stopName then -- is it possible to have stops without backer_name?
     if global.TrainStopNames[stopName] then
-      -- multiple stops of same name > add id to the list
-      table.insert(global.TrainStopNames[stopName], stopID)
-      --log("added "..stopID.." to "..stopName)
+      -- prevent adding the same stop multiple times
+      local idExists = false
+      for i=1, #global.TrainStopNames[stopName] do
+        if stopID == global.TrainStopNames[stopName][i] then
+          idExists = true
+          log(stopID.." already exists for "..stopName)
+        end
+      end
+      if not idExists then
+        -- multiple stops of same name > add id to the list      
+        table.insert(global.TrainStopNames[stopName], stopID)
+        log("added "..stopID.." to "..stopName)
+      end
     else
       -- create new name-id entry
       global.TrainStopNames[stopName] = {stopID}
-      --log("creating entry "..stopName..": "..stopID)
+      log("creating entry "..stopName..": "..stopID)
     end
   end
 end
@@ -221,13 +231,13 @@ function RemoveStopName(stopID, stopName)
     for i=#global.TrainStopNames[stopName], 1, -1 do
       if global.TrainStopNames[stopName][i] == stopID then
         table.remove(global.TrainStopNames[stopName], i)
-        --log("(removed "..stopID.." from "..stopName)
+        log("(removed "..stopID.." from "..stopName)
       end
     end
   else
     -- remove name-id entry
     global.TrainStopNames[stopName] = nil
-    --log("removed entry "..stopName..": "..stopID)
+    log("removed entry "..stopName..": "..stopID)
   end
 end
 
