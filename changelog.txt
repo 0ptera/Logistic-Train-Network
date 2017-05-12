@@ -1,3 +1,8 @@
+1.2.4
+- added toggle between output of positive load, negative unload amount and expected train inventory after (un-)loading
+- formated setting descriptions, should be less wall of text
+- fixed a crash when adding carriages to trains parked at provider or requester
+
 1.2.3
 - fixed desync https://forums.factorio.com/viewtopic.php?f=23&t=46873
 - fixed dispatcher picks providers with incompatible train length
