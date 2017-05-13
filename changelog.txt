@@ -1,5 +1,6 @@
 1.2.4
 - added toggle between output of positive load, negative unload amount and expected train inventory after (un-)loading
+- added Chinese locale by 745275633
 - formated setting descriptions, should be less wall of text
 - fixed a crash when adding carriages to trains parked at provider or requester
 
