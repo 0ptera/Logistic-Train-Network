@@ -1,13 +1,4 @@
 data:extend({
-  -- {
-    -- type = "int-setting",
-    -- name = "ltn-interface-log-level",
-    -- order = "aa",
-    -- setting_type = "runtime-global",
-    -- default_value = 2,
-    -- allowed_values = {0, 1, 2, 3, 4}
-  -- },
-
   {
     type = "string-setting",
     name = "ltn-interface-log-level",
@@ -69,5 +60,12 @@ data:extend({
     order = "cc",
     setting_type = "runtime-global",
     default_value = true
+  },
+  {
+    type = "bool-setting",
+    name = "ltn-stop-show-expected-inventory",
+    order = "da",
+    setting_type = "runtime-global",
+    default_value = false
   }
 })

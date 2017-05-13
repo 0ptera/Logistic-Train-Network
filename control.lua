@@ -373,12 +373,12 @@ script.on_event(defines.events.on_built_entity, function(event)
 	end
 
   -- handle adding carriages to parked trains
-  if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
-    entity.train.manual_mode = true
-    UpdateTrain(entity.train)
-    --entity.train.manual_mode = false
-    return
-  end
+  -- if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
+    -- entity.train.manual_mode = true
+    -- UpdateTrain(entity.train)
+    -- --entity.train.manual_mode = false
+    -- return
+  -- end
 end)
 
 script.on_event(defines.events.on_robot_built_entity, function(event)
@@ -449,12 +449,12 @@ script.on_event(defines.events.on_preplayer_mined_item, function(event)
   end
 
   -- handle removing carriages from parked trains
-  if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
-    entity.train.manual_mode = true
-    UpdateTrain(entity.train)
-    --entity.train.manual_mode = false
-    return
-  end
+  -- if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
+    -- entity.train.manual_mode = true
+    -- UpdateTrain(entity.train)
+    -- --entity.train.manual_mode = false
+    -- return
+  -- end
 end)
 
 script.on_event(defines.events.on_robot_pre_mined, function(event)
@@ -478,12 +478,12 @@ script.on_event(defines.events.on_entity_died, function(event)
   end
 
   -- handle removing carriages from parked trains
-  if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
-    entity.train.manual_mode = true
-    UpdateTrain(entity.train)
-    --entity.train.manual_mode = false
-    return
-  end
+  -- if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
+    -- entity.train.manual_mode = true
+    -- UpdateTrain(entity.train)
+    -- --entity.train.manual_mode = false
+    -- return
+  -- end
 end)
 end
 
@@ -491,6 +491,14 @@ end
 do --train state changed
 script.on_event(defines.events.on_train_changed_state, function(event)
   UpdateTrain(event.train)
+end)
+
+script.on_event(defines.events.on_train_created, function(event)
+  log("(on_train_created) Train name: "..tostring(GetTrainName(event.train))..",Train ID: "..tostring(GetTrainID(event.train))..", train.id:"..tostring(event.train.id))
+  if event.train and event.train.valid and GetTrainID(event.train) then
+    log("updating...")
+    UpdateTrain(event.train)
+  end
 end)
 end
 
@@ -1121,7 +1129,7 @@ function UpdateTrain(train)
                 local itype, iname = match(item, "([^,]+),([^,]+)")
                 if itype and iname then
                   -- workaround for get_contents() not returning fluids
-                  local traincount = inventory[iname] or GetFluidCount(stop.parkedTrain, iname)
+                  local traincount = inventory[iname] or GetFluidCount(train, iname)
                   if log_level >= 4 then printmsg("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount) ) end
                   delivery.shipment[item] = traincount
                 end
@@ -1446,6 +1454,9 @@ function UpdateStopOutput(trainStop)
     -- get train composition
     local carriages = trainStop.parkedTrain.carriages
 		local carriagesDec = {}
+    local inventory = trainStop.parkedTrain.get_contents() --only holds items, nil if empty or fluids only
+    local fluidInventory = {}
+
 		if trainStop.parkedTrainFacesStop then --train faces forwards >> iterate normal
       for i=1, #carriages do
         local name = carriages[i].name
@@ -1454,6 +1465,20 @@ function UpdateStopOutput(trainStop)
         else
           carriagesDec[name] = 2^(i-1)
         end
+
+        -- workaround for get_contents not returning fluids
+        if carriages[i].type == "fluid-wagon" then
+          local wagon = carriages[i]
+          for j=1, #wagon.fluidbox do
+            if wagon.fluidbox[j] then
+              if fluidInventory[wagon.fluidbox[j].type] then
+                fluidInventory[wagon.fluidbox[j].type] = fluidInventory[wagon.fluidbox[j].type] + wagon.fluidbox[j].amount
+              else
+                fluidInventory[wagon.fluidbox[j].type] = wagon.fluidbox[j].amount
+              end
+            end
+          end
+        end -- fluid workaround
       end
     else --train faces backwards >> iterate backwards
       n = 0
@@ -1465,6 +1490,20 @@ function UpdateStopOutput(trainStop)
           carriagesDec[name] = 2^n
         end
         n=n+1
+
+        -- workaround for get_contents not returning fluids
+        if carriages[i].type == "fluid-wagon" then
+          local wagon = carriages[i]
+          for j=1, #wagon.fluidbox do
+            if wagon.fluidbox[j] then
+              if fluidInventory[wagon.fluidbox[j].type] then
+                fluidInventory[wagon.fluidbox[j].type] = fluidInventory[wagon.fluidbox[j].type] + wagon.fluidbox[j].amount
+              else
+                fluidInventory[wagon.fluidbox[j].type] = wagon.fluidbox[j].amount
+              end
+            end
+          end
+        end -- fluid workaround
       end
     end
 
@@ -1475,33 +1514,62 @@ function UpdateStopOutput(trainStop)
 
     if not trainStop.isDepot then
       -- Update normal stations
+      local loadingList = {}
+      local fluidLoadingList = {}
       local conditions = trainStop.parkedTrain.schedule.records[trainStop.parkedTrain.schedule.current].wait_conditions
       if conditions ~= nil then
         for _, c in pairs(conditions) do
           if c.condition then
             if c.type == "item_count" then
-              if c.condition.comparator == ">" then --train expects to be loaded with x of this item
-                table.insert(signals, {index = index, signal = c.condition.first_signal, count = c.condition.constant + 1 })
-                index = index+1
+              if c.condition.comparator == ">" then --train expects to be loaded to x of this item
+                if display_expected_inventory then
+                  inventory[c.condition.first_signal.name] = c.condition.constant + 1
+                else
+                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = c.condition.constant + 1 })
+                  index = index+1
+                end
               elseif (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
-                table.insert(signals, {index = index, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_item_count(c.condition.first_signal.name) * -1 })
-                index = index+1
+                if display_expected_inventory then
+                  inventory[c.condition.first_signal.name] = nil
+                else
+                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_item_count(c.condition.first_signal.name) * -1 })
+                  index = index+1
+                end
               end
             elseif c.type == "fluid_count" then
-              if c.condition.comparator == ">" then --train expects to be loaded with x of this item
-                table.insert(signals, {index = index, signal = c.condition.first_signal, count = c.condition.constant + 1 })
-                index = index+1
-              elseif (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
-                --table.insert(signals, {index = index, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_fluid_count(c.condition.first_signal.name) * -1 })
-                local fluidcount = GetFluidCount(trainStop.parkedTrain, c.condition.first_signal.name)
-                table.insert(signals, {index = index, signal = c.condition.first_signal, count = fluidcount * -1 })
-                index = index+1
+              if c.condition.comparator == ">" then --train expects to be loaded to x of this fluid
+                if display_expected_inventory then
+                  fluidInventory[c.condition.first_signal.name] = c.condition.constant + 1
+                else
+                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = c.condition.constant + 1 })
+                  index = index+1
+                end
+              elseif (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this fluid
+                if display_expected_inventory then
+                  fluidInventory[c.condition.first_signal.name] = nil
+                else
+                  -- table.insert(signals, {index = index, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_fluid_count(c.condition.first_signal.name) * -1 })
+                  local fluidcount = GetFluidCount(trainStop.parkedTrain, c.condition.first_signal.name)
+                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = fluidcount * -1 })
+                  index = index+1
+                end
               end
             end
           end
         end
       end
 
+      -- output expected inventory contents
+      if display_expected_inventory then
+        for k,v in pairs(inventory) do
+          table.insert(signals, {index = index, signal = {type="item", name=k}, count = v})
+          index = index+1
+        end
+        for k,v in pairs(fluidInventory) do
+          table.insert(signals, {index = index, signal = {type="fluid", name=k}, count = v})
+          index = index+1
+        end
+      end
     end
 
   end
