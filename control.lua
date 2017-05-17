@@ -708,9 +708,8 @@ local function GetProviders(force, item, min_count, min_length, max_length)
   end
   -- get all providing stations
   for stopID, count in pairs (providers) do
-  if not(stopID == "sumCount" or stopID == "sumStops") then --skip sumCount, sumStops
     local stop = global.LogisticTrainStops[stopID]
-    --log("requester train length: "..min_length.."-"..max_length..", provider train length: "..stop.minTraincars.."-"..stop.maxTraincars)
+    --if stop then log("requester train length: "..min_length.."-"..max_length..", provider train length: "..stop.minTraincars.."-"..stop.maxTraincars) end
     if stop and stop.entity.force.name == force.name
     and (stop.minTraincars == 0 or max_length == 0 or stop.minTraincars <= max_length)
     and (stop.maxTraincars == 0 or min_length == 0 or stop.maxTraincars >= min_length) then --check if provider can actually service trains from requester
@@ -720,7 +719,6 @@ local function GetProviders(force, item, min_count, min_length, max_length)
         stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
       end
     end
-  end
   end
   -- sort by priority and count
   sort(stations, function(a, b)
@@ -1124,14 +1122,18 @@ function UpdateTrain(train)
 
             if delivery.from == stop.entity.backer_name then
               -- update delivery counts to train inventory
-              local inventory = train.get_contents()
               for item, count in pairs (delivery.shipment) do
                 local itype, iname = match(item, "([^,]+),([^,]+)")
                 if itype and iname then
-                  -- workaround for get_contents() not returning fluids
-                  local traincount = inventory[iname] or GetFluidCount(train, iname)
-                  if log_level >= 4 then printmsg("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount) ) end
-                  delivery.shipment[item] = traincount
+                  if itype == "item" then
+                    local traincount = train.get_item_count(iname)
+                    if log_level >= 4 then printmsg("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount) ) end
+                    delivery.shipment[item] = traincount
+                  elseif itype == "fluid" then
+                    local traincount = train.get_fluid_count(iname)
+                    if log_level >= 4 then printmsg("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount) ) end
+                    delivery.shipment[item] = traincount
+                  end
                 end
               end
               delivery.pickupDone = true -- remove reservations from this delivery
@@ -1331,9 +1333,7 @@ function UpdateStop(stopID)
               if itype and iname then
                 local traincount = 0
                 if itype == "fluid" then
-                  -- traincount = stop.parkedTrain.get_fluid_count(iname)
-                  -- workaround for not existing API call get_fluid_count(name)
-                  traincount = GetFluidCount(stop.parkedTrain, iname)
+                  traincount = stop.parkedTrain.get_fluid_count(iname)
                 else
                   traincount = stop.parkedTrain.get_item_count(iname)
                 end
@@ -1371,7 +1371,7 @@ function UpdateStop(stopID)
 
         -- update Dispatcher Storage
         if count > 0 then
-           local provided = global.Dispatcher.Provided[item] or {}
+          local provided = global.Dispatcher.Provided[item] or {}
           provided[stopID] = count
           if provided.sumCount then
             provided.sumCount = provided.sumCount + count
@@ -1455,7 +1455,7 @@ function UpdateStopOutput(trainStop)
     local carriages = trainStop.parkedTrain.carriages
 		local carriagesDec = {}
     local inventory = trainStop.parkedTrain.get_contents() --only holds items, nil if empty or fluids only
-    local fluidInventory = {}
+    local fluidInventory = trainStop.parkedTrain.get_fluid_contents()
 
 		if trainStop.parkedTrainFacesStop then --train faces forwards >> iterate normal
       for i=1, #carriages do
@@ -1465,20 +1465,6 @@ function UpdateStopOutput(trainStop)
         else
           carriagesDec[name] = 2^(i-1)
         end
-
-        -- workaround for get_contents not returning fluids
-        if carriages[i].type == "fluid-wagon" then
-          local wagon = carriages[i]
-          for j=1, #wagon.fluidbox do
-            if wagon.fluidbox[j] then
-              if fluidInventory[wagon.fluidbox[j].type] then
-                fluidInventory[wagon.fluidbox[j].type] = fluidInventory[wagon.fluidbox[j].type] + wagon.fluidbox[j].amount
-              else
-                fluidInventory[wagon.fluidbox[j].type] = wagon.fluidbox[j].amount
-              end
-            end
-          end
-        end -- fluid workaround
       end
     else --train faces backwards >> iterate backwards
       n = 0
@@ -1490,20 +1476,6 @@ function UpdateStopOutput(trainStop)
           carriagesDec[name] = 2^n
         end
         n=n+1
-
-        -- workaround for get_contents not returning fluids
-        if carriages[i].type == "fluid-wagon" then
-          local wagon = carriages[i]
-          for j=1, #wagon.fluidbox do
-            if wagon.fluidbox[j] then
-              if fluidInventory[wagon.fluidbox[j].type] then
-                fluidInventory[wagon.fluidbox[j].type] = fluidInventory[wagon.fluidbox[j].type] + wagon.fluidbox[j].amount
-              else
-                fluidInventory[wagon.fluidbox[j].type] = wagon.fluidbox[j].amount
-              end
-            end
-          end
-        end -- fluid workaround
       end
     end
 
@@ -1532,7 +1504,7 @@ function UpdateStopOutput(trainStop)
                 if display_expected_inventory then
                   inventory[c.condition.first_signal.name] = nil
                 else
-                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_item_count(c.condition.first_signal.name) * -1 })
+                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = inventory[c.condition.first_signal.name] * -1 })
                   index = index+1
                 end
               end
@@ -1548,9 +1520,7 @@ function UpdateStopOutput(trainStop)
                 if display_expected_inventory then
                   fluidInventory[c.condition.first_signal.name] = nil
                 else
-                  -- table.insert(signals, {index = index, signal = c.condition.first_signal, count = trainStop.parkedTrain.get_fluid_count(c.condition.first_signal.name) * -1 })
-                  local fluidcount = GetFluidCount(trainStop.parkedTrain, c.condition.first_signal.name)
-                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = fluidcount * -1 })
+                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = fluidInventory[c.condition.first_signal.name] * -1 })
                   index = index+1
                 end
               end
@@ -1597,21 +1567,6 @@ end
 function GetTrainName(train)
   local loco = GetMainLocomotive(train)
   return loco and loco.backer_name
-end
-
-function GetFluidCount(train, fluid)
-  local count = 0
-  for k, wagon in pairs(train.fluid_wagons) do
-    for i=1, #wagon.fluidbox do
-      if wagon.fluidbox[i] then
-        --log("(GetFluidCount) fluid: "..fluid..", fluidbox: "..tostring(wagon.fluidbox[i].type).." "..tostring(wagon.fluidbox[i].amount))
-        if wagon.fluidbox[i].type == fluid then
-          count = count + wagon.fluidbox[i].amount
-        end
-      end
-    end
-  end
-  return count
 end
 
 --local square = math.sqrt

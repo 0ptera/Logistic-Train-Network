@@ -1,3 +1,6 @@
+1.2.5
+- replaced workaround with get_fluid_count and get_fluid_contents
+
 1.2.4
 - added toggle between output of positive load, negative unload amount and expected train inventory after (un-)loading
 - added Chinese locale by 745275633
