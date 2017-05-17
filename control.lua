@@ -1454,8 +1454,8 @@ function UpdateStopOutput(trainStop)
     -- get train composition
     local carriages = trainStop.parkedTrain.carriages
 		local carriagesDec = {}
-    local inventory = trainStop.parkedTrain.get_contents() --only holds items, nil if empty or fluids only
-    local fluidInventory = trainStop.parkedTrain.get_fluid_contents()
+    local inventory = trainStop.parkedTrain.get_contents() or {}
+    local fluidInventory = trainStop.parkedTrain.get_fluid_contents() or {}
 
 		if trainStop.parkedTrainFacesStop then --train faces forwards >> iterate normal
       for i=1, #carriages do
@@ -1492,7 +1492,7 @@ function UpdateStopOutput(trainStop)
       if conditions ~= nil then
         for _, c in pairs(conditions) do
           if c.condition then
-            if c.type == "item_count" then
+            if c.type == "item_count" then              
               if c.condition.comparator == ">" then --train expects to be loaded to x of this item
                 if display_expected_inventory then
                   inventory[c.condition.first_signal.name] = c.condition.constant + 1
@@ -1504,7 +1504,7 @@ function UpdateStopOutput(trainStop)
                 if display_expected_inventory then
                   inventory[c.condition.first_signal.name] = nil
                 else
-                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = inventory[c.condition.first_signal.name] * -1 })
+                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = (inventory[c.condition.first_signal.name] or 0) * -1 })
                   index = index+1
                 end
               end
@@ -1520,7 +1520,7 @@ function UpdateStopOutput(trainStop)
                 if display_expected_inventory then
                   fluidInventory[c.condition.first_signal.name] = nil
                 else
-                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = fluidInventory[c.condition.first_signal.name] * -1 })
+                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = (fluidInventory[c.condition.first_signal.name] or 0) * -1 })
                   index = index+1
                 end
               end

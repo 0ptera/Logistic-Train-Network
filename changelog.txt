@@ -1,3 +1,6 @@
+1.2.6
+- fixed error when schedule is referencing non existing items 
+
 1.2.5
 - replaced workaround with get_fluid_count and get_fluid_contents
 
