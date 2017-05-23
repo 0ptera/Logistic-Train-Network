@@ -293,19 +293,21 @@ local function createStop(entity)
   --local ghosts = entity.surface.find_entities_filtered{area={{entity.position.x-2, entity.position.y-2},{entity.position.x+2, entity.position.y+2}} , name="entity-ghost"}
   local ghosts = entity.surface.find_entities({{entity.position.x-1.1, entity.position.y-1.1},{entity.position.x+1.1, entity.position.y+1.1}} )
   for _,ghost in pairs (ghosts) do
-    if ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-input" then
-      --printmsg("reviving ghost input at "..ghost.position.x..", "..ghost.position.y)
-      _, input = ghost.revive()
-    elseif ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-output" then
-      --printmsg("reviving ghost output at "..ghost.position.x..", "..ghost.position.y)
-      _, output = ghost.revive()
-    -- something has built I/O already (e.g.) Creative Mode Instant Blueprint
-    elseif ghost.name == "logistic-train-stop-input" then
-      input = ghost
-      --printmsg("Found existing input at "..ghost.position.x..", "..ghost.position.y)
-    elseif ghost.name == "logistic-train-stop-output" then
-      output = ghost
-      --printmsg("Found existing output at "..ghost.position.x..", "..ghost.position.y)
+    if ghost.valid then
+      if ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-input" then
+        --printmsg("reviving ghost input at "..ghost.position.x..", "..ghost.position.y)
+        _, input = ghost.revive()
+      elseif ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-output" then
+        --printmsg("reviving ghost output at "..ghost.position.x..", "..ghost.position.y)
+        _, output = ghost.revive()
+      -- something has built I/O already (e.g.) Creative Mode Instant Blueprint
+      elseif ghost.name == "logistic-train-stop-input" then
+        input = ghost
+        --printmsg("Found existing input at "..ghost.position.x..", "..ghost.position.y)
+      elseif ghost.name == "logistic-train-stop-output" then
+        output = ghost
+        --printmsg("Found existing output at "..ghost.position.x..", "..ghost.position.y)
+      end
     end
   end
 
@@ -494,9 +496,8 @@ script.on_event(defines.events.on_train_changed_state, function(event)
 end)
 
 script.on_event(defines.events.on_train_created, function(event)
-  log("(on_train_created) Train name: "..tostring(GetTrainName(event.train))..",Train ID: "..tostring(GetTrainID(event.train))..", train.id:"..tostring(event.train.id))
+  -- log("(on_train_created) Train name: "..tostring(GetTrainName(event.train))..",Train ID: "..tostring(GetTrainID(event.train))..", train.id:"..tostring(event.train.id))
   if event.train and event.train.valid and GetTrainID(event.train) then
-    log("updating...")
     UpdateTrain(event.train)
   end
 end)
@@ -1491,8 +1492,8 @@ function UpdateStopOutput(trainStop)
       local conditions = trainStop.parkedTrain.schedule.records[trainStop.parkedTrain.schedule.current].wait_conditions
       if conditions ~= nil then
         for _, c in pairs(conditions) do
-          if c.condition then
-            if c.type == "item_count" then              
+          if c.condition and c.condition.first_signal then -- loading without mods can make first signal nil?
+            if c.type == "item_count" then
               if c.condition.comparator == ">" then --train expects to be loaded to x of this item
                 if display_expected_inventory then
                   inventory[c.condition.first_signal.name] = c.condition.constant + 1
