@@ -3,6 +3,7 @@
 - fixed bug in Chinese locale
 - switched to 128x128 tech icon
 - overloaded trains no longer cause requesters to flip to providers during delivery
+- set expected train inventory to default to active
 
 1.2.7
 - fixed potential nil references in first_signal and stop ghost entities

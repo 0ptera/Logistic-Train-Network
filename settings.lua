@@ -66,6 +66,6 @@ data:extend({
     name = "ltn-stop-show-expected-inventory",
     order = "da",
     setting_type = "runtime-global",
-    default_value = false
+    default_value = true
   }
 })
