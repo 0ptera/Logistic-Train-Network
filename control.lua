@@ -1340,30 +1340,36 @@ function UpdateStop(stopID)
                 end
 
                 if delivery.to == stop.entity.backer_name then
-                  if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested count with train inventory: "..item.." "..count.." + "..traincount) end
-                  count = count + traincount
+                  local newcount = count + traincount
+                  if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
+                  if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested count with train inventory: "..item.." "..count.."+"..traincount.."="..newcount) end
+                  count = newcount
                 elseif delivery.from == stop.entity.backer_name then
                   if traincount <= deliverycount then
-                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided count with train inventory: "..item.." "..count.." - "..deliverycount - traincount) end
-                    count = count - (deliverycount - traincount)
+                    local newcount = count - (deliverycount - traincount)
+                    if newcount < 0 then newcount = 0 end --make sure we don't turn it into a request
+                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided count with train inventory: "..item.." "..count.."-"..deliverycount - traincount.."="..newcount) end
+                    count = newcount
                   else --train loaded more than delivery
                     if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating delivery count with overloaded train inventory: "..item.." "..traincount) end
                     -- update delivery to new size
                     global.Dispatcher.Deliveries[trainID].shipment[item] = traincount
                   end
-                  if count < 0 then count = 0 end --make sure we don't turn it into a request
                 end
               end
 
             else
               -- calculate items +- deliveries
               if delivery.to == stop.entity.backer_name then
-                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested count with delivery: "..item.." "..count.." + "..deliverycount) end
-                count = count + deliverycount
+                local newcount = count + deliverycount
+                if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested count with delivery: "..item.." "..count.."+"..deliverycount.."="..newcount) end
+                count = newcount
               elseif delivery.from == stop.entity.backer_name and not delivery.pickupDone then
-                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided count with delivery: "..item.." "..count.." - "..deliverycount) end
-                count = count - deliverycount
-                if count < 0 then count = 0 end --make sure we don't turn it into a request
+                local newcount = count - deliverycount
+                if newcount < 0 then newcount = 0 end --make sure we don't turn it into a request
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided count with delivery: "..item.." "..count.."-"..deliverycount.."="..newcount) end
+                count = newcount
               end
 
             end

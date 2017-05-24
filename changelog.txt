@@ -1,6 +1,7 @@
 1.2.8
 - added German locale
 - switched to 128x128 tech icon
+- overloaded trains no longer cause requesters to flip to providers during transit
 
 1.2.7
 - fixed potential nil references in first_signal and stop ghost entities
