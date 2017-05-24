@@ -1,5 +1,14 @@
+1.2.8
+- added German locale
+- fixed bug in Chinese locale
+- switched to 128x128 tech icon
+- overloaded trains no longer cause requesters to flip to providers during delivery
+
+1.2.7
+- fixed potential nil references in first_signal and stop ghost entities
+
 1.2.6
-- fixed error when schedule is referencing non existing items 
+- fixed error when schedule is referencing non existing items
 
 1.2.5
 - replaced workaround with get_fluid_count and get_fluid_contents
@@ -33,8 +42,10 @@
 - short circuit detection uses network id
   - removed grey detection signal from output
 
-1.1.2
-- intermediate 0.15 support	(not thoroughly tested)
+
+1.1.3
+- fixed error when schedule is referencing non existing items
+- fixed potential nil references in first_signal and stop ghost entities
 
 1.1.1
 - deconstruction of broken stops properly removes stop and surrounding I/O entities
