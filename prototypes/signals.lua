@@ -15,17 +15,17 @@ data:extend({
   },
   {
     type = "virtual-signal",
-    name = "min-train-length",
+    name = "ltn-min-train-length",
     icon = "__LogisticTrainNetwork__/graphics/icons/min-train-length.png",
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-ba[min-train-length]"
+    order = "z[LTN-signal]-ba[ltn-min-train-length]"
   },
   {
     type = "virtual-signal",
-    name = "max-train-length",
+    name = "ltn-max-train-length",
     icon = "__LogisticTrainNetwork__/graphics/icons/max-train-length.png",
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-bb[max-train-length]"
+    order = "z[LTN-signal]-bb[ltn-max-train-length]"
   },
   {
     type = "virtual-signal",
@@ -36,30 +36,30 @@ data:extend({
   },
   {
     type = "virtual-signal",
-    name = "min-delivery-size",
-    icon = "__LogisticTrainNetwork__/graphics/icons/min-shipment-size.png",
+    name = "ltn-requester-threshold",
+    icon = "__LogisticTrainNetwork__/graphics/icons/requester-threshold.png",
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-ca[min-delivery-size]"
+    order = "z[LTN-signal]-ca[ltn-requester-threshold]"
   },
   {
     type = "virtual-signal",
-    name = "stop-priority",
-    icon = "__LogisticTrainNetwork__/graphics/icons/stop-priority.png",
+    name = "ltn-provider-threshold",
+    icon = "__LogisticTrainNetwork__/graphics/icons/provider-threshold.png",
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-da[stop-priority]"
-  },
+    order = "z[LTN-signal]-da[ltn-provider-threshold]"
+  },  
   {
     type = "virtual-signal",
-    name = "ltn-no-min-delivery-size",
-    icon = "__LogisticTrainNetwork__/graphics/icons/no-min-shipment-size.png",
+    name = "ltn-provider-priority",
+    icon = "__LogisticTrainNetwork__/graphics/icons/provider-priority.png",
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-db[ltn-no-min-delivery-size]"
+    order = "z[LTN-signal]-db[ltn-provider-priority]"
   },
   {
     type = "virtual-signal",
     name = "ltn-locked-slots",
     icon = "__LogisticTrainNetwork__/graphics/icons/locked-slot.png",
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-dc[ltn-locked-slots]"
+    order = "z[LTN-signal]-dd[ltn-locked-slots]"
   }
 })

@@ -25,18 +25,19 @@ data:extend({
   },
   {
     type = "int-setting",
-    name = "ltn-dispatcher-min-delivery-size",
-    order = "bb",
+    name = "ltn-dispatcher-requester-threshold",
+    order = "ba",
     setting_type = "runtime-global",
     default_value = 1000,
     minimum_value = 1
   },
   {
-    type = "bool-setting",
-    name = "ltn-dispatcher-use-best-effort",
-    order = "bc",
+    type = "int-setting",
+    name = "ltn-dispatcher-provider-threshold",
+    order = "bb",
     setting_type = "runtime-global",
-    default_value = false
+    default_value = 1000,
+    minimum_value = 1
   },
   {
     type = "int-setting",
