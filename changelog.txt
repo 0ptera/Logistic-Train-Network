@@ -4,7 +4,7 @@
 - removed Best Effort, Provide Threshold = 1 does the same now
 - added Disable Warnings Messages control signal #34
 - limit messages to force where possible #40
-- added workaround for #31
+- added workaround for fluid wagon residue #31
 
 1.2.8
 - added German locale
