@@ -21,8 +21,13 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if event.setting == "ltn-stop-show-expected-inventory" then display_expected_inventory = settings.global["ltn-stop-show-expected-inventory"].value end
 end)
 
-function printmsg(msg, useFilter)
+function printmsg(msg, force, useFilter)
   local msgKey = ""
+  if force and force.valid then
+    msgKey = force.name..", "
+  else
+    msgKey = "all, "
+  end  
   if type(msg) == "table" then
     for k, v in pairs(msg) do
       if type(v) == "table" then
@@ -40,7 +45,11 @@ function printmsg(msg, useFilter)
   -- print message
   if global.messageBuffer[msgKey] == nil or not useFilter then
     if log_output == "console" or log_output == "console & logfile" then
-      game.print(msg)
+      if force and force.valid then
+        force.print(msg)
+      else
+        game.print(msg)
+      end
     end
     if log_output == "logfile" or log_output == "console & logfile" then
       log("[LTN] " .. msgKey)

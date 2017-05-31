@@ -3,6 +3,7 @@
 - removed Minimum Delivery Size and Ignore Minimum Delivery Size
 - removed Best Effort, Provide Threshold = 1 does the same now
 - added Disable Warnings Messages control signal #34
+- limit messages to force where possible #40
 
 1.2.8
 - added German locale
