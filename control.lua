@@ -688,11 +688,16 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
   local record = {station = stationName, wait_conditions = {}}
 
   if condType == "item_count" then
+    local waitEmpty = false
     -- write itemlist to conditions
     for i=1, #itemlist do
       local condFluid = nil
       if itemlist[i].type == "fluid" then
         condFluid = "fluid_count"
+        -- workaround for leaving with fluid residue, could time out trains
+        if condComp == "=" and countOverride == 0 then
+          waitEmpty = true
+        end
       end
 
       -- make > into >=
@@ -704,7 +709,9 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
       record.wait_conditions[#record.wait_conditions+1] = {type = condFluid or condType, compare_type = "and", condition = cond }
     end
 
-    if finish_loading then -- let inserters finish
+    if waitEmpty then
+      record.wait_conditions[#record.wait_conditions+1] = {type = "empty", compare_type = "and" }
+    elseif finish_loading then -- let inserter/pumps finish
       record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "and", ticks = 120 }
     end
 

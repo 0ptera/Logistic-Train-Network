@@ -4,12 +4,13 @@
 - removed Best Effort, Provide Threshold = 1 does the same now
 - added Disable Warnings Messages control signal #34
 - limit messages to force where possible #40
+- added workaround for #31
 
 1.2.8
 - added German locale
 - fixed bug in Chinese locale
 - switched to 128x128 tech icon
-- overloaded trains no longer cause requesters to flip to providers during delivery
+- overloaded trains no longer cause requesters to flip to providers during delivery #33
 - set expected train inventory to default to active
 
 1.2.7
