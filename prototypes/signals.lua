@@ -11,7 +11,7 @@ data:extend({
     name = "ltn-depot",
     icon = "__LogisticTrainNetwork__/graphics/icons/depot.png",
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-a[ltn-depot]"
+    order = "z[LTN-signal]-aa[ltn-depot]"
   },
   {
     type = "virtual-signal",
@@ -61,5 +61,12 @@ data:extend({
     icon = "__LogisticTrainNetwork__/graphics/icons/locked-slot.png",
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-dd[ltn-locked-slots]"
-  }
+  },
+  {
+    type = "virtual-signal",
+    name = "ltn-disable-warnings",
+    icon = "__LogisticTrainNetwork__/graphics/icons/disable-warnings.png",
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-cb[ltn-disable-warnings]"
+  },
 })

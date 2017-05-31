@@ -2,8 +2,7 @@
 - added Request Threshold and Provide Threshold
 - removed Minimum Delivery Size and Ignore Minimum Delivery Size
 - removed Best Effort, Provide Threshold = 1 does the same now
-
-- rewritten Chinese locale merge#39
+- added Disable Warnings Messages control signal #34
 
 1.2.8
 - added German locale

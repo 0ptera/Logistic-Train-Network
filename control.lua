@@ -3,15 +3,27 @@ require "interface"
 
 local MOD_NAME = "LogisticTrainNetwork"
 
+local ISDEPOT = "ltn-depot"
 local MINTRAINLENGTH = "ltn-min-train-length"
 local MAXTRAINLENGTH = "ltn-max-train-length"
 local MAXTRAINS = "ltn-max-trains"
---local MINDELIVERYSIZE = "ltn-requester-threshold"
 local MINREQUESTED = "ltn-requester-threshold"
+local NOWARN = "ltn-disable-warnings"
 local MINPROVIDED = "ltn-provider-threshold"
 local PRIORITY = "ltn-provider-priority"
 local LOCKEDSLOTS = "ltn-locked-slots"
-local ISDEPOT = "ltn-depot"
+
+local ControlSignals = {
+  [ISDEPOT] = true,
+  [MINTRAINLENGTH] = true,
+  [MAXTRAINLENGTH] = true,
+  [MAXTRAINS] = true,
+  [MINREQUESTED] = true,
+  [NOWARN] = true,
+  [MINPROVIDED] = true,
+  [PRIORITY] = true,
+  [LOCKEDSLOTS] = true,  
+}
 
 local ErrorCodes = {
   "red",    -- circuit/signal error
@@ -890,7 +902,7 @@ function ProcessRequest(request)
     -- get providers ordered by priority
     local providers = GetProviders(requestStation.entity.force, item, count, minTraincars, maxTraincars)
     if not providers or #providers < 1 then
-      if log_level >= 2 then printmsg({"ltn-message.no-provider-found", localname}, true) end
+      if requestStation.noWarnings == false and log_level >= 2 then printmsg({"ltn-message.no-provider-found", localname}, true) end
       goto skipRequestItem
     end
 
@@ -936,7 +948,7 @@ function ProcessRequest(request)
         orders[i].loadingList[#orders[i].loadingList+1] = loadingList
         orders[i].totalStacks = orders[i].totalStacks + stacks
         insertnew = false
-        if log_level >= 4 then  printmsg("inserted into order "..i.."/"..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars, false) end
+        if log_level >= 4 then  printmsg("inserted into order "..i.."/"..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.."/"..orders[i].totalStacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars, false) end
         break
       end
     end
@@ -1165,30 +1177,20 @@ function UpdateTrain(train)
 end
 
 do --UpdateStop
-local validSignals = {
-  [MINTRAINLENGTH] = true,
-  [MAXTRAINLENGTH] = true,
-  [MAXTRAINS] = true,
-  [MINREQUESTED] = true,
-  [MINPROVIDED] = true,
-  [PRIORITY] = true,
-  [LOCKEDSLOTS] = true,
-  [ISDEPOT] = true
-}
 local function getCircuitValues(entity)
   local greenWire = entity.get_circuit_network(defines.wire_type.green)
   local redWire =  entity.get_circuit_network(defines.wire_type.red)
   local items = {}
   if greenWire and greenWire.signals then
     for _, v in pairs(greenWire.signals) do
-      if v.signal.type ~= "virtual" or validSignals[v.signal.name] then
+      if v.signal.type ~= "virtual" or ControlSignals[v.signal.name] then
         items[v.signal.type..","..v.signal.name] = v.count
       end
     end
   end
   if redWire and redWire.signals then
     for _, v in pairs(redWire.signals) do
-      if v.signal.type ~= "virtual" or validSignals[v.signal.name] then
+      if v.signal.type ~= "virtual" or ControlSignals[v.signal.name] then
         if items[v.signal.type..","..v.signal.name] ~= nil then
           items[v.signal.type..","..v.signal.name] = items[v.signal.type..","..v.signal.name] + v.count
         else
@@ -1266,6 +1268,8 @@ function UpdateStop(stopID)
   circuitValues["virtual,"..MAXTRAINS] = nil
   local minRequested = circuitValues["virtual,"..MINREQUESTED] or min_requested
   circuitValues["virtual,"..MINREQUESTED] = nil
+  local noWarnings = circuitValues["virtual,"..NOWARN] or 0
+  circuitValues["virtual,"..NOWARN] = nil
   local minProvided = circuitValues["virtual,"..MINPROVIDED] or min_provided
   circuitValues["virtual,"..MINPROVIDED] = nil
   local priority = circuitValues["virtual,"..PRIORITY] or 0
@@ -1302,6 +1306,7 @@ function UpdateStop(stopID)
       global.LogisticTrainStops[stopID].trainLimit = 0
       global.LogisticTrainStops[stopID].priority = 0
       global.LogisticTrainStops[stopID].lockedSlots = 0
+      global.LogisticTrainStops[stopID].noWarnings = 0
 
       if stop.parkedTrain then
         setLamp(stopID, "blue")
@@ -1394,7 +1399,7 @@ function UpdateStop(stopID)
           local provided = global.Dispatcher.Provided[item] or {}
           provided[stopID] = count
           global.Dispatcher.Provided[item] = provided
-          if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count.."("..minProvided..")", false) end                  
+          if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count.."("..minProvided..")", false) end
         elseif count*-1 >= minRequested then
           count = count * -1
           requestItems[item] = count
@@ -1410,6 +1415,11 @@ function UpdateStop(stopID)
       global.LogisticTrainStops[stopID].trainLimit = trainLimit
       global.LogisticTrainStops[stopID].priority = priority
       global.LogisticTrainStops[stopID].lockedSlots = lockedSlots
+      if noWarnings > 0 then
+        global.LogisticTrainStops[stopID].noWarnings = true
+      else
+        global.LogisticTrainStops[stopID].noWarnings = false
+      end
 
       -- create Requests {stopID, age, itemlist={[item], count}}
       global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[stopID], stopID = stopID, itemlist = requestItems}
