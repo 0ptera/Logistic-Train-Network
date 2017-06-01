@@ -5,6 +5,7 @@
 - added Disable Warnings Messages control signal #34
 - limit messages to force where possible #40
 - added workaround for fluid wagon residue #31
+- removed toggle to loading list, stops only show expected inventory after loading.
 
 1.2.8
 - added German locale

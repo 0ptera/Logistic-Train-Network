@@ -1524,35 +1524,15 @@ function UpdateStopOutput(trainStop)
           if c.condition and c.condition.first_signal then -- loading without mods can make first signal nil?
             if c.type == "item_count" then
               if c.condition.comparator == ">" then --train expects to be loaded to x of this item
-                if display_expected_inventory then
-                  inventory[c.condition.first_signal.name] = c.condition.constant + 1
-                else
-                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = c.condition.constant + 1 })
-                  index = index+1
-                end
+                inventory[c.condition.first_signal.name] = c.condition.constant + 1
               elseif (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
-                if display_expected_inventory then
-                  inventory[c.condition.first_signal.name] = nil
-                else
-                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = (inventory[c.condition.first_signal.name] or 0) * -1 })
-                  index = index+1
-                end
+                inventory[c.condition.first_signal.name] = nil
               end
             elseif c.type == "fluid_count" then
               if c.condition.comparator == ">" then --train expects to be loaded to x of this fluid
-                if display_expected_inventory then
-                  fluidInventory[c.condition.first_signal.name] = c.condition.constant + 1
-                else
-                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = c.condition.constant + 1 })
-                  index = index+1
-                end
+                fluidInventory[c.condition.first_signal.name] = c.condition.constant + 1
               elseif (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this fluid
-                if display_expected_inventory then
-                  fluidInventory[c.condition.first_signal.name] = nil
-                else
-                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = (fluidInventory[c.condition.first_signal.name] or 0) * -1 })
-                  index = index+1
-                end
+                fluidInventory[c.condition.first_signal.name] = nil
               end
             end
           end
@@ -1560,17 +1540,16 @@ function UpdateStopOutput(trainStop)
       end
 
       -- output expected inventory contents
-      if display_expected_inventory then
-        for k,v in pairs(inventory) do
-          table.insert(signals, {index = index, signal = {type="item", name=k}, count = v})
-          index = index+1
-        end
-        for k,v in pairs(fluidInventory) do
-          table.insert(signals, {index = index, signal = {type="fluid", name=k}, count = v})
-          index = index+1
-        end
+      for k,v in pairs(inventory) do
+        table.insert(signals, {index = index, signal = {type="item", name=k}, count = v})
+        index = index+1
       end
-    end
+      for k,v in pairs(fluidInventory) do
+        table.insert(signals, {index = index, signal = {type="fluid", name=k}, count = v})
+        index = index+1
+      end
+      
+    end -- not trainStop.isDepot
 
   end
   -- will reset if called with no parked train
