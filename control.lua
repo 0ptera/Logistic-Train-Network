@@ -22,7 +22,7 @@ local ControlSignals = {
   [NOWARN] = true,
   [MINPROVIDED] = true,
   [PRIORITY] = true,
-  [LOCKEDSLOTS] = true,  
+  [LOCKEDSLOTS] = true,
 }
 
 local ErrorCodes = {
@@ -581,6 +581,16 @@ script.on_event(defines.events.on_pre_entity_settings_pasted, function(event)
 end)
 end
 
+-- update global.Dispatcher.Deliveries.force when forces are removed/merged
+script.on_event(defines.events.on_forces_merging, function(event)
+  for _, delivery in pairs(global.Dispatcher.Deliveries) do
+    if delivery.force.name == event.source.name then
+      delivery.force = event.destination
+    end
+  end
+end)
+
+
 function ticker(event)
   -- exit when there are no logistic train stops
   local next = next
@@ -626,10 +636,10 @@ function ticker(event)
     --clean up deliveries in case train was destroyed or removed
     for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
       if not(delivery.train and delivery.train.valid) then
-        if log_level >= 1 then printmsg({"ltn-message.delivery-removed-train-invalid", delivery.from, delivery.to}, nil, false) end --storing and updating forces just to show this only to the force the train belonged to isn't worth it
+        if log_level >= 1 then printmsg({"ltn-message.delivery-removed-train-invalid", delivery.from, delivery.to}, delivery.force, false) end --storing and updating forces just to show this only to the force the train belonged to isn't worth it
         removeDelivery(trainID)
       elseif tick-delivery.started > delivery_timeout then
-        if log_level >= 1 then printmsg({"ltn-message.delivery-removed-timeout", delivery.from, delivery.to, tick-delivery.started}, delivery.train.force, false) end
+        if log_level >= 1 then printmsg({"ltn-message.delivery-removed-timeout", delivery.from, delivery.to, tick-delivery.started}, delivery.force, false) end
         removeDelivery(trainID)
       end
     end
@@ -1053,7 +1063,7 @@ function ProcessRequest(request)
     for i=1, #loadingList do
       delivery[loadingList[i].type..","..loadingList[i].name] = loadingList[i].count
     end
-    global.Dispatcher.Deliveries[train.id] = {train=selectedTrain, started=game.tick, from=from, to=to, shipment=delivery}
+    global.Dispatcher.Deliveries[train.id] = {force=requestForce, train=selectedTrain, started=game.tick, from=from, to=to, shipment=delivery}
     global.Dispatcher.availableTrains[train.id] = nil
 
     -- move Request to the back of the queue
@@ -1258,7 +1268,7 @@ function UpdateStop(stopID)
   end
 
   local stopForce = stop.entity.force
-  
+
   -- remove invalid trains
   if stop.parkedTrain and not stop.parkedTrain.valid then
     global.LogisticTrainStops[stopID].parkedTrain = nil
@@ -1548,7 +1558,7 @@ function UpdateStopOutput(trainStop)
         table.insert(signals, {index = index, signal = {type="fluid", name=k}, count = v})
         index = index+1
       end
-      
+
     end -- not trainStop.isDepot
 
   end
