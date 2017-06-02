@@ -1,5 +1,5 @@
 {
-  "signal":
+  "virtual-signal":
   [
     ["min-train-length", "ltn-min-train-length"],
     ["max-train-length", "ltn-max-train-length"],		

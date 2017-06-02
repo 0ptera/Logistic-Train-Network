@@ -7,5 +7,5 @@
   "homepage": "https://forums.factorio.com/viewtopic.php?f=94&t=36976",
   "description": "Adds new train stops forming a highly configurable logistic network.",
   "factorio_version": "0.15",
-	"dependencies": ["base >= 0.15.13", "?creative-mode >= 0.3.2"]
+	"dependencies": ["base >= 0.15.18", "?creative-mode >= 0.3.2"]
 }

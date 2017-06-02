@@ -67,6 +67,6 @@ data:extend({
     name = "ltn-disable-warnings",
     icon = "__LogisticTrainNetwork__/graphics/icons/disable-warnings.png",
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-cb[ltn-disable-warnings]"
+    order = "z[LTN-signal]-ea[ltn-disable-warnings]"
   },
 })
