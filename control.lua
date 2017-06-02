@@ -3,14 +3,27 @@ require "interface"
 
 local MOD_NAME = "LogisticTrainNetwork"
 
-local MINTRAINLENGTH = "min-train-length"
-local MAXTRAINLENGTH = "max-train-length"
-local MAXTRAINS = "ltn-max-trains"
-local MINDELIVERYSIZE = "min-delivery-size"
-local PRIORITY = "stop-priority"
-local IGNOREMINDELIVERYSIZE = "ltn-no-min-delivery-size"
-local LOCKEDSLOTS = "ltn-locked-slots"
 local ISDEPOT = "ltn-depot"
+local MINTRAINLENGTH = "ltn-min-train-length"
+local MAXTRAINLENGTH = "ltn-max-train-length"
+local MAXTRAINS = "ltn-max-trains"
+local MINREQUESTED = "ltn-requester-threshold"
+local NOWARN = "ltn-disable-warnings"
+local MINPROVIDED = "ltn-provider-threshold"
+local PRIORITY = "ltn-provider-priority"
+local LOCKEDSLOTS = "ltn-locked-slots"
+
+local ControlSignals = {
+  [ISDEPOT] = true,
+  [MINTRAINLENGTH] = true,
+  [MAXTRAINLENGTH] = true,
+  [MAXTRAINS] = true,
+  [MINREQUESTED] = true,
+  [NOWARN] = true,
+  [MINPROVIDED] = true,
+  [PRIORITY] = true,
+  [LOCKEDSLOTS] = true,  
+}
 
 local ErrorCodes = {
   "red",    -- circuit/signal error
@@ -76,6 +89,13 @@ local function initialize(oldVersion, newVersion)
   if next(global.LogisticTrainStops) ~= nil then
     for stopID, stop in pairs (global.LogisticTrainStops) do
       global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or 0
+
+      -- update to 1.3.0
+      global.LogisticTrainStops[stopID].minDelivery = nil
+      global.LogisticTrainStops[stopID].ignoreMinDeliverySize = nil
+      global.LogisticTrainStops[stopID].minRequested = global.LogisticTrainStops[stopID].minRequested or 0
+      global.LogisticTrainStops[stopID].minProvided = global.LogisticTrainStops[stopID].minProvided or 0
+
       -- update to 0.3.8
       if stop.lampControl == nil then
         local lampctrl = stop.entity.surface.create_entity
@@ -245,7 +265,7 @@ end
 do --create stop
 local function createStop(entity)
   if global.LogisticTrainStops[entity.unit_number] then
-    if log_level >= 1 then printmsg({"ltn-message.error-duplicated-unit_number", entity.unit_number}) end
+    if log_level >= 1 then printmsg({"ltn-message.error-duplicated-unit_number", entity.unit_number}, entity.force) end
     return
   end
 
@@ -272,7 +292,7 @@ local function createStop(entity)
     --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y+1},{entity.position.x+3, entity.position.y+3}} }
     rot = 6
   else --invalid orientation
-    if log_level >= 1 then printmsg({"ltn-message.error-stop-orientation", entity.direction}) end
+    if log_level >= 1 then printmsg({"ltn-message.error-stop-orientation", entity.direction}, entity.force) end
     entity.destroy()
     return
   end
@@ -346,7 +366,6 @@ local function createStop(entity)
     output = output,
     lampControl = lampctrl,
     isDepot = false,
-    ignoreMinDeliverySize = false,
     trainLimit = 0,
     activeDeliveries = {},  --delivery IDs to/from stop
     errorCode = 0,          --key to errorCodes table
@@ -360,7 +379,7 @@ local function createStop(entity)
     stopsPerTick = 1 --initialize ticker indexes
     global.stopIdStartIndex = 1
     script.on_event(defines.events.on_tick, ticker) --subscribe ticker on first created train stop
-    if log_level >= 4 then printmsg("on_tick subscribed", false) end
+    if log_level >= 4 then printmsg("on_tick subscribed") end
   end
 end
 
@@ -436,7 +455,7 @@ function removeStop(entity)
 
   if StopIDList == nil or #StopIDList == 0 then
     script.on_event(defines.events.on_tick, nil) --unsubscribe ticker on last removed train stop
-    if  log_level >= 4 then printmsg("on_tick unsubscribed: Removed last Logistic Train Stop", false) end
+    if  log_level >= 4 then printmsg("on_tick unsubscribed: Removed last Logistic Train Stop") end
   end
 end
 
@@ -596,7 +615,7 @@ function ticker(event)
   end
   for i = global.stopIdStartIndex, stopIdLastIndex, 1 do
     local stopID = StopIDList[i]
-    if log_level >= 4 then printmsg(global.tickCount.."/"..tick.." updating stopID "..tostring(stopID), false) end
+    if log_level >= 4 then printmsg(global.tickCount.."/"..tick.." updating stopID "..tostring(stopID)) end
     UpdateStop(stopID)
   end
   global.stopIdStartIndex = stopIdLastIndex + 1
@@ -606,11 +625,11 @@ function ticker(event)
     global.tickCount = 1
     --clean up deliveries in case train was destroyed or removed
     for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
-      if not delivery.train or not delivery.train.valid then
-        if log_level >= 1 then printmsg({"ltn-message.delivery-removed-train-invalid", delivery.from, delivery.to}) end
+      if not(delivery.train and delivery.train.valid) then
+        if log_level >= 1 then printmsg({"ltn-message.delivery-removed-train-invalid", delivery.from, delivery.to}, nil, false) end --storing and updating forces just to show this only to the force the train belonged to isn't worth it
         removeDelivery(trainID)
       elseif tick-delivery.started > delivery_timeout then
-        if log_level >= 1 then printmsg({"ltn-message.delivery-removed-timeout", delivery.from, delivery.to, tick-delivery.started}) end
+        if log_level >= 1 then printmsg({"ltn-message.delivery-removed-timeout", delivery.from, delivery.to, tick-delivery.started}, delivery.train.force, false) end
         removeDelivery(trainID)
       end
     end
@@ -669,11 +688,16 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
   local record = {station = stationName, wait_conditions = {}}
 
   if condType == "item_count" then
+    local waitEmpty = false
     -- write itemlist to conditions
     for i=1, #itemlist do
       local condFluid = nil
       if itemlist[i].type == "fluid" then
         condFluid = "fluid_count"
+        -- workaround for leaving with fluid residue, could time out trains
+        if condComp == "=" and countOverride == 0 then
+          waitEmpty = true
+        end
       end
 
       -- make > into >=
@@ -685,7 +709,9 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
       record.wait_conditions[#record.wait_conditions+1] = {type = condFluid or condType, compare_type = "and", condition = cond }
     end
 
-    if finish_loading then -- let inserters finish
+    if waitEmpty then
+      record.wait_conditions[#record.wait_conditions+1] = {type = "empty", compare_type = "and" }
+    elseif finish_loading then -- let inserter/pumps finish
       record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "and", ticks = 120 }
     end
 
@@ -701,7 +727,7 @@ end
 
 do --ProcessRequest
 -- return all stations providing item, ordered by priority and item-count
-local function GetProviders(force, item, min_count, min_length, max_length)
+local function GetProviders(force, item, req_count, min_length, max_length)
   local stations = {}
   local providers = global.Dispatcher.Provided[item]
   if not providers then
@@ -715,8 +741,8 @@ local function GetProviders(force, item, min_count, min_length, max_length)
     and (stop.minTraincars == 0 or max_length == 0 or stop.minTraincars <= max_length)
     and (stop.maxTraincars == 0 or min_length == 0 or stop.maxTraincars >= min_length) then --check if provider can actually service trains from requester
       local activeDeliveryCount = #stop.activeDeliveries
-      if count > 0 and (use_Best_Effort or stop.ignoreMinDeliverySize or count >= min_count) and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
-        if log_level >= 4 then printmsg("(GetProviders): found ".. count .."/"..min_count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars.." locked Slots: "..stop.lockedSlots, false) end
+      if activeDeliveryCount and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
+        if log_level >= 4 then printmsg("(GetProviders): found "..req_count.."("..tostring(stop.minProvided)..")".."/"..count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority.." minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars.." locked Slots: "..stop.lockedSlots, stop.entity.force, false) end
         stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
       end
     end
@@ -817,7 +843,7 @@ local function GetFreeTrain(nextStop, minTraincars, maxTraincars, type, size, re
                 smallestDistance = distance
                 smallestInventory = inventorySize
                 train = {id=DispTrainKey, inventorySize=inventorySize}
-                if log_level >= 4 then printmsg("(GetFreeTrain): found train "..locomotive.backer_name..", length: "..minTraincars.."<="..#DispTrain.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance, false) end
+                if log_level >= 4 then printmsg("(GetFreeTrain): found train "..locomotive.backer_name..", length: "..minTraincars.."<="..#DispTrain.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance, locomotive.force, false) end
               end
             end
 
@@ -828,7 +854,7 @@ local function GetFreeTrain(nextStop, minTraincars, maxTraincars, type, size, re
               smallestDistance = distance
               largestInventory = inventorySize
               train = {id=DispTrainKey, inventorySize=inventorySize}
-              if log_level >= 4 then printmsg("(GetFreeTrain): largest available train "..locomotive.backer_name..", length: "..minTraincars.."<="..#DispTrain.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance, false) end
+              if log_level >= 4 then printmsg("(GetFreeTrain): largest available train "..locomotive.backer_name..", length: "..minTraincars.."<="..#DispTrain.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance, locomotive.force, false) end
             end
           end
 
@@ -853,14 +879,15 @@ function ProcessRequest(request)
     return nil -- station was removed since request was generated
   end
 
-  local minDelivery = requestStation.minDelivery
+  local minRequested = requestStation.minRequested
   local maxTraincars = requestStation.maxTraincars
   local minTraincars = requestStation.minTraincars
+  local requestForce = requestStation.entity.force
   local orders = {}
   local deliveries = nil
 
   if requestStation.trainLimit > 0 and #requestStation.activeDeliveries >= requestStation.trainLimit then
-    if log_level >= 4 then printmsg(requestStation.entity.backer_name.." skipped: "..#requestStation.activeDeliveries.." >= "..requestStation.trainLimit) end
+    if log_level >= 4 then printmsg(requestStation.entity.backer_name.." Request station train limit reached: "..#requestStation.activeDeliveries.."("..requestStation.trainLimit..")", requestForce, false) end
     return nil -- reached train limit
   end
 
@@ -869,7 +896,7 @@ function ProcessRequest(request)
     -- split merged key into type & name
     local itype, iname = match(item, "([^,]+),([^,]+)")
     if not (itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname])) then
-      if log_level >= 1 then printmsg({"ltn-message.error-parse-item", item}) end
+      if log_level >= 1 then printmsg({"ltn-message.error-parse-item", item}, requestForce) end
       goto skipRequestItem
     end
 
@@ -881,18 +908,18 @@ function ProcessRequest(request)
     end
 
     -- get providers ordered by priority
-    local providers = GetProviders(requestStation.entity.force, item, minDelivery, minTraincars, maxTraincars)
+    local providers = GetProviders(requestStation.entity.force, item, count, minTraincars, maxTraincars)
     if not providers or #providers < 1 then
-      if log_level >= 2 then printmsg({"ltn-message.no-provider-found", localname}, true) end
+      if requestStation.noWarnings == false and log_level >= 2 then printmsg({"ltn-message.no-provider-found", localname}, requestForce, true) end
       goto skipRequestItem
     end
 
     -- only one delivery is created so use only the best provider
     local providerStation = providers[1]
-    if log_level >= 3 then printmsg({"ltn-message.provider-found", providerStation.entity.backer_name, tostring(providerStation.priority), tostring(providerStation.activeDeliveryCount), providerStation.count, localname}, true)
+    if log_level >= 3 then printmsg({"ltn-message.provider-found", providerStation.entity.backer_name, tostring(providerStation.priority), tostring(providerStation.activeDeliveryCount), providerStation.count, localname}, requestForce, true)
     elseif log_level >= 4 then
       for n, provider in pairs (providers) do
-        printmsg("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(provider.activeDeliveryCount).." deliveries, "..tostring(provider.count).." "..localname.." available.")
+        printmsg("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(provider.activeDeliveryCount).." deliveries, "..tostring(provider.count).." "..localname.." available.", requestForce)
       end
     end
 
@@ -929,14 +956,14 @@ function ProcessRequest(request)
         orders[i].loadingList[#orders[i].loadingList+1] = loadingList
         orders[i].totalStacks = orders[i].totalStacks + stacks
         insertnew = false
-        if log_level >= 4 then  printmsg("inserted into order "..i.."/"..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars, false) end
+        if log_level >= 4 then  printmsg("inserted into order "..i.."/"..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.."/"..orders[i].totalStacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars, requestForce, false) end
         break
       end
     end
     -- create new order for fluids and different provider-requester pairs
     if insertnew then
-      orders[#orders+1] = {toID=toID, fromID=fromID, minDelivery=minDelivery, minTraincars=minTraincars, maxTraincars=maxTraincars, totalStacks=stacks, lockedSlots=providerStation.lockedSlots, loadingList={loadingList} }
-      if log_level >= 4 then  printmsg("added new order "..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars, false) end
+      orders[#orders+1] = {toID=toID, fromID=fromID, minTraincars=minTraincars, maxTraincars=maxTraincars, totalStacks=stacks, lockedSlots=providerStation.lockedSlots, loadingList={loadingList} }
+      if log_level >= 4 then  printmsg("added new order "..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars, requestForce, false) end
     end
 
     ::skipRequestItem:: -- use goto since lua doesn't know continue
@@ -955,7 +982,7 @@ function ProcessRequest(request)
     local toStop = global.LogisticTrainStops[orders[orderIndex].toID]
     local fromStop = global.LogisticTrainStops[orders[orderIndex].fromID]
     if not toStop or not fromStop then
-      if log_level >= 1 then printmsg({"ltn-message.error-no-stop"}) end
+      if log_level >= 1 then printmsg({"ltn-message.error-no-stop"}, requestForce) end
       goto skipOrder
     end
     local to = toStop.entity.backer_name
@@ -966,14 +993,14 @@ function ProcessRequest(request)
     if not train then
       if log_level >= 3 then
         if #loadingList == 1 then
-          printmsg({"ltn-message.no-train-found", tostring(minTraincars), tostring(maxTraincars), loadingList[1].localname}, true)
+          printmsg({"ltn-message.no-train-found", tostring(minTraincars), tostring(maxTraincars), loadingList[1].localname}, requestForce, true)
         else
-          printmsg({"ltn-message.no-train-found-merged", tostring(minTraincars), tostring(maxTraincars), tostring(totalStacks)}, true)
+          printmsg({"ltn-message.no-train-found-merged", tostring(minTraincars), tostring(maxTraincars), tostring(totalStacks)}, requestForce, true)
         end
       end
       goto skipOrder
     end
-    if log_level >= 3 then printmsg({"ltn-message.train-found", tostring(train.inventorySize), tostring(totalStacks)}) end
+    if log_level >= 3 then printmsg({"ltn-message.train-found", tostring(train.inventorySize), tostring(totalStacks)}, requestForce) end
 
     -- recalculate delivery amount to fit in train
     if train.inventorySize < totalStacks then
@@ -1002,13 +1029,13 @@ function ProcessRequest(request)
 
     if log_level >= 4 then
       for i=1, #loadingList do
-        printmsg("Creating Delivery: "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks "..loadingList[i].type..","..loadingList[i].name..", "..from.." >> "..to, false)
+        printmsg("Creating Delivery: "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks "..loadingList[i].type..","..loadingList[i].name..", "..from.." >> "..to, requestForce, false)
       end
     elseif log_level >= 2 then
       if #loadingList == 1 then
-        printmsg({"ltn-message.creating-delivery", from, to, loadingList[1].count, loadingList[1].localname})
+        printmsg({"ltn-message.creating-delivery", from, to, loadingList[1].count, loadingList[1].localname}, requestForce)
       else
-        printmsg({"ltn-message.creating-delivery-merged", from, to, totalStacks})
+        printmsg({"ltn-message.creating-delivery-merged", from, to, totalStacks}, requestForce)
       end
     end
 
@@ -1056,11 +1083,14 @@ end
 
 -- update stop output when train enters/leaves
 function UpdateTrain(train)
+  local trainForce = nil
+  local loco = GetMainLocomotive(train)
+  if loco then trainForce = loco.force end
   local trainID = GetTrainID(train)
   local trainName = GetTrainName(train)
 
   if not trainID then --train has no locomotive
-    if log_level >= 4 then printmsg("Notice (UpdateTrain): couldn't assign train id", false) end
+    if log_level >= 4 then printmsg("Notice (UpdateTrain): couldn't assign train id", trainForce, false) end
     --TODO: Update all stops?
     return
   end
@@ -1072,11 +1102,11 @@ function UpdateTrain(train)
       stop.parkedTrain = train
       stop.parkedTrainID = trainID
 
-      if log_level >= 3 then printmsg({"ltn-message.train-arrived", trainName, stop.entity.backer_name}) end
+      if log_level >= 3 then printmsg({"ltn-message.train-arrived", trainName, stop.entity.backer_name}, trainForce, false) end
 
       local frontDistance = GetDistance(train.front_stock.position, train.station.position)
       local backDistance = GetDistance(train.back_stock.position, train.station.position)
-      if log_level >= 4 then printmsg("Front Stock Distance: "..frontDistance..", Back Stock Distance: "..backDistance, false) end
+      if log_level >= 4 then printmsg("Front Stock Distance: "..frontDistance..", Back Stock Distance: "..backDistance, trainForce, false) end
       if frontDistance > backDistance then
         stop.parkedTrainFacesStop = false
       else
@@ -1128,11 +1158,11 @@ function UpdateTrain(train)
                 if itype and iname then
                   if itype == "item" then
                     local traincount = train.get_item_count(iname)
-                    if log_level >= 4 then printmsg("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount) ) end
+                    if log_level >= 4 then printmsg("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount), trainForce ) end
                     delivery.shipment[item] = traincount
                   elseif itype == "fluid" then
                     local traincount = train.get_fluid_count(iname)
-                    if log_level >= 4 then printmsg("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount) ) end
+                    if log_level >= 4 then printmsg("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount), trainForce ) end
                     delivery.shipment[item] = traincount
                   end
                 end
@@ -1148,7 +1178,7 @@ function UpdateTrain(train)
         -- remove train reference
         stop.parkedTrain = nil
         stop.parkedTrainID = nil
-        if log_level >= 3 then printmsg({"ltn-message.train-left", trainName, stop.entity.backer_name}) end
+        if log_level >= 3 then printmsg({"ltn-message.train-left", trainName, stop.entity.backer_name}, trainForce) end
 
         UpdateStopOutput(stop)
         return
@@ -1158,30 +1188,20 @@ function UpdateTrain(train)
 end
 
 do --UpdateStop
-local validSignals = {
-  [MINTRAINLENGTH] = true,
-  [MAXTRAINLENGTH] = true,
-  [MAXTRAINS] = true,
-  [MINDELIVERYSIZE] = true,
-  [PRIORITY] = true,
-  [IGNOREMINDELIVERYSIZE] = true,
-  [LOCKEDSLOTS] = true,
-  [ISDEPOT] = true
-}
 local function getCircuitValues(entity)
   local greenWire = entity.get_circuit_network(defines.wire_type.green)
   local redWire =  entity.get_circuit_network(defines.wire_type.red)
   local items = {}
   if greenWire and greenWire.signals then
     for _, v in pairs(greenWire.signals) do
-      if v.signal.type ~= "virtual" or validSignals[v.signal.name] then
+      if v.signal.type ~= "virtual" or ControlSignals[v.signal.name] then
         items[v.signal.type..","..v.signal.name] = v.count
       end
     end
   end
   if redWire and redWire.signals then
     for _, v in pairs(redWire.signals) do
-      if v.signal.type ~= "virtual" or validSignals[v.signal.name] then
+      if v.signal.type ~= "virtual" or ControlSignals[v.signal.name] then
         if items[v.signal.type..","..v.signal.name] ~= nil then
           items[v.signal.type..","..v.signal.name] = items[v.signal.type..","..v.signal.name] + v.count
         else
@@ -1226,7 +1246,8 @@ function UpdateStop(stopID)
   local stop = global.LogisticTrainStops[stopID]
 
   -- remove invalid stops
-  if not stop or not (stop.entity and stop.entity.valid) or not (stop.input and stop.input.valid) or not (stop.output and stop.output.valid) or not (stop.lampControl and stop.lampControl.valid) then
+  -- if not stop or not (stop.entity and stop.entity.valid) or not (stop.input and stop.input.valid) or not (stop.output and stop.output.valid) or not (stop.lampControl and stop.lampControl.valid) then
+  if not(stop and stop.entity and stop.entity.valid and stop.input and stop.input.valid and stop.output and stop.output.valid and stop.lampControl and stop.lampControl.valid) then
     if log_level >= 1 then printmsg({"ltn-message.error-invalid-stop", stopID}) end
     for i=#StopIDList, 1, -1 do
       if StopIDList[i] == stopID then
@@ -1236,6 +1257,8 @@ function UpdateStop(stopID)
     return
   end
 
+  local stopForce = stop.entity.force
+  
   -- remove invalid trains
   if stop.parkedTrain and not stop.parkedTrain.valid then
     global.LogisticTrainStops[stopID].parkedTrain = nil
@@ -1257,12 +1280,14 @@ function UpdateStop(stopID)
   circuitValues["virtual,"..MAXTRAINLENGTH] = nil
   local trainLimit = circuitValues["virtual,"..MAXTRAINS] or 0
   circuitValues["virtual,"..MAXTRAINS] = nil
-  local minDelivery = circuitValues["virtual,"..MINDELIVERYSIZE] or min_delivery_size
-  circuitValues["virtual,"..MINDELIVERYSIZE] = nil
+  local minRequested = circuitValues["virtual,"..MINREQUESTED] or min_requested
+  circuitValues["virtual,"..MINREQUESTED] = nil
+  local noWarnings = circuitValues["virtual,"..NOWARN] or 0
+  circuitValues["virtual,"..NOWARN] = nil
+  local minProvided = circuitValues["virtual,"..MINPROVIDED] or min_provided
+  circuitValues["virtual,"..MINPROVIDED] = nil
   local priority = circuitValues["virtual,"..PRIORITY] or 0
   circuitValues["virtual,"..PRIORITY] = nil
-  local ignoreMinDeliverySize = circuitValues["virtual,"..IGNOREMINDELIVERYSIZE] or 0
-  circuitValues["virtual,"..IGNOREMINDELIVERYSIZE] = nil
   local lockedSlots = circuitValues["virtual,"..LOCKEDSLOTS] or 0
   circuitValues["virtual,"..LOCKEDSLOTS] = nil
   -- check if it's a depot
@@ -1287,11 +1312,16 @@ function UpdateStop(stopID)
       -- signal error fixed, depots ignore all other errors
       global.LogisticTrainStops[stopID].errorCode = 0
 
-      global.LogisticTrainStops[stopID].minDelivery = nil
-      global.LogisticTrainStops[stopID].minTraincars = minTraincars
-      global.LogisticTrainStops[stopID].maxTraincars = maxTraincars
+      -- reset signal parameters just in case something goes wrong
+      global.LogisticTrainStops[stopID].minProvided = nil
+      global.LogisticTrainStops[stopID].minRequested = nil
+      global.LogisticTrainStops[stopID].minTraincars = 0
+      global.LogisticTrainStops[stopID].maxTraincars = 0
+      global.LogisticTrainStops[stopID].trainLimit = 0
       global.LogisticTrainStops[stopID].priority = 0
-      global.LogisticTrainStops[stopID].ignoreMinDeliverySize = false
+      global.LogisticTrainStops[stopID].lockedSlots = 0
+      global.LogisticTrainStops[stopID].noWarnings = 0
+
       if stop.parkedTrain then
         setLamp(stopID, "blue")
       else
@@ -1342,16 +1372,16 @@ function UpdateStop(stopID)
                 if delivery.to == stop.entity.backer_name then
                   local newcount = count + traincount
                   if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
-                  if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested count with train inventory: "..item.." "..count.."+"..traincount.."="..newcount) end
+                  if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested count with train inventory: "..item.." "..count.."+"..traincount.."="..newcount, stopForce) end
                   count = newcount
                 elseif delivery.from == stop.entity.backer_name then
                   if traincount <= deliverycount then
                     local newcount = count - (deliverycount - traincount)
                     if newcount < 0 then newcount = 0 end --make sure we don't turn it into a request
-                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided count with train inventory: "..item.." "..count.."-"..deliverycount - traincount.."="..newcount) end
+                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided count with train inventory: "..item.." "..count.."-"..deliverycount - traincount.."="..newcount, stopForce) end
                     count = newcount
                   else --train loaded more than delivery
-                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating delivery count with overloaded train inventory: "..item.." "..traincount) end
+                    if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating delivery count with overloaded train inventory: "..item.." "..traincount, stopForce) end
                     -- update delivery to new size
                     global.Dispatcher.Deliveries[trainID].shipment[item] = traincount
                   end
@@ -1363,12 +1393,12 @@ function UpdateStop(stopID)
               if delivery.to == stop.entity.backer_name then
                 local newcount = count + deliverycount
                 if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
-                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested count with delivery: "..item.." "..count.."+"..deliverycount.."="..newcount) end
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating requested count with delivery: "..item.." "..count.."+"..deliverycount.."="..newcount, stopForce) end
                 count = newcount
               elseif delivery.from == stop.entity.backer_name and not delivery.pickupDone then
                 local newcount = count - deliverycount
                 if newcount < 0 then newcount = 0 end --make sure we don't turn it into a request
-                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided count with delivery: "..item.." "..count.."-"..deliverycount.."="..newcount) end
+                if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." updating provided count with delivery: "..item.." "..count.."-"..deliverycount.."="..newcount, stopForce) end
                 count = newcount
               end
 
@@ -1377,40 +1407,33 @@ function UpdateStop(stopID)
         end -- for delivery
 
         -- update Dispatcher Storage
-        if count > 0 then
+        -- Providers are used when above Provider Threshold
+        -- Requests are handled when above Requester Threshold
+        if count >= minProvided then
           local provided = global.Dispatcher.Provided[item] or {}
           provided[stopID] = count
-          if provided.sumCount then
-            provided.sumCount = provided.sumCount + count
-          else
-            provided.sumCount = count
-          end
-          if provided.sumStops then
-            provided.sumStops = provided.sumStops + 1
-          else
-            provided.sumStops = 1
-          end
           global.Dispatcher.Provided[item] = provided
-          if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count, false) end
-        elseif count*-1 >= minDelivery then
+          if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count.."("..minProvided..")", stopForce, false) end
+        elseif count*-1 >= minRequested then
           count = count * -1
           requestItems[item] = count
-          if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." requested "..item.." "..count..", age: "..global.Dispatcher.RequestAge[stopID].."/"..game.tick, false) end
+          if log_level >= 4 then printmsg("(UpdateStop) "..stop.entity.backer_name.." requested "..item.." "..count.."("..minRequested..")"..", age: "..global.Dispatcher.RequestAge[stopID].."/"..game.tick, stopForce, false) end
         end
 
       end -- for circuitValues
 
-      global.LogisticTrainStops[stopID].minDelivery = minDelivery
+      global.LogisticTrainStops[stopID].minProvided = minProvided
+      global.LogisticTrainStops[stopID].minRequested = minRequested
       global.LogisticTrainStops[stopID].minTraincars = minTraincars
       global.LogisticTrainStops[stopID].maxTraincars = maxTraincars
       global.LogisticTrainStops[stopID].trainLimit = trainLimit
       global.LogisticTrainStops[stopID].priority = priority
-      if ignoreMinDeliverySize > 0 then
-        global.LogisticTrainStops[stopID].ignoreMinDeliverySize = true
-      else
-        global.LogisticTrainStops[stopID].ignoreMinDeliverySize = false
-      end
       global.LogisticTrainStops[stopID].lockedSlots = lockedSlots
+      if noWarnings > 0 then
+        global.LogisticTrainStops[stopID].noWarnings = true
+      else
+        global.LogisticTrainStops[stopID].noWarnings = false
+      end
 
       -- create Requests {stopID, age, itemlist={[item], count}}
       global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[stopID], stopID = stopID, itemlist = requestItems}
@@ -1501,35 +1524,15 @@ function UpdateStopOutput(trainStop)
           if c.condition and c.condition.first_signal then -- loading without mods can make first signal nil?
             if c.type == "item_count" then
               if c.condition.comparator == ">" then --train expects to be loaded to x of this item
-                if display_expected_inventory then
-                  inventory[c.condition.first_signal.name] = c.condition.constant + 1
-                else
-                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = c.condition.constant + 1 })
-                  index = index+1
-                end
+                inventory[c.condition.first_signal.name] = c.condition.constant + 1
               elseif (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
-                if display_expected_inventory then
-                  inventory[c.condition.first_signal.name] = nil
-                else
-                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = (inventory[c.condition.first_signal.name] or 0) * -1 })
-                  index = index+1
-                end
+                inventory[c.condition.first_signal.name] = nil
               end
             elseif c.type == "fluid_count" then
               if c.condition.comparator == ">" then --train expects to be loaded to x of this fluid
-                if display_expected_inventory then
-                  fluidInventory[c.condition.first_signal.name] = c.condition.constant + 1
-                else
-                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = c.condition.constant + 1 })
-                  index = index+1
-                end
+                fluidInventory[c.condition.first_signal.name] = c.condition.constant + 1
               elseif (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this fluid
-                if display_expected_inventory then
-                  fluidInventory[c.condition.first_signal.name] = nil
-                else
-                  table.insert(signals, {index = index, signal = c.condition.first_signal, count = (fluidInventory[c.condition.first_signal.name] or 0) * -1 })
-                  index = index+1
-                end
+                fluidInventory[c.condition.first_signal.name] = nil
               end
             end
           end
@@ -1537,17 +1540,16 @@ function UpdateStopOutput(trainStop)
       end
 
       -- output expected inventory contents
-      if display_expected_inventory then
-        for k,v in pairs(inventory) do
-          table.insert(signals, {index = index, signal = {type="item", name=k}, count = v})
-          index = index+1
-        end
-        for k,v in pairs(fluidInventory) do
-          table.insert(signals, {index = index, signal = {type="fluid", name=k}, count = v})
-          index = index+1
-        end
+      for k,v in pairs(inventory) do
+        table.insert(signals, {index = index, signal = {type="item", name=k}, count = v})
+        index = index+1
       end
-    end
+      for k,v in pairs(fluidInventory) do
+        table.insert(signals, {index = index, signal = {type="fluid", name=k}, count = v})
+        index = index+1
+      end
+      
+    end -- not trainStop.isDepot
 
   end
   -- will reset if called with no parked train

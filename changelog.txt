@@ -1,8 +1,17 @@
+1.3.0
+- added Request Threshold and Provide Threshold
+- removed Minimum Delivery Size and Ignore Minimum Delivery Size
+- removed Best Effort, Provide Threshold = 1 does the same now
+- added Disable Warnings Messages control signal #34
+- limit messages to force where possible #40
+- added workaround for fluid wagon residue #31
+- removed toggle to loading list, stops only show expected inventory after loading
+
 1.2.8
 - added German locale
 - fixed bug in Chinese locale
 - switched to 128x128 tech icon
-- overloaded trains no longer cause requesters to flip to providers during delivery
+- overloaded trains no longer cause requesters to flip to providers during delivery #33
 - set expected train inventory to default to active
 
 1.2.7

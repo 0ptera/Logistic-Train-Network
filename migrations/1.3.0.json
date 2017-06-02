@@ -1,0 +1,9 @@
+{
+  "virtual-signal":
+  [
+    ["min-train-length", "ltn-min-train-length"],
+    ["max-train-length", "ltn-max-train-length"],		
+		["stop-priority", "ltn-provider-priority"],
+		["min-delivery-size", "ltn-requester-threshold"]
+  ]
+}
