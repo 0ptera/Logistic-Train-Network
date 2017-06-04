@@ -1105,6 +1105,7 @@ function UpdateTrain(train)
     return
   end
 
+  -- train arrived at station
   if train.valid and train.manual_mode == false and train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
     local stopID = train.station.unit_number
     local stop = global.LogisticTrainStops[stopID]
@@ -1142,8 +1143,9 @@ function UpdateTrain(train)
       UpdateStopOutput(stop)
       return
     end
-
-  else --remove train from station
+    
+  -- train left station
+  else 
     for stopID, stop in pairs(global.LogisticTrainStops) do
       if stop.parkedTrainID == trainID then
         if stop.isDepot then
@@ -1165,7 +1167,7 @@ function UpdateTrain(train)
               -- update delivery counts to train inventory
               for item, count in pairs (delivery.shipment) do
                 local itype, iname = match(item, "([^,]+),([^,]+)")
-                if itype and iname then
+                if itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname]) then
                   if itype == "item" then
                     local traincount = train.get_item_count(iname)
                     if log_level >= 4 then printmsg("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount), trainForce ) end
@@ -1175,6 +1177,8 @@ function UpdateTrain(train)
                     if log_level >= 4 then printmsg("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount), trainForce ) end
                     delivery.shipment[item] = traincount
                   end
+                else -- remove invalid item from shipment
+                  delivery.shipment[item] = nil
                 end
               end
               delivery.pickupDone = true -- remove reservations from this delivery
