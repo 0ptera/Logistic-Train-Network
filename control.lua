@@ -1143,9 +1143,9 @@ function UpdateTrain(train)
       UpdateStopOutput(stop)
       return
     end
-    
+
   -- train left station
-  else 
+  else
     for stopID, stop in pairs(global.LogisticTrainStops) do
       if stop.parkedTrainID == trainID then
         if stop.isDepot then
@@ -1492,7 +1492,7 @@ end
 
 function UpdateStopOutput(trainStop)
   local signals = {}
-  local index = 1
+  local index = 0
 
 	if trainStop.parkedTrain and trainStop.parkedTrain.valid then
     -- get train composition
@@ -1524,8 +1524,8 @@ function UpdateStopOutput(trainStop)
     end
 
     for k ,v in pairs (carriagesDec) do
-      table.insert(signals, {index = index, signal = {type="virtual",name="LTN-"..k}, count = v })
       index = index+1
+      table.insert(signals, {index = index, signal = {type="virtual",name="LTN-"..k}, count = v })
     end
 
     if not trainStop.isDepot then
@@ -1555,19 +1555,26 @@ function UpdateStopOutput(trainStop)
 
       -- output expected inventory contents
       for k,v in pairs(inventory) do
-        table.insert(signals, {index = index, signal = {type="item", name=k}, count = v})
         index = index+1
+        table.insert(signals, {index = index, signal = {type="item", name=k}, count = v})
       end
       for k,v in pairs(fluidInventory) do
-        table.insert(signals, {index = index, signal = {type="fluid", name=k}, count = v})
         index = index+1
+        table.insert(signals, {index = index, signal = {type="fluid", name=k}, count = v})
       end
 
     end -- not trainStop.isDepot
 
   end
   -- will reset if called with no parked train
-  if index > 1 then
+  if index > 0 then
+    -- log("[LTN] "..tostring(trainStop.entity.backer_name).. " displaying "..#signals.."/"..tostring(trainStop.output.get_control_behavior().signals_count).." signals.")
+
+    while #signals > trainStop.output.get_control_behavior().signals_count do
+      -- log("[LTN] removing signal "..tostring(signals[#signals].signal.name))
+      table.remove(signals)
+    end
+    if index ~= #signals and log_level >= 1 then printmsg({"ltn-message.error-stop-output-truncated", tostring(trainStop.entity.backer_name), tostring(trainStop.parkedTrain), trainStop.output.get_control_behavior().signals_count, index-#signals}, trainStop.entity.force) end
     trainStop.output.get_control_behavior().parameters = {parameters=signals}
   else
     trainStop.output.get_control_behavior().parameters = nil
