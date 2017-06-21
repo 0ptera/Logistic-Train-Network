@@ -86,7 +86,7 @@ local function initialize(oldVersion, newVersion)
   global.LogisticTrainStops = global.LogisticTrainStops or {}
   local validLampControls = {}
 
-  if next(global.LogisticTrainStops) ~= nil then
+  if next(global.LogisticTrainStops) then
     for stopID, stop in pairs (global.LogisticTrainStops) do
       global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or 0
 
@@ -136,7 +136,6 @@ local function initialize(oldVersion, newVersion)
       UpdateStopOutput(stop) --make sure output is set
       --UpdateStop(stopID)
     end
-    script.on_event(defines.events.on_tick, ticker) --subscribe ticker when train stops exist
   end
 
   -- update to 1.1.1 remove orphaned lamp controls
@@ -171,15 +170,27 @@ local function buildStopNameList()
   end
 end
 
+-- register events
+local function registerEvents()
+	-- always track built/removed train stops for duplicate name list
+	script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity}, OnEntityCreated)
+	script.on_event({defines.events.on_preplayer_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, OnEntityRemoved)
+	if global.LogisticTrainStops and next(global.LogisticTrainStops) then
+		script.on_event(defines.events.on_tick, OnTick)	
+		script.on_event(defines.events.on_train_changed_state, OnTrainStateChanged)
+		script.on_event(defines.events.on_train_created, OnTrainCreated)
+	end
+end
+
 script.on_load(function()
-	if global.LogisticTrainStops ~= nil and next(global.LogisticTrainStops) ~= nil then
-		script.on_event(defines.events.on_tick, ticker) --subscribe ticker when train stops exist
+	if global.LogisticTrainStops and next(global.LogisticTrainStops) then
     for stopID, stop in pairs(global.LogisticTrainStops) do --outputs are not stored in save
       UpdateStopOutput(stop)
       StopIDList[#StopIDList+1] = stopID
     end
     stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1))
 	end
+	registerEvents()
   log("[LTN] on_load: complete")
 end)
 
@@ -193,6 +204,7 @@ script.on_init(function()
     newVersion = string.format("%02d.%02d.%02d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
   end
   initialize(oldVersion, newVersion)
+	registerEvents()
   log("[LTN] on_init: ".. MOD_NAME.." "..tostring(newVersionString).." initialized.")
 end)
 
@@ -211,6 +223,7 @@ script.on_configuration_changed(function(data)
     end
 
     initialize(oldVersion, newVersion)
+		registerEvents()
     log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..tostring(newVersionString).." initialized. Previous version: "..tostring(oldVersionString))
   end
 end)
@@ -374,43 +387,27 @@ local function createStop(entity)
   }
   StopIDList[#StopIDList+1] = entity.unit_number
   UpdateStopOutput(global.LogisticTrainStops[entity.unit_number])
-
-  if #StopIDList == 1 then
-    stopsPerTick = 1 --initialize ticker indexes
-    global.stopIdStartIndex = 1
-    script.on_event(defines.events.on_tick, ticker) --subscribe ticker on first created train stop
-    if log_level >= 4 then printmsg("on_tick subscribed") end
-  end
 end
 
-script.on_event(defines.events.on_built_entity, function(event)
+function OnEntityCreated(event)
   local entity = event.created_entity
   if entity.type == "train-stop" then
      AddStopName(entity.unit_number, entity.backer_name)
   end
   if entity.valid and entity.name == "logistic-train-stop" then
 		createStop(entity)
-    return
+		if #StopIDList == 1 then
+			--initialize OnTick indexes
+			stopsPerTick = 1 
+			global.stopIdStartIndex = 1
+			-- register events
+			script.on_event(defines.events.on_tick, OnTick)
+			script.on_event(defines.events.on_train_changed_state, OnTrainStateChanged)
+			script.on_event(defines.events.on_train_created, OnTrainCreated)
+			if log_level >= 4 then printmsg("First LTN Stop built: OnTick, OnTrainStateChanged, OnTrainCreated registered") end
+		end  
 	end
-
-  -- handle adding carriages to parked trains
-  -- if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
-    -- entity.train.manual_mode = true
-    -- UpdateTrain(entity.train)
-    -- --entity.train.manual_mode = false
-    -- return
-  -- end
-end)
-
-script.on_event(defines.events.on_robot_built_entity, function(event)
-  local entity = event.created_entity
-  if entity.type == "train-stop" then
-     AddStopName(entity.unit_number, entity.backer_name)
-  end
-  if entity.valid and entity.name == "logistic-train-stop" then
-		createStop(entity)
-	end
-end)
+end
 end
 
 do -- stop removed
@@ -452,74 +449,41 @@ function removeStop(entity)
   end
 
   global.LogisticTrainStops[stopID] = nil
-
-  if StopIDList == nil or #StopIDList == 0 then
-    script.on_event(defines.events.on_tick, nil) --unsubscribe ticker on last removed train stop
-    if  log_level >= 4 then printmsg("on_tick unsubscribed: Removed last Logistic Train Stop") end
-  end
 end
 
-script.on_event(defines.events.on_preplayer_mined_item, function(event)
+function OnEntityRemoved(event)
+-- script.on_event({defines.events.on_preplayer_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, function(event)
   local entity = event.entity
   if entity.type == "train-stop" then
     RemoveStopName(entity.unit_number, entity.backer_name)
   end
   if entity.name == "logistic-train-stop" then
-    removeStop(entity)
-    return
+    removeStop(entity)   
+		if StopIDList == nil or #StopIDList == 0 then
+			-- unregister events
+			script.on_event(defines.events.on_tick, nil)
+			script.on_event(defines.events.on_train_changed_state, nil)
+			script.on_event(defines.events.on_train_created, nil)
+			if log_level >= 4 then printmsg("Removed last LTN Stop: OnTick, OnTrainStateChanged, OnTrainCreated unregistered") end
+		end
   end
-
-  -- handle removing carriages from parked trains
-  -- if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
-    -- entity.train.manual_mode = true
-    -- UpdateTrain(entity.train)
-    -- --entity.train.manual_mode = false
-    -- return
-  -- end
-end)
-
-script.on_event(defines.events.on_robot_pre_mined, function(event)
-  local entity = event.entity
-  if entity.type == "train-stop" then
-    RemoveStopName(entity.unit_number, entity.backer_name)
-  end
-  if entity.name == "logistic-train-stop" then
-    removeStop(entity)
-  end
-end)
-
-script.on_event(defines.events.on_entity_died, function(event)
-  local entity = event.entity
-  if entity.type == "train-stop" then
-    RemoveStopName(entity.unit_number, entity.backer_name)
-  end
-  if entity.name == "logistic-train-stop" then
-    removeStop(entity)
-    return
-  end
-
-  -- handle removing carriages from parked trains
-  -- if entity.type == "locomotive" or entity.type == "cargo-wagon" or entity.type == "fluid-wagon" then
-    -- entity.train.manual_mode = true
-    -- UpdateTrain(entity.train)
-    -- --entity.train.manual_mode = false
-    -- return
-  -- end
-end)
+end
 end
 
 
 do --train state changed
-script.on_event(defines.events.on_train_changed_state, function(event)
+function OnTrainStateChanged(event)
+-- script.on_event(defines.events.on_train_changed_state, function(event)
   UpdateTrain(event.train)
-end)
+end
 
-script.on_event(defines.events.on_train_created, function(event)
+function OnTrainCreated(event)
+-- script.on_event(defines.events.on_train_created, function(event)
   -- log("(on_train_created) Train name: "..tostring(GetTrainName(event.train))..",Train ID: "..tostring(GetTrainID(event.train))..", train.id:"..tostring(event.train.id))
   if event.train and event.train.valid and GetTrainID(event.train) then
     UpdateTrain(event.train)
   end
-end)
+end
 end
 
 
@@ -591,15 +555,8 @@ script.on_event(defines.events.on_forces_merging, function(event)
 end)
 
 
-function ticker(event)
+function OnTick(event)
   -- exit when there are no logistic train stops
-  local next = next
-  if global.LogisticTrainStops == nil or next(global.LogisticTrainStops) == nil then
-    script.on_event(defines.events.on_tick, nil)
-    if log_level >= 4 then printmsg("no LogisticTrainStops, unsubscribed from on_tick", false) end
-    return
-  end
-
   local tick = game.tick
   global.tickCount = global.tickCount or 1
 
@@ -1089,7 +1046,7 @@ end
 end
 
 
-------------------------------------- STOP FUNCTIONS -------------------------------------
+------------------------------------- TRAIN FUNCTIONS -------------------------------------
 
 -- update stop output when train enters/leaves
 function UpdateTrain(train)
@@ -1148,11 +1105,13 @@ function UpdateTrain(train)
   else
     for stopID, stop in pairs(global.LogisticTrainStops) do
       if stop.parkedTrainID == trainID then
+			
         if stop.isDepot then
           global.Dispatcher.availableTrains[trainID] = nil
           if stop.errorCode == 0 then
             setLamp(stopID, "green")
           end
+					
         else -- normal stop
           local delivery = global.Dispatcher.Deliveries[trainID]
           if delivery then
@@ -1162,7 +1121,6 @@ function UpdateTrain(train)
                 table.remove(stop.activeDeliveries, i)
               end
             end
-
             if delivery.from == stop.entity.backer_name then
               -- update delivery counts to train inventory
               for item, count in pairs (delivery.shipment) do
@@ -1200,6 +1158,8 @@ function UpdateTrain(train)
     end
   end
 end
+
+------------------------------------- STOP FUNCTIONS -------------------------------------
 
 do --UpdateStop
 local function getCircuitValues(entity)
