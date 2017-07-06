@@ -1230,7 +1230,14 @@ function UpdateStop(stopID)
     end
     return
   end
-
+	
+	-- reject any stop not in name list
+	if not global.TrainStopNames[stop.entity.backer_name] then
+		stop.errorCode == 2
+		if log_level >= 1 then printmsg({"ltn-message.error-invalid-stop", stop.entity.backer_name}) end
+		return
+	end
+	
   local stopForce = stop.entity.force
 
   -- remove invalid trains
