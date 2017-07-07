@@ -6,22 +6,21 @@ data:extend({
     setting_type = "runtime-global",
     default_value = "2: notifications",
     allowed_values =  {"0: off", "1: errors", "2: notifications", "3: expanded scheduler messages"}
-  },	
-  {
-    type = "string-setting",
-    name = "ltn-interface-logfile-level",
-    order = "ab",
-    setting_type = "runtime-global",
-    default_value = "4: debug",
-    allowed_values =  {"0: off", "1: errors", "2: notifications", "3: expanded scheduler messages", "4: debug"}
   },
   {
     type = "int-setting",
     name = "ltn-interface-message-filter-age",
-    order = "ac",
+    order = "ab",
     setting_type = "runtime-global",
     default_value = 18000,
     minimum_value = 0
+  },
+	{
+    type = "bool-setting",
+    name = "ltn-interface-debug-logfile",
+    order = "ac",
+    setting_type = "runtime-global",
+		default_value = false
   },
   {
     type = "int-setting",

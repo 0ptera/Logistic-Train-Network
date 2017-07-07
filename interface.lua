@@ -1,6 +1,6 @@
-msg_level = tonumber(string.sub(settings.global["ltn-interface-console-level"].value, 1, 1))
-log_level = tonumber(string.sub(settings.global["ltn-interface-logfile-level"].value, 1, 1))
+message_level = tonumber(string.sub(settings.global["ltn-interface-console-level"].value, 1, 1))
 message_filter_age = settings.global["ltn-interface-message-filter-age"].value
+debug_log = settings.global["ltn-interface-debug-logfile"].value
 min_requested = settings.global["ltn-dispatcher-requester-threshold"].value
 min_provided = settings.global["ltn-dispatcher-provider-threshold"].value
 stop_timeout = settings.global["ltn-dispatcher-stop-timeout"].value
@@ -9,9 +9,9 @@ finish_loading = settings.global["ltn-dispatcher-finish-loading"].value
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if not event then return end
-  if event.setting == "ltn-interface-console-level" then msg_level = tonumber(string.sub(settings.global["ltn-interface-console-level"].value, 1, 1)) end
-  if event.setting == "ltn-interface-logfile-level" then log_level = tonumber(string.sub(settings.global["ltn-interface-logfile-level"].value, 1, 1)) end
+  if event.setting == "ltn-interface-console-level" then message_level = tonumber(string.sub(settings.global["ltn-interface-console-level"].value, 1, 1)) end  
   if event.setting == "ltn-interface-message-filter-age" then message_filter_age = settings.global["ltn-interface-message-filter-age"].value end
+	if event.setting == "ltn-interface-debug-logfile" then debug_log = settings.global["ltn-interface-debug-logfile"].value end
   if event.setting == "ltn-dispatcher-requester-threshold" then min_requested = settings.global["ltn-dispatcher-requester-threshold"].value end
   if event.setting == "ltn-dispatcher-provider-threshold" then min_provided = settings.global["ltn-dispatcher-provider-threshold"].value end
   if event.setting == "ltn-dispatcher-stop-timeout" then  stop_timeout = settings.global["ltn-dispatcher-stop-timeout"].value end
