@@ -1,6 +1,12 @@
+1.3.5
+- updated Chinese translation
+- allow different detail levels for logfile and console messages
+- change provider priorization making deliveries merge more reliably (#trains > provider priority > can merge in existing delivery > amount)
+- fixed potential nil reference during stop update
+
 1.3.4
-- code cleanup 
-- train state change and trainc reated events are only if LTN stops exist
+- code cleanup
+- train state change and train created events are only if LTN stops exist
 
 1.3.3
 - automatically set output combinator limit
