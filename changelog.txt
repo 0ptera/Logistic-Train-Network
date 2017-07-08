@@ -1,6 +1,13 @@
+1.3.5
+- removed "log level" and "log output" settings
+- added "message level" for console messages only (no level 4: debug)
+- added "write debug logfile" checkbox for debug log generation into factorio-current.log
+- changed provider prioritisation making deliveries merge more reliably (#trains > provider priority > #existing deliveries from provider > amount)
+- fixed potential nil reference during stop update
+
 1.3.4
-- code cleanup 
-- train state change and trainc reated events are only if LTN stops exist
+- code cleanup
+- train state change and train created events are only if LTN stops exist
 
 1.3.3
 - automatically set output combinator limit
