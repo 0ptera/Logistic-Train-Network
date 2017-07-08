@@ -2,7 +2,7 @@
 - removed "log level" and "log output" settings
 - added "message level" for console messages only (no level 4: debug)
 - added "write debug logfile" checkbox for debug log generation into factorio-current.log
-- changed provider priorization making deliveries merge more reliably (#trains > provider priority > can merge in existing delivery > amount)
+- changed provider prioritisation making deliveries merge more reliably (#trains > provider priority > #existing deliveries from provider > amount)
 - fixed potential nil reference during stop update
 
 1.3.4
