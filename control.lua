@@ -56,10 +56,11 @@ local function initialize(oldVersion, newVersion)
   ---- initialize Dispatcher
   global.Dispatcher = global.Dispatcher or {}
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
-  global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
   global.Dispatcher.Provided = global.Dispatcher.Provided or {}
   global.Dispatcher.Requests = global.Dispatcher.Requests or {}
   global.Dispatcher.RequestAge = global.Dispatcher.RequestAge or {}
+	global.Dispatcher.Orders = global.Dispatcher.Orders or {}
+	global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
 
   -- clean obsolete global
   global.Dispatcher.Requested = nil
@@ -589,7 +590,7 @@ function OnTick(event)
 			UpdateStop(stopID)
 		end
 		global.stopIdStartIndex = stopIdLastIndex + 1
-		
+
 	-- tick 58: clean up and sort lists
 	elseif global.tickCount == dispatcher_update_interval - 2 then
     -- remove messages older than message_filter_age from messageBuffer
@@ -598,7 +599,7 @@ function OnTick(event)
         global.messageBuffer[bufferedMsg] = nil
       end
     end
-		
+
     --clean up deliveries in case train was destroyed or removed
     for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
       if not(delivery.train and delivery.train.valid) then
