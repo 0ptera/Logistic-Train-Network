@@ -63,7 +63,6 @@ local function initialize(oldVersion, newVersion)
 
   -- clean obsolete global
   global.Dispatcher.Requested = nil
-  global.Dispatcher.Orders = nil
   global.Dispatcher.OrderAge = nil
   global.Dispatcher.Storage = nil
   global.useRailTanker = nil
@@ -86,6 +85,7 @@ local function initialize(oldVersion, newVersion)
 	if oldVersion and oldVersion < "01.04.00" then
 		global.Dispatcher.Requests = {}
 		global.Dispatcher.RequestAge = {}
+		global.Dispatcher.Orders = {}
 	end
 
   ---- initialize stops
@@ -569,35 +569,36 @@ function OnTick(event)
   global.tickCount = global.tickCount or 1
 
   if global.tickCount == 1 then
-    stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1)) -- 59 ticks for stop Updates, 60th tick for dispatcher
+    stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-3)) -- 57 ticks for stop Updates, 3 ticks for dispatcher
     global.stopIdStartIndex = 1
 
     -- clear Dispatcher.Storage
     global.Dispatcher.Provided = {}
     global.Dispatcher.Requests = {}
+  end
 
+	-- ticks 1 - 57: update stops
+	if global.tickCount < dispatcher_update_interval - 2 then
+		local stopIdLastIndex = global.stopIdStartIndex + stopsPerTick - 1
+		if stopIdLastIndex > #StopIDList then
+			stopIdLastIndex = #StopIDList
+		end
+		for i = global.stopIdStartIndex, stopIdLastIndex, 1 do
+			local stopID = StopIDList[i]
+			if debug_log then log("(OnTick) "..global.tickCount.."/"..tick.." updating stopID "..tostring(stopID)) end
+			UpdateStop(stopID)
+		end
+		global.stopIdStartIndex = stopIdLastIndex + 1
+		
+	-- tick 58: clean up and sort lists
+	elseif global.tickCount == dispatcher_update_interval - 2 then
     -- remove messages older than message_filter_age from messageBuffer
     for bufferedMsg, v in pairs(global.messageBuffer) do
       if (tick - v.tick) > message_filter_age then
         global.messageBuffer[bufferedMsg] = nil
       end
     end
-  end
-
-  local stopIdLastIndex = global.stopIdStartIndex + stopsPerTick - 1
-  if stopIdLastIndex > #StopIDList then
-    stopIdLastIndex = #StopIDList
-  end
-  for i = global.stopIdStartIndex, stopIdLastIndex, 1 do
-    local stopID = StopIDList[i]
-    if debug_log then log("(OnTick) "..global.tickCount.."/"..tick.." updating stopID "..tostring(stopID)) end
-    UpdateStop(stopID)
-  end
-  global.stopIdStartIndex = stopIdLastIndex + 1
-
-
-  if global.tickCount == dispatcher_update_interval then
-    global.tickCount = 1
+		
     --clean up deliveries in case train was destroyed or removed
     for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
       if not(delivery.train and delivery.train.valid) then
@@ -627,23 +628,20 @@ function OnTick(event)
 				return a.age < b.age
       end)
 
-    -- find best provider, merge shipments, find train, generate delivery, reset age
-    if next(global.Dispatcher.availableTrains) ~= nil then -- no need to parse requests without available trains
-      -- for reqIndex, request in pairs (global.Dispatcher.Requests) do
-        -- if ProcessRequest(request) then
-					-- break
-				-- end
+	-- tick 59: find best provider, merge shipments
+	elseif global.tickCount == dispatcher_update_interval - 1 then
+		if next(global.Dispatcher.availableTrains) ~= nil then -- no need to parse requests without available trains
+			global.Dispatcher.Orders = ProcessRequests()
+		end
 
-      -- end
-			local orders = ProcessRequests()
-			log("ProcessRequests generated "..tostring(#orders).." orders.")
-			local deliveries = MakeDeliveries(orders)
-			log("MakeDeliveries generated "..tostring(#deliveries).." deliveries.")
-    end
+	-- tick 60: find train, generate delivery, reset age
+  elseif global.tickCount == dispatcher_update_interval then
+		local deliveries = MakeDeliveries(global.Dispatcher.Orders)
+		global.Dispatcher.Orders = {}
+    global.tickCount = 0 -- reset tick count
+	end
 
-  else -- dispatcher update
-      global.tickCount = global.tickCount + 1
-  end
+	global.tickCount = global.tickCount + 1
 end
 
 
@@ -875,7 +873,7 @@ local function getInventorySize(entity)
   return capacity
 end
 
-local function GetTrainInventorySize(train, type, reserved)
+local function getTrainInventorySize(train, type, reserved)
   local inventorySize = 0
   local fluidCapacity = 0
   if not train.valid then
@@ -886,7 +884,7 @@ local function GetTrainInventorySize(train, type, reserved)
   for _,wagon in pairs (train.carriages) do
     if wagon.type ~= "locomotive" then
       local capacity = InventoryLookup[wagon.name] or getInventorySize(wagon)
-      --log("(GetTrainInventorySize) wagon.name:"..wagon.name.." capacity:"..capacity)
+      --log("(getTrainInventorySize) wagon.name:"..wagon.name.." capacity:"..capacity)
       if wagon.type == "fluid-wagon" then
         fluidCapacity = fluidCapacity + capacity
       else
@@ -900,7 +898,7 @@ local function GetTrainInventorySize(train, type, reserved)
   return inventorySize
 end
 
-local function GetStationDistance(stationA, stationB)
+local function getStationDistance(stationA, stationB)
   local stationPair = stationA.unit_number..","..stationB.unit_number
   if global.StopDistances[stationPair] then
     --log(stationPair.." found, distance: "..global.StopDistances[stationPair])
@@ -916,7 +914,7 @@ end
 -- return available train with smallest suitable inventory or largest available inventory
 -- if minTraincars is set, number of locos + wagons has to be bigger
 -- if maxTraincars is set, number of locos + wagons has to be smaller
-local function GetFreeTrain(nextStop, minTraincars, maxTraincars, type, size, reserved)
+local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size, reserved)
   local train = nil
   if minTraincars == nil or minTraincars < 0 then minTraincars = 0 end
   if maxTraincars == nil or maxTraincars < 0 then maxTraincars = 0 end
@@ -930,27 +928,27 @@ local function GetFreeTrain(nextStop, minTraincars, maxTraincars, type, size, re
         local inventorySize = 0
         if (minTraincars == 0 or #DispTrain.carriages >= minTraincars) and (maxTraincars == 0 or #DispTrain.carriages <= maxTraincars) then -- train length fits
           -- get total inventory of train for requested item type
-          inventorySize = GetTrainInventorySize(DispTrain, type, reserved)
+          inventorySize = getTrainInventorySize(DispTrain, type, reserved)
           if inventorySize >= size then
             -- train can be used for delivery
             if inventorySize <= smallestInventory or smallestInventory == 0 then
-              local distance = GetStationDistance(DispTrain.station, nextStop)
+              local distance = getStationDistance(DispTrain.station, nextStop)
               if distance < smallestDistance or smallestDistance == 0 then
                 smallestDistance = distance
                 smallestInventory = inventorySize
                 train = {id=DispTrainKey, inventorySize=inventorySize}
-                if debug_log then log("(GetFreeTrain): found train "..locomotive.backer_name..", length: "..minTraincars.."<="..#DispTrain.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
+                if debug_log then log("(getFreeTrain): found train "..locomotive.backer_name..", length: "..minTraincars.."<="..#DispTrain.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
               end
             end
 
           elseif smallestInventory == 0 and inventorySize > 0 and (inventorySize >= largestInventory or largestInventory == 0) then
             -- store biggest available train
-            local distance = GetStationDistance(DispTrain.station, nextStop)
+            local distance = getStationDistance(DispTrain.station, nextStop)
             if distance < smallestDistance or smallestDistance == 0 then
               smallestDistance = distance
               largestInventory = inventorySize
               train = {id=DispTrainKey, inventorySize=inventorySize}
-              if debug_log then log("(GetFreeTrain): largest available train "..locomotive.backer_name..", length: "..minTraincars.."<="..#DispTrain.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
+              if debug_log then log("(getFreeTrain): largest available train "..locomotive.backer_name..", length: "..minTraincars.."<="..#DispTrain.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
             end
           end
 
@@ -987,7 +985,7 @@ function MakeDeliveries(orders)
     local from = fromStop.entity.backer_name
 
     -- find train
-    local train = GetFreeTrain(fromStop.entity, minTraincars, maxTraincars, loadingList[1].type, totalStacks, lockedSlots)
+    local train = getFreeTrain(fromStop.entity, minTraincars, maxTraincars, loadingList[1].type, totalStacks, lockedSlots)
     if not train then
       if message_level >= 3 then printmsg({"ltn-message.no-train-found-merged", tostring(minTraincars), tostring(maxTraincars), tostring(totalStacks)}, requestForce, true) end
 			if debug_log then log("No train with "..tostring(minTraincars).." <= length <= "..tostring(maxTraincars).." to transport "..tostring(totalStacks).." stacks found in Depot.") end
