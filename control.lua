@@ -706,22 +706,26 @@ end
 
 do --ProcessRequest
 -- return all stations providing item, ordered by priority and item-count
-local function GetProviders(force, item, req_count, provider_merged_count ,min_length, max_length)
+local function GetProviders(requestStation, item, req_count, provider_merged_count ,min_length, max_length)
   local stations = {}
   local providers = global.Dispatcher.Provided[item]
   if not providers then
     return nil
   end
+  local toID = requestStation.entity.unit_number
+  local force = requestStation.entity.force
 
   for stopID, count in pairs (providers) do
     local stop = global.LogisticTrainStops[stopID]
     if stop and stop.entity.force.name == force.name
+    and count >= stop.minProvided
     and (stop.minTraincars == 0 or max_length == 0 or stop.minTraincars <= max_length)
     and (stop.maxTraincars == 0 or min_length == 0 or stop.maxTraincars >= min_length) then --check if provider can actually service trains from requester
       local activeDeliveryCount = #stop.activeDeliveries
       if activeDeliveryCount and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
-        if debug_log then log("(GetProviders): found "..req_count.."("..tostring(stop.minProvided)..")".."/"..count.." ".. item.." at "..stop.entity.backer_name.." priority: "..stop.priority..", used in "..tostring(provider_merged_count[stopID]).." orders, minTraincars: "..stop.minTraincars.." maxTraincars: "..stop.maxTraincars.." locked Slots: "..stop.lockedSlots) end
-        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
+        local merged_count = provider_merged_count[stopID..","..toID] or 0
+        if debug_log then log("found "..count.."("..tostring(stop.minProvided)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name..", priority: "..stop.priority..", used in "..merged_count.." orders, active Deliveries: "..activeDeliveryCount.." minTraincars: "..stop.minTraincars..", maxTraincars: "..stop.maxTraincars..", locked Slots: "..stop.lockedSlots) end
+        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = activeDeliveryCount, merged_count=merged_count, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
       end
     end
   end
@@ -729,16 +733,13 @@ local function GetProviders(force, item, req_count, provider_merged_count ,min_l
   sort(stations, function(a, b)
       if a.activeDeliveryCount ~= b.activeDeliveryCount then --sort by #deliveries 1st
         return a.activeDeliveryCount < b.activeDeliveryCount
+      elseif a.priority ~= b.priority then --sort by priority 2nd
+        return a.priority > b.priority
+      elseif a.merged_count ~= b.merged_count then
+        return a.merged_count > b.merged_count
+      else
+        return a.count > b.count --finally sort by item count
       end
-      if a.priority ~= b.priority then --sort by priority 2nd
-          return a.priority > b.priority
-      end
-      local a_provider_merged_count = provider_merged_count[a.entity.unit_number] or 0
-      local b_provider_merged_count = provider_merged_count[b.entity.unit_number] or 0
-      if a_provider_merged_count ~= b_provider_merged_count then
-        return a_provider_merged_count > b_provider_merged_count
-      end
-      return a.count > b.count --finally sort by item count
     end)
   return stations
 end
@@ -758,10 +759,18 @@ function ProcessRequests()
       goto skipRequestItem -- station was removed since request was generated
     end
 
+    local toID = requestStation.entity.unit_number
+    local to = requestStation.entity.backer_name
+    local item = request.item
+    local count = request.count
+
     local minRequested = requestStation.minRequested
     local maxTraincars = requestStation.maxTraincars
     local minTraincars = requestStation.minTraincars
     local requestForce = requestStation.entity.force
+
+
+    if debug_log then log("request "..reqIndex.."/"..#global.Dispatcher.Requests..": "..count.."("..minRequested..")".." "..item.." to "..requestStation.entity.backer_name.." min length: "..minTraincars.." max length: "..maxTraincars ) end
 
     if requestStation.trainLimit > 0 and #requestStation.activeDeliveries >= requestStation.trainLimit then
       if debug_log then log(requestStation.entity.backer_name.." Request station train limit reached: "..#requestStation.activeDeliveries.."("..requestStation.trainLimit..")" ) end
@@ -769,8 +778,6 @@ function ProcessRequests()
     end
 
     -- find providers for requested item
-    local item = request.item
-    local count = request.count
     local itype, iname = match(item, "([^,]+),([^,]+)")
     if not (itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname])) then
       if message_level >= 1 then printmsg({"ltn-message.error-parse-item", item}, requestForce) end
@@ -786,7 +793,7 @@ function ProcessRequests()
     end
 
     -- get providers ordered by priority
-    local providers = GetProviders(requestStation.entity.force, item, count, provider_merged_count, minTraincars, maxTraincars)
+    local providers = GetProviders(requestStation, item, count, provider_merged_count, minTraincars, maxTraincars)
     if not providers or #providers < 1 then
       if requestStation.noWarnings == false and message_level >= 2 then printmsg({"ltn-message.no-provider-found", localname}, requestForce, true) end
       if debug_log then log("No station supplying "..item.." found.") end
@@ -794,18 +801,22 @@ function ProcessRequests()
     end
 
     local providerStation = providers[1] -- only one delivery/request is created so use only the best provider
-    if message_level >= 3 then printmsg({"ltn-message.provider-found", providerStation.entity.backer_name, tostring(providerStation.priority), tostring(providerStation.activeDeliveryCount), providerStation.count, localname}, requestForce, true) end
-    if debug_log then
-      for n, provider in pairs (providers) do
-        log("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(provider.activeDeliveryCount).." deliveries, "..tostring(provider.count).." "..item.." available.")
-      end
-    end
+    local fromID = providerStation.entity.unit_number
+    local from = providerStation.entity.backer_name
+
+    if message_level >= 3 then printmsg({"ltn-message.provider-found", from, tostring(providerStation.priority), tostring(providerStation.activeDeliveryCount), providerStation.count, localname}, requestForce, true) end
+    -- if debug_log then
+      -- for n, provider in pairs (providers) do
+        -- log("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(provider.activeDeliveryCount).." deliveries, "..tostring(provider.count).." "..item.." available.")
+      -- end
+    -- end
 
     -- limit count to availability of highest priority provider
     local deliverySize = count
     if count > providerStation.count then
       deliverySize = providerStation.count
     end
+
     local stacks = deliverySize -- for fluids stack = tanker capacity
     if itype == "item" then
       stacks = ceil(deliverySize / game.item_prototypes[iname].stack_size) -- calculate amount of stacks item count will occupy
@@ -820,20 +831,21 @@ function ProcessRequests()
       minTraincars = providerStation.minTraincars
     end
 
-    local to = requestStation.entity.backer_name
-    local from = providerStation.entity.backer_name
-    local toID = requestStation.entity.unit_number
-    local fromID = providerStation.entity.unit_number
+
     local insertnew = true
     local loadingList = {type=itype, name=iname, localname=localname, count=deliverySize, stacks=stacks}
+
+    -- reserve amount from picked provider
+    -- might be bigger than necessary, but we havn't merged orders and looked up available train capacity
+    global.Dispatcher.Provided[item][fromID] = global.Dispatcher.Provided[item][fromID] - deliverySize
 
     -- try inserting into existing order
     if itype == "item" then
       for i=1, #orders do
-        if orders[i].fromID == fromID and orders[i].loadingList[1].type == "item" then
+        if orders[i].loadingList[1].type == "item" and orders[i].fromID == fromID and orders[i].toID == toID then
           orders[i].loadingList[#orders[i].loadingList+1] = loadingList
           orders[i].totalStacks = orders[i].totalStacks + stacks
-          provider_merged_count[fromID] = provider_merged_count[fromID] + 1
+          provider_merged_count[fromID..","..toID] = provider_merged_count[fromID..","..toID] + 1
           insertnew = false
           if debug_log then log("inserted into order "..i.."/"..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.."/"..orders[i].totalStacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars) end
           break
@@ -843,7 +855,7 @@ function ProcessRequests()
     -- create new order for fluids and different provider-requester pairs
     if insertnew then
       orders[#orders+1] = {toID=toID, fromID=fromID, minTraincars=minTraincars, maxTraincars=maxTraincars, totalStacks=stacks, lockedSlots=providerStation.lockedSlots, loadingList={loadingList} }
-      provider_merged_count[fromID] = 1
+      provider_merged_count[fromID..","..toID] = 1
       if debug_log then log("added new order "..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars) end
     end
 
