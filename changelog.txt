@@ -1,3 +1,7 @@
+1.4.1 - Hotfix
+- fixed: Items where not removed from providers after being added to an order
+- fixed: orders where merged between different requester
+
 1.4.0
 - Dispatcher goes through requests by age of requests/item instead of requests/stop
 - Dispatcher is no longer limited to 1 train/s
