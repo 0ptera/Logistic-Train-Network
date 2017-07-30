@@ -770,7 +770,7 @@ local function GetProviders(requestStation, item, req_count, min_length, max_len
     and (stop.minTraincars == 0 or max_length == 0 or stop.minTraincars <= max_length)
     and (stop.maxTraincars == 0 or min_length == 0 or stop.maxTraincars >= min_length) then --check if provider can actually service trains from requester
       local activeDeliveryCount = #stop.activeDeliveries
-      if activeDeliveryCount and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then        
+      if activeDeliveryCount and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
         if debug_log then log("found "..count.."("..tostring(stop.minProvided)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name..", priority: "..stop.priority..", active Deliveries: "..activeDeliveryCount.." minTraincars: "..stop.minTraincars..", maxTraincars: "..stop.maxTraincars..", locked Slots: "..stop.lockedSlots) end
         stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
       end
@@ -961,22 +961,25 @@ function ProcessRequest(reqIndex, request)
       if merge_type and merge_name and game.item_prototypes[merge_name] then --type=="item"?
         local merge_localname = game.item_prototypes[merge_name].localised_name
         -- get providers for requested item
-        for merge_fromID, merge_count_prov in pairs (global.Dispatcher.Provided[merge_item]) do
-          -- only the same provider matters for merging
-          if merge_fromID == fromID then
-            -- set delivery Size and stacks
-            local merge_deliverySize = merge_count_req
-            if merge_count_req > merge_count_prov then
-              merge_deliverySize = merge_count_prov
-            end
-            local merge_stacks =  ceil(merge_deliverySize / game.item_prototypes[merge_name].stack_size) -- calculate amount of stacks item count will occupy
+        local merge_providers = global.Dispatcher.Provided[merge_item]
+        if merge_providers then
+          for merge_fromID, merge_count_prov in pairs (merge_providers) do
+            -- only the same provider matters for merging
+            if merge_fromID == fromID then
+              -- set delivery Size and stacks
+              local merge_deliverySize = merge_count_req
+              if merge_count_req > merge_count_prov then
+                merge_deliverySize = merge_count_prov
+              end
+              local merge_stacks =  ceil(merge_deliverySize / game.item_prototypes[merge_name].stack_size) -- calculate amount of stacks item count will occupy
 
-            -- add to loading list
-            loadingList[#loadingList+1] = {type=merge_type, name=merge_name, localname=merge_localname, count=merge_deliverySize, stacks=merge_stacks}
-            totalStacks = totalStacks + merge_stacks
-            -- order.totalStacks = order.totalStacks + merge_stacks
-            -- order.loadingList[#order.loadingList+1] = loadingList
-            if debug_log then log("inserted into order "..from.." >> "..to..": "..merge_deliverySize.." "..merge_item.." in "..merge_stacks.."/"..totalStacks) end
+              -- add to loading list
+              loadingList[#loadingList+1] = {type=merge_type, name=merge_name, localname=merge_localname, count=merge_deliverySize, stacks=merge_stacks}
+              totalStacks = totalStacks + merge_stacks
+              -- order.totalStacks = order.totalStacks + merge_stacks
+              -- order.loadingList[#order.loadingList+1] = loadingList
+              if debug_log then log("inserted into order "..from.." >> "..to..": "..merge_deliverySize.." "..merge_item.." in "..merge_stacks.."/"..totalStacks) end
+            end
           end
         end
       end

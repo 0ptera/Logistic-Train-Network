@@ -1,3 +1,6 @@
+1.4.3
+- fixed nil reference when no providers are available
+
 1.4.2
 - internally store train capacity for faster access when searching available trains
 - rewritten Dispatcher logic
