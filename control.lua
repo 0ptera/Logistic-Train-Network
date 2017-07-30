@@ -56,14 +56,17 @@ local function initialize(oldVersion, newVersion)
   ---- initialize Dispatcher
   global.Dispatcher = global.Dispatcher or {}
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
+  global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity or 0
+  global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity or 0
   global.Dispatcher.Provided = global.Dispatcher.Provided or {}
   global.Dispatcher.Requests = global.Dispatcher.Requests or {}
+  global.Dispatcher.Requests_by_Stop = global.Dispatcher.Requests_by_Stop or {}
   global.Dispatcher.RequestAge = global.Dispatcher.RequestAge or {}
-  global.Dispatcher.Orders = global.Dispatcher.Orders or {}
   global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
 
   -- clean obsolete global
   global.Dispatcher.Requested = nil
+  global.Dispatcher.Orders = nil
   global.Dispatcher.OrderAge = nil
   global.Dispatcher.Storage = nil
   global.useRailTanker = nil
@@ -82,11 +85,24 @@ local function initialize(oldVersion, newVersion)
     end
   end
 
+  -- update to 1.4.2
+  if oldVersion and oldVersion < "01.04.02" then
+    for trainID, train in pairs (global.Dispatcher.availableTrains) do
+      local loco = GetMainLocomotive(train)
+      if train.valid and loco then
+        local capacity, fluid_capacity = GetTrainCapacity(train)
+        global.Dispatcher.availableTrains[trainID] = {train = train, force = loco.force.name, capacity = capacity, fluid_capacity = fluid_capacity}
+        global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity + capacity
+        global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity + fluid_capacity
+      else
+        global.Dispatcher.availableTrains[trainID] = nil
+      end
+    end
+  end
   -- update to 1.4.0
   if oldVersion and oldVersion < "01.04.00" then
     global.Dispatcher.Requests = {}
     global.Dispatcher.RequestAge = {}
-    global.Dispatcher.Orders = {}
   end
 
   ---- initialize stops
@@ -163,7 +179,7 @@ local function initialize(oldVersion, newVersion)
   end
 end
 
--- has to run every time the mod configuration is changed to catch stops from other mods
+-- run every time the mod configuration is changed to catch stops from other mods
 local function buildStopNameList()
   global.TrainStopNames = global.TrainStopNames or {} -- dictionary of all train stops by all mods
 
@@ -173,6 +189,27 @@ local function buildStopNameList()
       for k, stop in pairs(foundStops) do
         AddStopName(stop.unit_number, stop.backer_name)
       end
+    end
+  end
+end
+
+-- run every time the mod configuration is changed to catch changes to wagon capacities by other mods
+local function updateEntities()
+  global.Dispatcher.availableTrains_total_capacity = 0
+  global.Dispatcher.availableTrains_total_fluid_capacity = 0
+  for trainID, trainData in pairs (global.Dispatcher.availableTrains) do
+    if trainData.train and trainData.train.valid and trainData.train.station then
+      local loco = GetMainLocomotive(trainData.train)
+      if loco then
+        local capacity, fluid_capacity = GetTrainCapacity(trainData.train)
+        global.Dispatcher.availableTrains[trainID] = {train = trainData.train, force = loco.force.name, capacity = capacity, fluid_capacity = fluid_capacity}
+        global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity + capacity
+        global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity + fluid_capacity
+      else
+        global.Dispatcher.availableTrains[trainID] = nil
+      end
+    else
+      global.Dispatcher.availableTrains[trainID] = nil
     end
   end
 end
@@ -211,12 +248,14 @@ script.on_init(function()
     newVersion = string.format("%02d.%02d.%02d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
   end
   initialize(oldVersion, newVersion)
+  updateEntities()
   registerEvents()
   log("[LTN] on_init: ".. MOD_NAME.." "..tostring(newVersionString).." initialized.")
 end)
 
 script.on_configuration_changed(function(data)
   buildStopNameList()
+
   if data and data.mod_changes[MOD_NAME] then
     -- format version string to "00.00.00"
     local oldVersion, newVersion = nil
@@ -230,6 +269,7 @@ script.on_configuration_changed(function(data)
     end
 
     initialize(oldVersion, newVersion)
+    updateEntities()
     registerEvents()
     log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..tostring(newVersionString).." initialized. Previous version: "..tostring(oldVersionString))
   end
@@ -438,6 +478,8 @@ function removeStop(entity)
 
   -- remove available train
   if stop and stop.isDepot and stop.parkedTrainID then
+    global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].capacity
+    global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].fluid_capacity
     global.Dispatcher.availableTrains[stop.parkedTrainID] = nil
   end
 
@@ -576,6 +618,7 @@ function OnTick(event)
     -- clear Dispatcher.Storage
     global.Dispatcher.Provided = {}
     global.Dispatcher.Requests = {}
+    global.Dispatcher.Requests_by_Stop = {}
   end
 
   -- ticks 1 - 57: update stops
@@ -629,16 +672,20 @@ function OnTick(event)
         return a.age < b.age
       end)
 
-  -- tick 59: find best provider, merge shipments
+  -- tick 59: parse requests and dispatch trains
   elseif global.tickCount == dispatcher_update_interval - 1 then
-    if next(global.Dispatcher.availableTrains) ~= nil then -- no need to parse requests without available trains
-      global.Dispatcher.Orders = ProcessRequests()
+    if debug_log then log("(OnTick) Available train capacity: "..global.Dispatcher.availableTrains_total_capacity.." item stacks, "..global.Dispatcher.availableTrains_total_fluid_capacity.. " fluid capacity.") end
+    local created_deliveries = {}
+    for reqIndex, request in pairs (global.Dispatcher.Requests) do
+      local delivery = ProcessRequest(reqIndex, request)
+      if delivery then
+        created_deliveries[#created_deliveries+1] = delivery
+      end
     end
+    if debug_log then log("(OnTick) Created "..#created_deliveries.." deliveries this cycle.") end
 
-  -- tick 60: find train, generate delivery, reset age
+  -- tick 60: reset
   elseif global.tickCount == dispatcher_update_interval then
-    local deliveries = MakeDeliveries(global.Dispatcher.Orders)
-    global.Dispatcher.Orders = {}
     global.tickCount = 0 -- reset tick count
   end
 
@@ -705,8 +752,9 @@ end
 
 
 do --ProcessRequest
+
 -- return all stations providing item, ordered by priority and item-count
-local function GetProviders(requestStation, item, req_count, provider_merged_count ,min_length, max_length)
+local function GetProviders(requestStation, item, req_count, min_length, max_length)
   local stations = {}
   local providers = global.Dispatcher.Provided[item]
   if not providers then
@@ -722,10 +770,9 @@ local function GetProviders(requestStation, item, req_count, provider_merged_cou
     and (stop.minTraincars == 0 or max_length == 0 or stop.minTraincars <= max_length)
     and (stop.maxTraincars == 0 or min_length == 0 or stop.maxTraincars >= min_length) then --check if provider can actually service trains from requester
       local activeDeliveryCount = #stop.activeDeliveries
-      if activeDeliveryCount and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
-        local merged_count = provider_merged_count[stopID..","..toID] or 0
-        if debug_log then log("found "..count.."("..tostring(stop.minProvided)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name..", priority: "..stop.priority..", used in "..merged_count.." orders, active Deliveries: "..activeDeliveryCount.." minTraincars: "..stop.minTraincars..", maxTraincars: "..stop.maxTraincars..", locked Slots: "..stop.lockedSlots) end
-        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = activeDeliveryCount, merged_count=merged_count, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
+      if activeDeliveryCount and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then        
+        if debug_log then log("found "..count.."("..tostring(stop.minProvided)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name..", priority: "..stop.priority..", active Deliveries: "..activeDeliveryCount.." minTraincars: "..stop.minTraincars..", maxTraincars: "..stop.maxTraincars..", locked Slots: "..stop.lockedSlots) end
+        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
       end
     end
   end
@@ -735,180 +782,11 @@ local function GetProviders(requestStation, item, req_count, provider_merged_cou
         return a.activeDeliveryCount < b.activeDeliveryCount
       elseif a.priority ~= b.priority then --sort by priority 2nd
         return a.priority > b.priority
-      elseif a.merged_count ~= b.merged_count then
-        return a.merged_count > b.merged_count
       else
         return a.count > b.count --finally sort by item count
       end
     end)
   return stations
-end
-
--- parse requests from global.Dispatcher.Request={stopID, item, age, count}
--- returns orders = {toID, fromID, minTraincars, maxTraincars, totalStacks, lockedSlots, {loadingList} }
-function ProcessRequests()
-  local orders = {}
-  local provider_merged_count = {}
-
-  for reqIndex, request in pairs (global.Dispatcher.Requests) do
-    -- ensure validity of request stop
-    local stopID = request.stopID
-    local requestStation = global.LogisticTrainStops[stopID]
-
-    if not requestStation or not (requestStation.entity and requestStation.entity.valid) then
-      goto skipRequestItem -- station was removed since request was generated
-    end
-
-    local toID = requestStation.entity.unit_number
-    local to = requestStation.entity.backer_name
-    local item = request.item
-    local count = request.count
-
-    local minRequested = requestStation.minRequested
-    local maxTraincars = requestStation.maxTraincars
-    local minTraincars = requestStation.minTraincars
-    local requestForce = requestStation.entity.force
-
-
-    if debug_log then log("request "..reqIndex.."/"..#global.Dispatcher.Requests..": "..count.."("..minRequested..")".." "..item.." to "..requestStation.entity.backer_name.." min length: "..minTraincars.." max length: "..maxTraincars ) end
-
-    if requestStation.trainLimit > 0 and #requestStation.activeDeliveries >= requestStation.trainLimit then
-      if debug_log then log(requestStation.entity.backer_name.." Request station train limit reached: "..#requestStation.activeDeliveries.."("..requestStation.trainLimit..")" ) end
-      goto skipRequestItem -- reached train limit
-    end
-
-    -- find providers for requested item
-    local itype, iname = match(item, "([^,]+),([^,]+)")
-    if not (itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname])) then
-      if message_level >= 1 then printmsg({"ltn-message.error-parse-item", item}, requestForce) end
-      if debug_log then log("(ProcessRequests) could not parse "..item) end
-      goto skipRequestItem
-    end
-
-    local localname
-    if itype=="fluid" then
-      localname = game.fluid_prototypes[iname].localised_name
-    else
-      localname = game.item_prototypes[iname].localised_name
-    end
-
-    -- get providers ordered by priority
-    local providers = GetProviders(requestStation, item, count, provider_merged_count, minTraincars, maxTraincars)
-    if not providers or #providers < 1 then
-      if requestStation.noWarnings == false and message_level >= 2 then printmsg({"ltn-message.no-provider-found", localname}, requestForce, true) end
-      if debug_log then log("No station supplying "..item.." found.") end
-      goto skipRequestItem
-    end
-
-    local providerStation = providers[1] -- only one delivery/request is created so use only the best provider
-    local fromID = providerStation.entity.unit_number
-    local from = providerStation.entity.backer_name
-
-    if message_level >= 3 then printmsg({"ltn-message.provider-found", from, tostring(providerStation.priority), tostring(providerStation.activeDeliveryCount), providerStation.count, localname}, requestForce, true) end
-    -- if debug_log then
-      -- for n, provider in pairs (providers) do
-        -- log("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(provider.activeDeliveryCount).." deliveries, "..tostring(provider.count).." "..item.." available.")
-      -- end
-    -- end
-
-    -- limit count to availability of highest priority provider
-    local deliverySize = count
-    if count > providerStation.count then
-      deliverySize = providerStation.count
-    end
-
-    local stacks = deliverySize -- for fluids stack = tanker capacity
-    if itype == "item" then
-      stacks = ceil(deliverySize / game.item_prototypes[iname].stack_size) -- calculate amount of stacks item count will occupy
-    end
-
-    -- maxTraincars = shortest set max-train-length
-    if providerStation.maxTraincars > 0 and (providerStation.maxTraincars < requestStation.maxTraincars or requestStation.maxTraincars == 0) then
-      maxTraincars = providerStation.maxTraincars
-    end
-    -- minTraincars = longest set min-train-length
-    if providerStation.minTraincars > 0 and (providerStation.minTraincars > requestStation.minTraincars or requestStation.minTraincars == 0) then
-      minTraincars = providerStation.minTraincars
-    end
-
-
-    local insertnew = true
-    local loadingList = {type=itype, name=iname, localname=localname, count=deliverySize, stacks=stacks}
-
-    -- reserve amount from picked provider
-    -- might be bigger than necessary, but we havn't merged orders and looked up available train capacity
-    global.Dispatcher.Provided[item][fromID] = global.Dispatcher.Provided[item][fromID] - deliverySize
-
-    -- try inserting into existing order
-    if itype == "item" then
-      for i=1, #orders do
-        if orders[i].loadingList[1].type == "item" and orders[i].fromID == fromID and orders[i].toID == toID then
-          orders[i].loadingList[#orders[i].loadingList+1] = loadingList
-          orders[i].totalStacks = orders[i].totalStacks + stacks
-          provider_merged_count[fromID..","..toID] = provider_merged_count[fromID..","..toID] + 1
-          insertnew = false
-          if debug_log then log("inserted into order "..i.."/"..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.."/"..orders[i].totalStacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars) end
-          break
-        end
-      end
-    end
-    -- create new order for fluids and different provider-requester pairs
-    if insertnew then
-      orders[#orders+1] = {toID=toID, fromID=fromID, minTraincars=minTraincars, maxTraincars=maxTraincars, totalStacks=stacks, lockedSlots=providerStation.lockedSlots, loadingList={loadingList} }
-      provider_merged_count[fromID..","..toID] = 1
-      if debug_log then log("added new order "..#orders.." "..from.." >> "..to..": "..deliverySize.." in "..stacks.." stacks "..itype..","..iname.." min length: "..minTraincars.." max length: "..maxTraincars) end
-    end
-
-    ::skipRequestItem:: -- use goto since lua doesn't know continue
-  end -- for global.Dispatcher.Requests
-
-  return orders
-end
-
-end
-
-do --MakeDeliveries
-local InventoryLookup = { --preoccupy table with wagons to ignore at 0 capacity
-  ["rail-tanker"] = 0
-}
-
-local function getInventorySize(entity)
-  local capacity = 0
-  if entity.type == "cargo-wagon" then
-    capacity = entity.prototype.get_inventory_size(defines.inventory.cargo_wagon)
-  elseif entity.type == "fluid-wagon" then
-    for n=1, #entity.fluidbox do
-      capacity = capacity + entity.fluidbox.get_capacity(n)
-    end
-  end
-  --log("(getInventorySize) adding "..entity.name.." capcacity: "..capacity)
-  InventoryLookup[entity.name] = capacity
-  return capacity
-end
-
-local function getTrainInventorySize(train, type, reserved)
-  local inventorySize = 0
-  local fluidCapacity = 0
-  if not train.valid then
-    return inventorySize
-  end
-
-  --log("Train "..GetTrainName(train).." carriages: "..#train.carriages..", cargo_wagons: "..#train.cargo_wagons)
-  for _,wagon in pairs (train.carriages) do
-    if wagon.type ~= "locomotive" then
-      local capacity = InventoryLookup[wagon.name] or getInventorySize(wagon)
-      --log("(getTrainInventorySize) wagon.name:"..wagon.name.." capacity:"..capacity)
-      if wagon.type == "fluid-wagon" then
-        fluidCapacity = fluidCapacity + capacity
-      else
-        inventorySize = inventorySize + capacity - reserved
-      end
-    end
-  end
-  if type == "fluid" then
-    return fluidCapacity
-  end
-  return inventorySize
 end
 
 local function getStationDistance(stationA, stationB)
@@ -934,154 +812,261 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size, re
   local largestInventory = 0
   local smallestInventory = 0
   local smallestDistance = 0
-  for DispTrainKey, DispTrain in pairs (global.Dispatcher.availableTrains) do
-    if DispTrain.valid and DispTrain.station then
-      local locomotive = GetMainLocomotive(DispTrain)
-      if locomotive.force.name == nextStop.force.name then -- train force matches
-        local inventorySize = 0
-        if (minTraincars == 0 or #DispTrain.carriages >= minTraincars) and (maxTraincars == 0 or #DispTrain.carriages <= maxTraincars) then -- train length fits
-          -- get total inventory of train for requested item type
-          inventorySize = getTrainInventorySize(DispTrain, type, reserved)
-          if inventorySize >= size then
-            -- train can be used for delivery
-            if inventorySize <= smallestInventory or smallestInventory == 0 then
-              local distance = getStationDistance(DispTrain.station, nextStop)
-              if distance < smallestDistance or smallestDistance == 0 then
-                smallestDistance = distance
-                smallestInventory = inventorySize
-                train = {id=DispTrainKey, inventorySize=inventorySize}
-                if debug_log then log("(getFreeTrain): found train "..locomotive.backer_name..", length: "..minTraincars.."<="..#DispTrain.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
-              end
-            end
+  for trainID, trainData in pairs (global.Dispatcher.availableTrains) do
+    if trainData.train.valid and trainData.train.station then
+      local inventorySize = trainData.capacity - reserved
+      if type == "fluid" then
+        inventorySize = trainData.fluid_capacity
+      end
+      if trainData.force == nextStop.force.name -- forces match
+      and (minTraincars == 0 or #trainData.train.carriages >= minTraincars) and (maxTraincars == 0 or #trainData.train.carriages <= maxTraincars) then -- train length fits
 
-          elseif smallestInventory == 0 and inventorySize > 0 and (inventorySize >= largestInventory or largestInventory == 0) then
-            -- store biggest available train
-            local distance = getStationDistance(DispTrain.station, nextStop)
+        if inventorySize >= size then
+          -- train can be used for delivery
+          if inventorySize <= smallestInventory or smallestInventory == 0 then
+            local distance = getStationDistance(trainData.train.station, nextStop)
             if distance < smallestDistance or smallestDistance == 0 then
               smallestDistance = distance
-              largestInventory = inventorySize
-              train = {id=DispTrainKey, inventorySize=inventorySize}
-              if debug_log then log("(getFreeTrain): largest available train "..locomotive.backer_name..", length: "..minTraincars.."<="..#DispTrain.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
+              smallestInventory = inventorySize
+              train = {id=trainID, inventorySize=inventorySize}
+
+              if debug_log then log("(getFreeTrain): found train "..tostring(GetTrainName(trainData.train))..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
             end
           end
 
-        end --train length fits
+        elseif smallestInventory == 0 and inventorySize > 0 and (inventorySize >= largestInventory or largestInventory == 0) then
+          -- store biggest available train
+          local distance = getStationDistance(trainData.train.station, nextStop)
+          if distance < smallestDistance or smallestDistance == 0 then
+            smallestDistance = distance
+            largestInventory = inventorySize
+            train = {id=trainID, inventorySize=inventorySize}
+            if debug_log then log("(getFreeTrain): largest available train "..tostring(GetTrainName(trainData.train))..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
+          end
+        end
+
       end
     else
-      -- remove invalid train
-      global.Dispatcher.availableTrains[DispTrainKey] = nil
+      -- remove invalid train from global.Dispatcher.availableTrains
+      global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[trainID].capacity
+      global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[trainID].fluid_capacity
+      global.Dispatcher.availableTrains[trainID] = nil
     end
   end
+
   return train
 end
 
--- sends available trains to run deliveries for given orders
--- returns {trainID} of generated global.Dispatcher.Deliveries[trainID]
-function MakeDeliveries(orders)
-  local deliveryIDs = {}
-  for orderIndex=1, #orders do
-    local loadingList = orders[orderIndex].loadingList
-    local totalStacks = orders[orderIndex].totalStacks
-    local lockedSlots = orders[orderIndex].lockedSlots
-    local minTraincars = orders[orderIndex].minTraincars
-    local maxTraincars = orders[orderIndex].maxTraincars
+-- parse single request from global.Dispatcher.Request={stopID, item, age, count}
+-- returns created delivery ID or nil
+function ProcessRequest(reqIndex, request)
+  -- ensure validity of request stop
+  local toID = request.stopID
+  local requestStation = global.LogisticTrainStops[toID]
 
-    -- get station names
-    local toStop = global.LogisticTrainStops[orders[orderIndex].toID]
-    local fromStop = global.LogisticTrainStops[orders[orderIndex].fromID]
-    if not toStop or not fromStop then
-      if message_level >= 1 then printmsg({"ltn-message.error-no-stop"}, requestForce) end
-      if debug_log then log("(ProcessRequest) Couldn't get provider or requester stop.") end
-      goto skipOrder
-    end
-    local to = toStop.entity.backer_name
-    local from = fromStop.entity.backer_name
+  if not requestStation or not (requestStation.entity and requestStation.entity.valid) then
+    -- goto skipRequestItem -- station was removed since request was generated
+    return nil
+  end
 
-    -- find train
-    local train = getFreeTrain(fromStop.entity, minTraincars, maxTraincars, loadingList[1].type, totalStacks, lockedSlots)
-    if not train then
-      if message_level >= 3 then printmsg({"ltn-message.no-train-found-merged", tostring(minTraincars), tostring(maxTraincars), tostring(totalStacks)}, requestForce, true) end
-      if debug_log then log("No train with "..tostring(minTraincars).." <= length <= "..tostring(maxTraincars).." to transport "..tostring(totalStacks).." stacks found in Depot.") end
-      goto skipOrder
-    end
-    if message_level >= 3 then printmsg({"ltn-message.train-found", tostring(train.inventorySize), tostring(totalStacks)}, requestForce) end
-    if debug_log then log("Train to transport "..tostring(train.inventorySize).."/"..tostring(totalStacks).." stacks found in Depot.") end
+  local to = requestStation.entity.backer_name
+  local item = request.item
+  local count = request.count
 
-    -- recalculate delivery amount to fit in train
-    if train.inventorySize < totalStacks then
-      -- recalculate partial shipment
-      if loadingList[1].type == "fluid" then
-        -- fluids are simple
-        loadingList[1].count = train.inventorySize
-      else
-        -- items need a bit more math
-        for i=#loadingList, 1, -1 do
-          if totalStacks - loadingList[i].stacks < train.inventorySize then
-            -- remove stacks until it fits in train
-            loadingList[i].stacks = loadingList[i].stacks - (totalStacks - train.inventorySize)
-            totalStacks = train.inventorySize
-            local newcount = loadingList[i].stacks * game.item_prototypes[loadingList[i].name].stack_size
-            loadingList[i].count = newcount
-            break
-          else
-            -- remove item and try again
-            totalStacks = totalStacks - loadingList[i].stacks
-            table.remove(loadingList, i)
+  local minRequested = requestStation.minRequested
+  local maxTraincars = requestStation.maxTraincars
+  local minTraincars = requestStation.minTraincars
+  local requestForce = requestStation.entity.force
+
+  if debug_log then log("request "..reqIndex.."/"..#global.Dispatcher.Requests..": "..count.."("..minRequested..")".." "..item.." to "..requestStation.entity.backer_name.." min length: "..minTraincars.." max length: "..maxTraincars ) end
+
+  if not( global.Dispatcher.Requests_by_Stop[toID] and global.Dispatcher.Requests_by_Stop[toID][item] ) then
+    if debug_log then log("Skipping request "..requestStation.entity.backer_name..": "..item..". Item has already been processed.") end
+    -- goto skipRequestItem -- item has been processed already
+    return nil
+  end
+
+  if requestStation.trainLimit > 0 and #requestStation.activeDeliveries >= requestStation.trainLimit then
+    if debug_log then log(requestStation.entity.backer_name.." Request station train limit reached: "..#requestStation.activeDeliveries.."("..requestStation.trainLimit..")" ) end
+    -- goto skipRequestItem -- reached train limit
+    return nil
+  end
+
+  -- find providers for requested item
+  local itype, iname = match(item, "([^,]+),([^,]+)")
+  if not (itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname])) then
+    if message_level >= 1 then printmsg({"ltn-message.error-parse-item", item}, requestForce) end
+    if debug_log then log("(ProcessRequests) could not parse "..item) end
+    -- goto skipRequestItem
+    return nil
+  end
+
+  local localname
+  if itype=="fluid" then
+    localname = game.fluid_prototypes[iname].localised_name
+  else
+    localname = game.item_prototypes[iname].localised_name
+  end
+
+  -- get providers ordered by priority
+  local providers = GetProviders(requestStation, item, count, minTraincars, maxTraincars)
+  if not providers or #providers < 1 then
+    if requestStation.noWarnings == false and message_level >= 2 then printmsg({"ltn-message.no-provider-found", localname}, requestForce, true) end
+    if debug_log then log("No station supplying "..item.." found.") end
+    -- goto skipRequestItem
+    return nil
+  end
+
+  local providerStation = providers[1] -- only one delivery/request is created so use only the best provider
+  local fromID = providerStation.entity.unit_number
+  local from = providerStation.entity.backer_name
+
+  if message_level >= 3 then printmsg({"ltn-message.provider-found", from, tostring(providerStation.priority), tostring(providerStation.activeDeliveryCount), providerStation.count, localname}, requestForce, true) end
+  -- if debug_log then
+    -- for n, provider in pairs (providers) do
+      -- log("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(provider.activeDeliveryCount).." deliveries, "..tostring(provider.count).." "..item.." available.")
+    -- end
+  -- end
+
+  -- limit deliverySize to count at provider
+  local deliverySize = count
+  if count > providerStation.count then
+    deliverySize = providerStation.count
+  end
+
+  local stacks = deliverySize -- for fluids stack = tanker capacity
+  if itype == "item" then
+    stacks = ceil(deliverySize / game.item_prototypes[iname].stack_size) -- calculate amount of stacks item count will occupy
+  end
+
+  -- maxTraincars = shortest set max-train-length
+  if providerStation.maxTraincars > 0 and (providerStation.maxTraincars < requestStation.maxTraincars or requestStation.maxTraincars == 0) then
+    maxTraincars = providerStation.maxTraincars
+  end
+  -- minTraincars = longest set min-train-length
+  if providerStation.minTraincars > 0 and (providerStation.minTraincars > requestStation.minTraincars or requestStation.minTraincars == 0) then
+    minTraincars = providerStation.minTraincars
+  end
+
+  global.Dispatcher.Requests_by_Stop[toID][item] = nil -- remove before merge so it's not added twice
+  local loadingList = { {type=itype, name=iname, localname=localname, count=deliverySize, stacks=stacks} }
+  local totalStacks = stacks
+  -- local order = {toID=toID, fromID=fromID, minTraincars=minTraincars, maxTraincars=maxTraincars, totalStacks=stacks, lockedSlots=providerStation.lockedSlots, loadingList={loadingList} } -- orders as intermediate step are no longer required
+  if debug_log then log("created new order "..from.." >> "..to..": "..deliverySize.." "..item.." in "..stacks.."/"..totalStacks.." stacks, min length: "..minTraincars.." max length: "..maxTraincars) end
+
+  -- find possible mergable items, fluids can't be merged in a sane way
+  if itype == "item" then
+    for merge_item, merge_count_req in pairs(global.Dispatcher.Requests_by_Stop[toID]) do
+      local merge_type, merge_name = match(merge_item, "([^,]+),([^,]+)")
+      if merge_type and merge_name and game.item_prototypes[merge_name] then --type=="item"?
+        local merge_localname = game.item_prototypes[merge_name].localised_name
+        -- get providers for requested item
+        for merge_fromID, merge_count_prov in pairs (global.Dispatcher.Provided[merge_item]) do
+          -- only the same provider matters for merging
+          if merge_fromID == fromID then
+            -- set delivery Size and stacks
+            local merge_deliverySize = merge_count_req
+            if merge_count_req > merge_count_prov then
+              merge_deliverySize = merge_count_prov
+            end
+            local merge_stacks =  ceil(merge_deliverySize / game.item_prototypes[merge_name].stack_size) -- calculate amount of stacks item count will occupy
+
+            -- add to loading list
+            loadingList[#loadingList+1] = {type=merge_type, name=merge_name, localname=merge_localname, count=merge_deliverySize, stacks=merge_stacks}
+            totalStacks = totalStacks + merge_stacks
+            -- order.totalStacks = order.totalStacks + merge_stacks
+            -- order.loadingList[#order.loadingList+1] = loadingList
+            if debug_log then log("inserted into order "..from.." >> "..to..": "..merge_deliverySize.." "..merge_item.." in "..merge_stacks.."/"..totalStacks) end
           end
         end
       end
     end
+  end
 
-    if message_level >= 2 then
-      if #loadingList == 1 then
-        printmsg({"ltn-message.creating-delivery", from, to, loadingList[1].count, loadingList[1].localname}, requestForce)
-      else
-        printmsg({"ltn-message.creating-delivery-merged", from, to, totalStacks}, requestForce)
+  -- find train
+  local train = getFreeTrain(requestStation.entity, minTraincars, maxTraincars, loadingList[1].type, totalStacks, providerStation.lockedSlots)
+  if not train then
+    if message_level >= 3 then printmsg({"ltn-message.no-train-found-merged", tostring(minTraincars), tostring(maxTraincars), tostring(totalStacks)}, requestForce, true) end
+    if debug_log then log("No train with "..tostring(minTraincars).." <= length <= "..tostring(maxTraincars).." to transport "..tostring(totalStacks).." stacks found in Depot.") end
+    return nil
+  end
+  if message_level >= 3 then printmsg({"ltn-message.train-found", tostring(train.inventorySize), tostring(totalStacks)}, requestForce) end
+  if debug_log then log("Train to transport "..tostring(train.inventorySize).."/"..tostring(totalStacks).." stacks found in Depot.") end
+
+  -- recalculate delivery amount to fit in train
+  if train.inventorySize < totalStacks then
+    -- recalculate partial shipment
+    if loadingList[1].type == "fluid" then
+      -- fluids are simple
+      loadingList[1].count = train.inventorySize
+    else
+      -- items need a bit more math
+      for i=#loadingList, 1, -1 do
+        if totalStacks - loadingList[i].stacks < train.inventorySize then
+          -- remove stacks until it fits in train
+          loadingList[i].stacks = loadingList[i].stacks - (totalStacks - train.inventorySize)
+          totalStacks = train.inventorySize
+          local newcount = loadingList[i].stacks * game.item_prototypes[loadingList[i].name].stack_size
+          loadingList[i].count = newcount
+          break
+        else
+          -- remove item and try again
+          totalStacks = totalStacks - loadingList[i].stacks
+          table.remove(loadingList, i)
+        end
       end
     end
+  end
 
-    -- create schedule
-    local selectedTrain = global.Dispatcher.availableTrains[train.id]
-    local depot = global.LogisticTrainStops[selectedTrain.station.unit_number]
-    local schedule = {current = 1, records = {}}
-    schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", 120)
-    schedule.records[2] = NewScheduleRecord(from, "item_count", ">", loadingList)
-    schedule.records[3] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
-    selectedTrain.schedule = schedule
-
-    -- store delivery
-    local delivery = {}
-    if debug_log then log("Creating Delivery: "..totalStacks.." stacks, "..from.." >> "..to) end
-    for i=1, #loadingList do
-      delivery[loadingList[i].type..","..loadingList[i].name] = loadingList[i].count
-
-      -- move Requests to the back of the queue
-      local ageIndex = loadingList[i].type..","..loadingList[i].name..","..orders[orderIndex].toID
-      global.Dispatcher.RequestAge[ageIndex] = nil
-
-      if debug_log then log("  "..loadingList[i].type..", "..loadingList[i].name..", "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks ") end
+  -- create delivery
+  if message_level >= 2 then
+    if #loadingList == 1 then
+      printmsg({"ltn-message.creating-delivery", from, to, loadingList[1].count, loadingList[1].localname}, requestForce)
+    else
+      printmsg({"ltn-message.creating-delivery-merged", from, to, totalStacks}, requestForce)
     end
-    global.Dispatcher.Deliveries[train.id] = {force=requestForce, train=selectedTrain, started=game.tick, from=from, to=to, shipment=delivery}
-    global.Dispatcher.availableTrains[train.id] = nil
+  end
 
-    -- set lamps on stations to yellow
-    -- trains will pick a stop by their own logic so we have to parse by name
-    for stopID, stop in pairs (global.LogisticTrainStops) do
-      if stop.entity.backer_name == from or stop.entity.backer_name == to then
-        table.insert(global.LogisticTrainStops[stopID].activeDeliveries, train.id)
-      end
+  -- create schedule
+  local selectedTrain = global.Dispatcher.availableTrains[train.id].train
+  local depot = global.LogisticTrainStops[selectedTrain.station.unit_number]
+  local schedule = {current = 1, records = {}}
+  schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", 120)
+  schedule.records[2] = NewScheduleRecord(from, "item_count", ">", loadingList)
+  schedule.records[3] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
+  selectedTrain.schedule = schedule
+
+  -- store delivery
+  local delivery = {}
+  if debug_log then log("Creating Delivery: "..totalStacks.." stacks, "..from.." >> "..to) end
+  for i=1, #loadingList do
+    local loadingListItem = loadingList[i].type..","..loadingList[i].name
+    delivery[loadingListItem] = loadingList[i].count
+
+    -- remove Request and reset age
+    global.Dispatcher.Requests_by_Stop[toID][loadingListItem] = nil
+    global.Dispatcher.RequestAge[loadingListItem..","..toID] = nil
+
+    if debug_log then log("  "..loadingListItem..", "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks ") end
+  end
+  global.Dispatcher.Deliveries[train.id] = {force=requestForce, train=selectedTrain, started=game.tick, from=from, to=to, shipment=delivery}
+  global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[train.id].capacity
+  global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[train.id].fluid_capacity
+  global.Dispatcher.availableTrains[train.id] = nil
+
+  -- set lamps on stations to yellow
+  -- trains will pick a stop by their own logic so we have to parse by name
+  for stopID, stop in pairs (global.LogisticTrainStops) do
+    if stop.entity.backer_name == from or stop.entity.backer_name == to then
+      table.insert(global.LogisticTrainStops[stopID].activeDeliveries, train.id)
     end
+  end
 
-    -- add trainID to return value
-    deliveryIDs[#deliveryIDs+1] = train.id
-
-    ::skipOrder:: -- use goto since lua doesn't know continue
-  end --for orders
-
-  return deliveryIDs
+  -- return train ID / delivery ID
+  return train.id
 end
 
-end
+end -- ProcessRequest Block
 
 
 ------------------------------------- TRAIN FUNCTIONS -------------------------------------
@@ -1125,8 +1110,11 @@ function UpdateTrain(train)
         removeDelivery(trainID)
 
         -- make train available for new deliveries
-        global.Dispatcher.availableTrains[trainID] = train
-
+        local capacity, fluid_capacity = GetTrainCapacity(train)
+        global.Dispatcher.availableTrains[trainID] = {train = train, force = loco.force.name, capacity = capacity, fluid_capacity = fluid_capacity}
+        global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity + capacity
+        global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity + fluid_capacity
+        log("added available train "..trainID..", inventory: "..tostring(global.Dispatcher.availableTrains[trainID].capacity)..", fluid capacity: "..tostring(global.Dispatcher.availableTrains[trainID].fluid_capacity))
         -- reset schedule
         local schedule = {current = 1, records = {}}
         schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "inactivity", 300)
@@ -1146,7 +1134,11 @@ function UpdateTrain(train)
       if stop.parkedTrainID == trainID then
 
         if stop.isDepot then
-          global.Dispatcher.availableTrains[trainID] = nil
+          if global.Dispatcher.availableTrains[trainID] then -- trains are normally removed when deliveries are created
+            global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[trainID].capacity
+            global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[trainID].fluid_capacity
+            global.Dispatcher.availableTrains[trainID] = nil
+          end
           if stop.errorCode == 0 then
             setLamp(stopID, "green")
           end
@@ -1257,6 +1249,7 @@ end
 -- update stop input signals
 function UpdateStop(stopID)
   local stop = global.LogisticTrainStops[stopID]
+  global.Dispatcher.Requests_by_Stop[stopID] = nil
 
   -- remove invalid stops
   -- if not stop or not (stop.entity and stop.entity.valid) or not (stop.input and stop.input.valid) or not (stop.output and stop.output.valid) or not (stop.lampControl and stop.lampControl.valid) then
@@ -1322,8 +1315,14 @@ function UpdateStop(stopID)
     end
 
     -- add parked train to available trains
-    if stop.parkedTrainID and stop.parkedTrain.valid and not global.Dispatcher.Deliveries[stop.parkedTrainID] then
-      global.Dispatcher.availableTrains[stop.parkedTrainID] = stop.parkedTrain
+    if stop.parkedTrainID and stop.parkedTrain.valid and not global.Dispatcher.Deliveries[stop.parkedTrainID] and not global.Dispatcher.availableTrains[stop.parkedTrainID] then
+      local loco = GetMainLocomotive(stop.parkedTrain)
+      if loco then
+        local capacity, fluid_capacity = GetTrainCapacity(stop.parkedTrain)
+        global.Dispatcher.availableTrains[stop.parkedTrainID] = {train = stop.parkedTrain, force = loco.force.name, capacity = capacity, fluid_capacity = fluid_capacity}
+        global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity + capacity
+        global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity + fluid_capacity
+      end
     end
 
     if detectShortCircuit(stop) then
@@ -1346,8 +1345,10 @@ function UpdateStop(stopID)
 
       if stop.parkedTrain then
         setLamp(stopID, "blue")
+        if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." is depot with parked train "..tostring(GetTrainName(stop.parkedTrain)) ) end
       else
         setLamp(stopID, "green")
+        if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." is empty depot.") end
       end
     end
 
@@ -1361,7 +1362,9 @@ function UpdateStop(stopID)
     end
 
     -- remove parked train from available trains
-    if stop.parkedTrainID then
+    if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
+      global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].capacity
+      global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].fluid_capacity
       global.Dispatcher.availableTrains[stop.parkedTrainID] = nil
     end
 
@@ -1373,6 +1376,7 @@ function UpdateStop(stopID)
     else
       -- signal error fixed
       global.LogisticTrainStops[stopID].errorCode = 0
+      global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
       for item, count in pairs (circuitValues) do
         for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
           local deliverycount = delivery.shipment[item]
@@ -1435,10 +1439,10 @@ function UpdateStop(stopID)
           if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count.."("..minProvided..")") end
         elseif count*-1 >= minRequested then
           count = count * -1
-          -- requestItems[item] = count
           local ageIndex = item..","..stopID
           global.Dispatcher.RequestAge[ageIndex] = global.Dispatcher.RequestAge[ageIndex] or game.tick
           global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[ageIndex], stopID = stopID, item = item, count = count}
+          global.Dispatcher.Requests_by_Stop[stopID][item] = count
           if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." requests "..item.." "..count.."("..minRequested..")"..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick) end
         end
 
@@ -1456,9 +1460,6 @@ function UpdateStop(stopID)
       else
         global.LogisticTrainStops[stopID].noWarnings = false
       end
-
-      -- create Requests {stopID, age, itemlist={[item], count}}
-      -- global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[stopID], stopID = stopID, itemlist = requestItems}
 
       if #stop.activeDeliveries > 0 then
         setLamp(stopID, "yellow")
@@ -1593,6 +1594,46 @@ function UpdateStopOutput(trainStop)
 end
 
 ---------------------------------- HELPER FUNCTIONS ----------------------------------
+
+do --GetTrainCapacity(train)
+local WagonCapacity = { --preoccupy table with wagons to ignore at 0 capacity
+  ["rail-tanker"] = 0
+}
+
+local function getWagonCapacity(entity)
+  local capacity = 0
+  if entity.type == "cargo-wagon" then
+    capacity = entity.prototype.get_inventory_size(defines.inventory.cargo_wagon)
+  elseif entity.type == "fluid-wagon" then
+    for n=1, #entity.fluidbox do
+      capacity = capacity + entity.fluidbox.get_capacity(n)
+    end
+  end
+  WagonCapacity[entity.name] = capacity
+  return capacity
+end
+
+-- returns inventory and fluid capacity of a given train
+function GetTrainCapacity(train)
+  local inventorySize = 0
+  local fluidCapacity = 0
+  if train and train.valid then
+    --log("Train "..GetTrainName(train).." carriages: "..#train.carriages..", cargo_wagons: "..#train.cargo_wagons)
+    for _,wagon in pairs (train.carriages) do
+      if wagon.type ~= "locomotive" then
+        local capacity = WagonCapacity[wagon.name] or getWagonCapacity(wagon)
+        if wagon.type == "fluid-wagon" then
+          fluidCapacity = fluidCapacity + capacity
+        else
+          inventorySize = inventorySize + capacity
+        end
+      end
+    end
+  end
+  return inventorySize, fluidCapacity
+end
+
+end
 
 function GetMainLocomotive(train)
   if train.valid and train.locomotives and (#train.locomotives.front_movers > 0 or #train.locomotives.back_movers > 0) then

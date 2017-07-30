@@ -1,4 +1,8 @@
-1.4.1 - Hotfix
+1.4.2
+- internally store train capacity for faster access when searching available trains
+- rewritten Dispatcher logic
+
+1.4.1
 - fixed: Items where not removed from providers after being added to an order
 - fixed: orders where merged between different requester
 
