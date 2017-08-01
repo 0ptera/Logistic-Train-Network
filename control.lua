@@ -830,7 +830,7 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size, re
               smallestInventory = inventorySize
               train = {id=trainID, inventorySize=inventorySize}
 
-              if debug_log then log("(getFreeTrain): found train "..tostring(GetTrainName(trainData.train))..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
+              if debug_log then log("(getFreeTrain) found train "..tostring(GetTrainName(trainData.train))..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
             end
           end
 
@@ -841,7 +841,7 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size, re
             smallestDistance = distance
             largestInventory = inventorySize
             train = {id=trainID, inventorySize=inventorySize}
-            if debug_log then log("(getFreeTrain): largest available train "..tostring(GetTrainName(trainData.train))..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
+            if debug_log then log("(getFreeTrain) largest available train "..tostring(GetTrainName(trainData.train))..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
           end
         end
 
@@ -904,8 +904,18 @@ function ProcessRequest(reqIndex, request)
   local localname
   if itype=="fluid" then
     localname = game.fluid_prototypes[iname].localised_name
+    -- skip if no trains are available
+    if (global.Dispatcher.availableTrains_total_fluid_capacity or 0) == 0 then
+      if debug_log then log("Skipping request "..requestStation.entity.backer_name..": "..item..". No trains available.") end
+      return
+    end
   else
     localname = game.item_prototypes[iname].localised_name
+    -- skip if no trains are available
+    if (global.Dispatcher.availableTrains_total_capacity or 0) == 0 then
+      if debug_log then log("Skipping request "..requestStation.entity.backer_name..": "..item..". No trains available.") end
+      return
+    end
   end
 
   -- get providers ordered by priority
@@ -960,27 +970,22 @@ function ProcessRequest(reqIndex, request)
       local merge_type, merge_name = match(merge_item, "([^,]+),([^,]+)")
       if merge_type and merge_name and game.item_prototypes[merge_name] then --type=="item"?
         local merge_localname = game.item_prototypes[merge_name].localised_name
-        -- get providers for requested item
-        local merge_providers = global.Dispatcher.Provided[merge_item]
-        if merge_providers then
-          for merge_fromID, merge_count_prov in pairs (merge_providers) do
-            -- only the same provider matters for merging
-            if merge_fromID == fromID then
-              -- set delivery Size and stacks
-              local merge_deliverySize = merge_count_req
-              if merge_count_req > merge_count_prov then
-                merge_deliverySize = merge_count_prov
-              end
-              local merge_stacks =  ceil(merge_deliverySize / game.item_prototypes[merge_name].stack_size) -- calculate amount of stacks item count will occupy
-
-              -- add to loading list
-              loadingList[#loadingList+1] = {type=merge_type, name=merge_name, localname=merge_localname, count=merge_deliverySize, stacks=merge_stacks}
-              totalStacks = totalStacks + merge_stacks
-              -- order.totalStacks = order.totalStacks + merge_stacks
-              -- order.loadingList[#order.loadingList+1] = loadingList
-              if debug_log then log("inserted into order "..from.." >> "..to..": "..merge_deliverySize.." "..merge_item.." in "..merge_stacks.."/"..totalStacks) end
-            end
+        -- get current provider for requested item
+        if global.Dispatcher.Provided[merge_item] and global.Dispatcher.Provided[merge_item][fromID] then
+          -- set delivery Size and stacks
+          local merge_count_prov = global.Dispatcher.Provided[merge_item][fromID]
+          local merge_deliverySize = merge_count_req
+          if merge_count_req > merge_count_prov then
+            merge_deliverySize = merge_count_prov
           end
+          local merge_stacks =  ceil(merge_deliverySize / game.item_prototypes[merge_name].stack_size) -- calculate amount of stacks item count will occupy
+
+          -- add to loading list
+          loadingList[#loadingList+1] = {type=merge_type, name=merge_name, localname=merge_localname, count=merge_deliverySize, stacks=merge_stacks}
+          totalStacks = totalStacks + merge_stacks
+          -- order.totalStacks = order.totalStacks + merge_stacks
+          -- order.loadingList[#order.loadingList+1] = loadingList
+          if debug_log then log("inserted into order "..from.." >> "..to..": "..merge_deliverySize.." "..merge_item.." in "..merge_stacks.."/"..totalStacks) end
         end
       end
     end
@@ -1039,12 +1044,16 @@ function ProcessRequest(reqIndex, request)
   schedule.records[3] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
   selectedTrain.schedule = schedule
 
-  -- store delivery
+
   local delivery = {}
   if debug_log then log("Creating Delivery: "..totalStacks.." stacks, "..from.." >> "..to) end
   for i=1, #loadingList do
     local loadingListItem = loadingList[i].type..","..loadingList[i].name
+    -- store Delivery
     delivery[loadingListItem] = loadingList[i].count
+
+    -- remove Delivery from Provided items
+    global.Dispatcher.Provided[loadingListItem][fromID] = global.Dispatcher.Provided[loadingListItem][fromID] - loadingList[i].count
 
     -- remove Request and reset age
     global.Dispatcher.Requests_by_Stop[toID][loadingListItem] = nil
@@ -1117,7 +1126,7 @@ function UpdateTrain(train)
         global.Dispatcher.availableTrains[trainID] = {train = train, force = loco.force.name, capacity = capacity, fluid_capacity = fluid_capacity}
         global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity + capacity
         global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity + fluid_capacity
-        log("added available train "..trainID..", inventory: "..tostring(global.Dispatcher.availableTrains[trainID].capacity)..", fluid capacity: "..tostring(global.Dispatcher.availableTrains[trainID].fluid_capacity))
+        -- log("added available train "..trainID..", inventory: "..tostring(global.Dispatcher.availableTrains[trainID].capacity)..", fluid capacity: "..tostring(global.Dispatcher.availableTrains[trainID].fluid_capacity))
         -- reset schedule
         local schedule = {current = 1, records = {}}
         schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "inactivity", 300)
