@@ -1,3 +1,10 @@
+1.4.5
+- removed left over debug message
+
+1.4.4
+- fixed: deliveries where not properly reserved
+- performance optimizations
+
 1.4.3
 - fixed nil reference when no providers are available
 
