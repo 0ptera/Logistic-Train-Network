@@ -992,7 +992,7 @@ function ProcessRequest(reqIndex, request)
   end
 
   -- find train
-  local train = getFreeTrain(requestStation.entity, minTraincars, maxTraincars, loadingList[1].type, totalStacks, providerStation.lockedSlots)
+  local train = getFreeTrain(providerStation.entity, minTraincars, maxTraincars, loadingList[1].type, totalStacks, providerStation.lockedSlots)
   if not train then
     if message_level >= 3 then printmsg({"ltn-message.no-train-found-merged", tostring(minTraincars), tostring(maxTraincars), tostring(totalStacks)}, requestForce, true) end
     if debug_log then log("No train with "..tostring(minTraincars).." <= length <= "..tostring(maxTraincars).." to transport "..tostring(totalStacks).." stacks found in Depot.") end
@@ -1502,6 +1502,7 @@ local ColorLookup = {
   grey = "signal-grey",
   black = "signal-black"
 }
+
 function setLamp(stopID, color)
   if ColorLookup[color] and global.LogisticTrainStops[stopID] then
     global.LogisticTrainStops[stopID].lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name=ColorLookup[color]}, count = 1 }}}
