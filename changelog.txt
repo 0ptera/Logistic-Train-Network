@@ -1,6 +1,7 @@
 1.4.6
 - bumped required Factorio version to current stable
 - fixed: Dispatcher picked trains closesest to request stop instead of providing stop
+- fixed: local wagon capacity lookup table could potentially cause desync
 
 1.4.5
 - removed left over debug message
