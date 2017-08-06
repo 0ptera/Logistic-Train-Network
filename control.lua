@@ -50,8 +50,12 @@ local function initialize(oldVersion, newVersion)
   ---- initialize logger
   global.messageBuffer = {}
 
+  ---- initialize global lookup tables
+  global.stopIdStartIndex = global.stopIdStartIndex or 1 --start index for on_tick stop updates
   global.StopDistances = global.StopDistances or {} -- station distance lookup table
-  global.stopIdStartIndex = global.stopIdStartIndex or 1 --global index should prevent desync by updating different stops
+  global.WagonCapacity = { --preoccupy table with wagons to ignore at 0 capacity
+    ["rail-tanker"] = 0
+  }
 
   ---- initialize Dispatcher
   global.Dispatcher = global.Dispatcher or {}
@@ -992,7 +996,7 @@ function ProcessRequest(reqIndex, request)
   end
 
   -- find train
-  local train = getFreeTrain(requestStation.entity, minTraincars, maxTraincars, loadingList[1].type, totalStacks, providerStation.lockedSlots)
+  local train = getFreeTrain(providerStation.entity, minTraincars, maxTraincars, loadingList[1].type, totalStacks, providerStation.lockedSlots)
   if not train then
     if message_level >= 3 then printmsg({"ltn-message.no-train-found-merged", tostring(minTraincars), tostring(maxTraincars), tostring(totalStacks)}, requestForce, true) end
     if debug_log then log("No train with "..tostring(minTraincars).." <= length <= "..tostring(maxTraincars).." to transport "..tostring(totalStacks).." stacks found in Depot.") end
@@ -1502,6 +1506,7 @@ local ColorLookup = {
   grey = "signal-grey",
   black = "signal-black"
 }
+
 function setLamp(stopID, color)
   if ColorLookup[color] and global.LogisticTrainStops[stopID] then
     global.LogisticTrainStops[stopID].lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name=ColorLookup[color]}, count = 1 }}}
@@ -1608,10 +1613,6 @@ end
 ---------------------------------- HELPER FUNCTIONS ----------------------------------
 
 do --GetTrainCapacity(train)
-local WagonCapacity = { --preoccupy table with wagons to ignore at 0 capacity
-  ["rail-tanker"] = 0
-}
-
 local function getWagonCapacity(entity)
   local capacity = 0
   if entity.type == "cargo-wagon" then
@@ -1621,7 +1622,7 @@ local function getWagonCapacity(entity)
       capacity = capacity + entity.fluidbox.get_capacity(n)
     end
   end
-  WagonCapacity[entity.name] = capacity
+  global.WagonCapacity[entity.name] = capacity
   return capacity
 end
 
@@ -1633,7 +1634,7 @@ function GetTrainCapacity(train)
     --log("Train "..GetTrainName(train).." carriages: "..#train.carriages..", cargo_wagons: "..#train.cargo_wagons)
     for _,wagon in pairs (train.carriages) do
       if wagon.type ~= "locomotive" then
-        local capacity = WagonCapacity[wagon.name] or getWagonCapacity(wagon)
+        local capacity = global.WagonCapacity[wagon.name] or getWagonCapacity(wagon)
         if wagon.type == "fluid-wagon" then
           fluidCapacity = fluidCapacity + capacity
         else
