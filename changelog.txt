@@ -1,5 +1,6 @@
 1.4.7
-- fixed: error in distance check logic
+- fixed: distance check could prevent better matching trains from being picked
+- fixed: error encoding train composition for trains longer than 31 carriages #55
 
 1.4.6
 - bumped required Factorio version to current stable

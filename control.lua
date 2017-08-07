@@ -829,19 +829,19 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size, re
         local distance = getStationDistance(trainData.train.station, nextStop)
         if inventorySize >= size then
           -- train can be used for whole delivery
-          if inventorySize < smallestInventory or (inventorySize == smallestInventory and distance < minDistance) or smallestInventory == 0 then            
+          if inventorySize < smallestInventory or (inventorySize == smallestInventory and distance < minDistance) or smallestInventory == 0 then
             minDistance = distance
             smallestInventory = inventorySize
             train = {id=trainID, inventorySize=inventorySize}
-            if debug_log then log("(getFreeTrain) found train "..tostring(GetTrainName(trainData.train))..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end            
+            if debug_log then log("(getFreeTrain) found train "..tostring(GetTrainName(trainData.train))..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
           end
         elseif smallestInventory == 0 and inventorySize > 0 then
           -- train can be used for partial delivery, use only when no trains for whole delivery available
-          if inventorySize > largestInventory or (inventorySize == largestInventory and distance < minDistance) or largestInventory == 0 then            
+          if inventorySize > largestInventory or (inventorySize == largestInventory and distance < minDistance) or largestInventory == 0 then
             minDistance = distance
             largestInventory = inventorySize
             train = {id=trainID, inventorySize=inventorySize}
-            if debug_log then log("(getFreeTrain) largest available train "..tostring(GetTrainName(trainData.train))..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end          
+            if debug_log then log("(getFreeTrain) largest available train "..tostring(GetTrainName(trainData.train))..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
           end
         end
 
@@ -1523,31 +1523,33 @@ function UpdateStopOutput(trainStop)
     local inventory = trainStop.parkedTrain.get_contents() or {}
     local fluidInventory = trainStop.parkedTrain.get_fluid_contents() or {}
 
-    if trainStop.parkedTrainFacesStop then --train faces forwards >> iterate normal
-      for i=1, #carriages do
-        local name = carriages[i].name
-        if carriagesDec[name] then
-          carriagesDec[name] = carriagesDec[name] + 2^(i-1)
-        else
-          carriagesDec[name] = 2^(i-1)
+    if #carriages < 32 then --prevent circuit network integer overflow error
+      if trainStop.parkedTrainFacesStop then --train faces forwards >> iterate normal
+        for i=1, #carriages do
+          local name = carriages[i].name
+          if carriagesDec[name] then
+            carriagesDec[name] = carriagesDec[name] + 2^(i-1)
+          else
+            carriagesDec[name] = 2^(i-1)
+          end
+        end
+      else --train faces backwards >> iterate backwards
+        n = 0
+        for i=#carriages, 1, -1 do
+          local name = carriages[i].name
+          if carriagesDec[name] then
+            carriagesDec[name] = carriagesDec[name] + 2^n
+          else
+            carriagesDec[name] = 2^n
+          end
+          n=n+1
         end
       end
-    else --train faces backwards >> iterate backwards
-      n = 0
-      for i=#carriages, 1, -1 do
-        local name = carriages[i].name
-        if carriagesDec[name] then
-          carriagesDec[name] = carriagesDec[name] + 2^n
-        else
-          carriagesDec[name] = 2^n
-        end
-        n=n+1
-      end
-    end
 
-    for k ,v in pairs (carriagesDec) do
-      index = index+1
-      table.insert(signals, {index = index, signal = {type="virtual",name="LTN-"..k}, count = v })
+      for k ,v in pairs (carriagesDec) do
+        index = index+1
+        table.insert(signals, {index = index, signal = {type="virtual",name="LTN-"..k}, count = v })
+      end
     end
 
     if not trainStop.isDepot then
