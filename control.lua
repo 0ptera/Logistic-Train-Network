@@ -552,8 +552,9 @@ local function renamedStop(targetID, old_name, new_name)
       renameDeliveries = false
     end
   end
-  -- rename deliveries if no other stop old_name exists
+  -- rename deliveries only if no other LTN stop old_name exists
   if renameDeliveries then
+    if debug_log then log("(OnEntityRenamed) last LTN stop "..old_name.." renamed, updating deliveries to "..new_name..".") end
     for trainID, delivery in pairs(global.Dispatcher.Deliveries) do
       if delivery.to == old_name then
         delivery.to = new_name
@@ -902,7 +903,7 @@ function ProcessRequest(reqIndex, request)
   end
 
   local localname
-  if itype=="fluid" then
+  if itype == "fluid" then
     localname = game.fluid_prototypes[iname].localised_name
     -- skip if no trains are available
     if (global.Dispatcher.availableTrains_total_fluid_capacity or 0) == 0 then
@@ -921,7 +922,7 @@ function ProcessRequest(reqIndex, request)
   -- get providers ordered by priority
   local providers = GetProviders(requestStation, item, count, minTraincars, maxTraincars)
   if not providers or #providers < 1 then
-    if requestStation.noWarnings == false and message_level >= 2 then printmsg({"ltn-message.no-provider-found", localname}, requestForce, true) end
+    if requestStation.noWarnings == false and message_level >= 1 then printmsg({"ltn-message.no-provider-found", localname}, requestForce, true) end
     if debug_log then log("No station supplying "..item.." found.") end
     -- goto skipRequestItem
     return nil
@@ -945,7 +946,7 @@ function ProcessRequest(reqIndex, request)
   end
 
   local stacks = deliverySize -- for fluids stack = tanker capacity
-  if itype == "item" then
+  if itype ~= "fluid" then
     stacks = ceil(deliverySize / game.item_prototypes[iname].stack_size) -- calculate amount of stacks item count will occupy
   end
 
@@ -965,7 +966,7 @@ function ProcessRequest(reqIndex, request)
   if debug_log then log("created new order "..from.." >> "..to..": "..deliverySize.." "..item.." in "..stacks.."/"..totalStacks.." stacks, min length: "..minTraincars.." max length: "..maxTraincars) end
 
   -- find possible mergable items, fluids can't be merged in a sane way
-  if itype == "item" then
+  if itype ~= "fluid" then
     for merge_item, merge_count_req in pairs(global.Dispatcher.Requests_by_Stop[toID]) do
       local merge_type, merge_name = match(merge_item, "([^,]+),([^,]+)")
       if merge_type and merge_name and game.item_prototypes[merge_name] then --type=="item"?
@@ -985,7 +986,7 @@ function ProcessRequest(reqIndex, request)
           totalStacks = totalStacks + merge_stacks
           -- order.totalStacks = order.totalStacks + merge_stacks
           -- order.loadingList[#order.loadingList+1] = loadingList
-          if debug_log then log("inserted into order "..from.." >> "..to..": "..merge_deliverySize.." "..merge_item.." in "..merge_stacks.."/"..totalStacks) end
+          if debug_log then log("inserted into order "..from.." >> "..to..": "..merge_deliverySize.." "..merge_item.." in "..merge_stacks.."/"..totalStacks.." stacks.") end
         end
       end
     end
@@ -1169,12 +1170,12 @@ function UpdateTrain(train)
               for item, count in pairs (delivery.shipment) do
                 local itype, iname = match(item, "([^,]+),([^,]+)")
                 if itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname]) then
-                  if itype == "item" then
-                    local traincount = train.get_item_count(iname)
+                  if itype == "fluid" then
+                    local traincount = train.get_fluid_count(iname)
                     if debug_log then log("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount) ) end
                     delivery.shipment[item] = traincount
-                  elseif itype == "fluid" then
-                    local traincount = train.get_fluid_count(iname)
+                  else
+                    local traincount = train.get_item_count(iname)
                     if debug_log then log("(UpdateTrain): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount) ) end
                     delivery.shipment[item] = traincount
                   end
@@ -1448,14 +1449,14 @@ function UpdateStop(stopID)
           local provided = global.Dispatcher.Provided[item] or {}
           provided[stopID] = count
           global.Dispatcher.Provided[item] = provided
-          if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count.."("..minProvided..")") end
+          if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count.."("..minProvided..")"..", min length: "..minTraincars..", max length: "..maxTraincars) end
         elseif count*-1 >= minRequested then
           count = count * -1
           local ageIndex = item..","..stopID
           global.Dispatcher.RequestAge[ageIndex] = global.Dispatcher.RequestAge[ageIndex] or game.tick
           global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[ageIndex], stopID = stopID, item = item, count = count}
           global.Dispatcher.Requests_by_Stop[stopID][item] = count
-          if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." requests "..item.." "..count.."("..minRequested..")"..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick) end
+          if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." requests "..item.." "..count.."("..minRequested..")"..", min length: "..minTraincars..", max length: "..maxTraincars..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick) end
         end
 
       end -- for circuitValues
