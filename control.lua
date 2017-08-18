@@ -552,8 +552,9 @@ local function renamedStop(targetID, old_name, new_name)
       renameDeliveries = false
     end
   end
-  -- rename deliveries if no other stop old_name exists
+  -- rename deliveries only if no other LTN stop old_name exists
   if renameDeliveries then
+    if debug_log then log("(OnEntityRenamed) last LTN stop "..old_name.." renamed, updating deliveries to "..new_name..".") end
     for trainID, delivery in pairs(global.Dispatcher.Deliveries) do
       if delivery.to == old_name then
         delivery.to = new_name
@@ -921,7 +922,7 @@ function ProcessRequest(reqIndex, request)
   -- get providers ordered by priority
   local providers = GetProviders(requestStation, item, count, minTraincars, maxTraincars)
   if not providers or #providers < 1 then
-    if requestStation.noWarnings == false and message_level >= 2 then printmsg({"ltn-message.no-provider-found", localname}, requestForce, true) end
+    if requestStation.noWarnings == false and message_level >= 1 then printmsg({"ltn-message.no-provider-found", localname}, requestForce, true) end
     if debug_log then log("No station supplying "..item.." found.") end
     -- goto skipRequestItem
     return nil

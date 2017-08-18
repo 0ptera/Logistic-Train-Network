@@ -1,3 +1,8 @@
+1.4.8
+- added more details to debug log messages
+- no provider warning message changed from message level 2 to 1
+- message level dropdown texts better reflect their behaviour
+
 1.4.7
 - fixed: distance check could prevent better matching trains from being picked
 - fixed: error encoding train composition for trains longer than 31 carriages #55
