@@ -1,6 +1,9 @@
+1.4.9
+-- added localized mod title and mod description
+
 1.4.8
 - added more details to debug log messages
-- no provider warning message changed from message level 2 to 1
+- "no provider found" warning message changed from message level 2 to 1
 - message level dropdown texts better reflect their behaviour
 
 1.4.7
