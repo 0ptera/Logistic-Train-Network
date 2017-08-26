@@ -1,6 +1,12 @@
+1.4.9
+- added localized mod title and mod description
+- fixed possible integer overflow from mod settings
+  - limit max values on stop and delivery timeout to 1 hour
+  - limit other int settings to 2^32 -1
+
 1.4.8
 - added more details to debug log messages
-- no provider warning message changed from message level 2 to 1
+- "no provider found" warning message changed from message level 2 to 1
 - message level dropdown texts better reflect their behaviour
 
 1.4.7

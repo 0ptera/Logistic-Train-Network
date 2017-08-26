@@ -36,7 +36,7 @@ local match = string.match
 local ceil = math.ceil
 local sort = table.sort
 
----- BOOTSTRAP ----
+---- INITIALIZATION ----
 do
 local function initialize(oldVersion, newVersion)
   --log("oldVersion: "..tostring(oldVersion)..", newVersion: "..tostring(newVersion))

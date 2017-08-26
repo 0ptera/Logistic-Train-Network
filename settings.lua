@@ -13,7 +13,8 @@ data:extend({
     order = "ab",
     setting_type = "runtime-global",
     default_value = 18000,
-    minimum_value = 0
+    minimum_value = 0,
+    maximum_value = 4294967295, -- prevent 32bit signed overflow
   },
 	{
     type = "bool-setting",
@@ -28,7 +29,8 @@ data:extend({
     order = "ba",
     setting_type = "runtime-global",
     default_value = 1000,
-    minimum_value = 1
+    minimum_value = 1,
+    maximum_value = 4294967295, -- prevent 32bit signed overflow
   },
   {
     type = "int-setting",
@@ -36,23 +38,26 @@ data:extend({
     order = "bb",
     setting_type = "runtime-global",
     default_value = 1000,
-    minimum_value = 1
+    minimum_value = 1,
+    maximum_value = 4294967295, -- prevent 32bit signed overflow
   },
   {
     type = "int-setting",
     name = "ltn-dispatcher-stop-timeout",
     order = "ca",
     setting_type = "runtime-global",
-    default_value = 7200,
-    minimum_value = 0
+    default_value = 7200, --2min
+    minimum_value = 0, --0:off
+    maximum_value = 216000, -- 60min
   },
   {
     type = "int-setting",
     name = "ltn-dispatcher-delivery-timeout",
     order = "cb",
     setting_type = "runtime-global",
-    default_value = 18000,
-    minimum_value = 3600
+    default_value = 18000, --5min
+    minimum_value = 3600, -- 1min
+    maximum_value = 216000, -- 60min
   },
   {
     type = "bool-setting",
