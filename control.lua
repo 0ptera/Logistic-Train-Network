@@ -1213,17 +1213,19 @@ local function getCircuitValues(entity)
   if greenWire and greenWire.signals then
     for _, v in pairs(greenWire.signals) do
       if v.signal.type ~= "virtual" or ControlSignals[v.signal.name] then
-        items[v.signal.type..","..v.signal.name] = v.count
+        local signal = v.signal.type..","..v.signal.name
+        items[signal] = v.count
       end
     end
   end
   if redWire and redWire.signals then
     for _, v in pairs(redWire.signals) do
       if v.signal.type ~= "virtual" or ControlSignals[v.signal.name] then
-        if items[v.signal.type..","..v.signal.name] ~= nil then
-          items[v.signal.type..","..v.signal.name] = items[v.signal.type..","..v.signal.name] + v.count
+        local signal = v.signal.type..","..v.signal.name
+        if items[signal] ~= nil then
+          items[signal] = items[signal] + v.count
         else
-          items[v.signal.type..","..v.signal.name] = v.count
+          items[signal] = v.count
         end
       end
     end
