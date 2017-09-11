@@ -1209,28 +1209,24 @@ do --UpdateStop
 local function getCircuitValues(entity)
   local greenWire = entity.get_circuit_network(defines.wire_type.green)
   local redWire =  entity.get_circuit_network(defines.wire_type.red)
-  local items = {}
+  local signals = {}
   if greenWire and greenWire.signals then
     for _, v in pairs(greenWire.signals) do
       if v.signal.type ~= "virtual" or ControlSignals[v.signal.name] then
-        local signal = v.signal.type..","..v.signal.name
-        items[signal] = v.count
+        local item = v.signal.type..","..v.signal.name
+        signals[item] = v.count
       end
     end
   end
   if redWire and redWire.signals then
     for _, v in pairs(redWire.signals) do
       if v.signal.type ~= "virtual" or ControlSignals[v.signal.name] then
-        local signal = v.signal.type..","..v.signal.name
-        if items[signal] ~= nil then
-          items[signal] = items[signal] + v.count
-        else
-          items[signal] = v.count
-        end
+        local item = v.signal.type..","..v.signal.name
+        signals[item] = v.count + (signals[item] or 0) -- 2.7% faster than original non localized access
       end
     end
   end
-  return items
+  return signals
 end
 
 -- return true if stop, output, lamp are on same logic network
