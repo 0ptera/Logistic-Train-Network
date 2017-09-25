@@ -1,5 +1,9 @@
+1.4.11
+- thresholds are read as absolute values
+
 1.4.10
 - improved circuit signal read performance
+- pushed base to 0.15.34
 
 1.4.9
 - added localized mod title and mod description

@@ -1296,7 +1296,8 @@ function UpdateStop(stopID)
   if not circuitValues then
     return
   end
-
+  
+  local abs = math.abs
   -- read configuration signals and remove them from the signal list (should leave only item and fluid signal types)
   local isDepot = circuitValues["virtual,"..ISDEPOT] or 0
   circuitValues["virtual,"..ISDEPOT] = nil
@@ -1306,11 +1307,11 @@ function UpdateStop(stopID)
   circuitValues["virtual,"..MAXTRAINLENGTH] = nil
   local trainLimit = circuitValues["virtual,"..MAXTRAINS] or 0
   circuitValues["virtual,"..MAXTRAINS] = nil
-  local minRequested = circuitValues["virtual,"..MINREQUESTED] or min_requested
+  local minRequested = abs(circuitValues["virtual,"..MINREQUESTED] or min_requested)
   circuitValues["virtual,"..MINREQUESTED] = nil
   local noWarnings = circuitValues["virtual,"..NOWARN] or 0
   circuitValues["virtual,"..NOWARN] = nil
-  local minProvided = circuitValues["virtual,"..MINPROVIDED] or min_provided
+  local minProvided = abs(circuitValues["virtual,"..MINPROVIDED] or min_provided)
   circuitValues["virtual,"..MINPROVIDED] = nil
   local priority = circuitValues["virtual,"..PRIORITY] or 0
   circuitValues["virtual,"..PRIORITY] = nil
