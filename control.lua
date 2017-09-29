@@ -1297,24 +1297,30 @@ function UpdateStop(stopID)
     return
   end
 
+  local abs = math.abs
   -- read configuration signals and remove them from the signal list (should leave only item and fluid signal types)
   local isDepot = circuitValues["virtual,"..ISDEPOT] or 0
   circuitValues["virtual,"..ISDEPOT] = nil
-  local minTraincars = circuitValues["virtual,"..MINTRAINLENGTH] or 0
+  local minTraincars = circuitValues["virtual,"..MINTRAINLENGTH]
+  if not minTraincars or minTraincars < 0 then minTraincars = 0 end
   circuitValues["virtual,"..MINTRAINLENGTH] = nil
-  local maxTraincars = circuitValues["virtual,"..MAXTRAINLENGTH] or 0
+  local maxTraincars = circuitValues["virtual,"..MAXTRAINLENGTH]
+  if not maxTraincars or maxTraincars < 0 then maxTraincars = 0 end
   circuitValues["virtual,"..MAXTRAINLENGTH] = nil
-  local trainLimit = circuitValues["virtual,"..MAXTRAINS] or 0
+  local trainLimit = circuitValues["virtual,"..MAXTRAINS]
+  if not trainLimit or trainLimit < 0 then trainLimit = 0 end
   circuitValues["virtual,"..MAXTRAINS] = nil
-  local minRequested = circuitValues["virtual,"..MINREQUESTED] or min_requested
+  local minRequested = abs(circuitValues["virtual,"..MINREQUESTED] or min_requested)
   circuitValues["virtual,"..MINREQUESTED] = nil
   local noWarnings = circuitValues["virtual,"..NOWARN] or 0
   circuitValues["virtual,"..NOWARN] = nil
-  local minProvided = circuitValues["virtual,"..MINPROVIDED] or min_provided
+  local minProvided = abs(circuitValues["virtual,"..MINPROVIDED] or min_provided)
   circuitValues["virtual,"..MINPROVIDED] = nil
-  local priority = circuitValues["virtual,"..PRIORITY] or 0
+  local priority = circuitValues["virtual,"..PRIORITY]
+  if not priority or priority < 0 then priority = 0 end
   circuitValues["virtual,"..PRIORITY] = nil
-  local lockedSlots = circuitValues["virtual,"..LOCKEDSLOTS] or 0
+  local lockedSlots = circuitValues["virtual,"..LOCKEDSLOTS]
+  if not lockedSlots or lockedSlots < 0 then lockedSlots = 0 end
   circuitValues["virtual,"..LOCKEDSLOTS] = nil
   -- check if it's a depot
   if isDepot > 0 then
