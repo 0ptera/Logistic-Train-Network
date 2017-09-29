@@ -1,6 +1,6 @@
 1.4.11
 - thresholds are read as absolute values
-- other negative control signals are ignored
+- ignore negative control signals except thresholds
 
 1.4.10
 - improved circuit signal read performance
