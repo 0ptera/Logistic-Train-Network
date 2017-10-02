@@ -69,4 +69,11 @@ data:extend({
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-ea[ltn-disable-warnings]"
   },
+  {
+    type = "virtual-signal",
+    name = "ltn-network-id",
+    icon = "__LogisticTrainNetwork__/graphics/icons/network-id.png",
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-ff[ltn-network-id]"
+  },
 })
