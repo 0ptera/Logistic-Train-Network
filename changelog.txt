@@ -1,3 +1,7 @@
+1.4.12
+- allowed negative provider priority again #64
+- pushed base to 0.15.35
+
 1.4.11
 - thresholds are read as absolute values
 - ignore negative control signals except thresholds
