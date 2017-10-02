@@ -1316,8 +1316,7 @@ function UpdateStop(stopID)
   circuitValues["virtual,"..NOWARN] = nil
   local minProvided = abs(circuitValues["virtual,"..MINPROVIDED] or min_provided)
   circuitValues["virtual,"..MINPROVIDED] = nil
-  local priority = circuitValues["virtual,"..PRIORITY]
-  if not priority or priority < 0 then priority = 0 end
+  local priority = circuitValues["virtual,"..PRIORITY] or 0
   circuitValues["virtual,"..PRIORITY] = nil
   local lockedSlots = circuitValues["virtual,"..LOCKEDSLOTS]
   if not lockedSlots or lockedSlots < 0 then lockedSlots = 0 end
