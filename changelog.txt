@@ -1,3 +1,6 @@
+1.4.13
+- reverted base dependancy to 0.15.34 (stable)
+
 1.4.12
 - allowed negative provider priority again #64
 - pushed base to 0.15.35
