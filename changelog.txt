@@ -1,5 +1,8 @@
+1.4.14
+- added mod setting "Dispatcher Enabled"
+
 1.4.13
-- reverted base dependancy to 0.15.34 (stable)
+- reverted base dependency  to 0.15.34 (stable)
 
 1.4.12
 - allowed negative provider priority again #64

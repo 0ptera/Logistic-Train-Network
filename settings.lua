@@ -1,5 +1,12 @@
 data:extend({
   {
+    type = "bool-setting",
+    name = "ltn-dispatcher-enabled",
+    order = "a",
+    setting_type = "runtime-global",
+		default_value = true
+  },
+  {
     type = "string-setting",
     name = "ltn-interface-console-level",
     order = "aa",

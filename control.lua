@@ -679,18 +679,23 @@ function OnTick(event)
 
   -- tick 59: parse requests and dispatch trains
   elseif global.tickCount == dispatcher_update_interval - 1 then
-    if debug_log then log("(OnTick) Available train capacity: "..global.Dispatcher.availableTrains_total_capacity.." item stacks, "..global.Dispatcher.availableTrains_total_fluid_capacity.. " fluid capacity.") end
-    local created_deliveries = {}
-    for reqIndex, request in pairs (global.Dispatcher.Requests) do
-      local delivery = ProcessRequest(reqIndex, request)
-      if delivery then
-        created_deliveries[#created_deliveries+1] = delivery
+    if dispatcher_enabled then
+      if debug_log then log("(OnTick) Available train capacity: "..global.Dispatcher.availableTrains_total_capacity.." item stacks, "..global.Dispatcher.availableTrains_total_fluid_capacity.. " fluid capacity.") end
+      local created_deliveries = {}
+      for reqIndex, request in pairs (global.Dispatcher.Requests) do
+        local delivery = ProcessRequest(reqIndex, request)
+        if delivery then
+          created_deliveries[#created_deliveries+1] = delivery
+        end
       end
+      if debug_log then log("(OnTick) Created "..#created_deliveries.." deliveries this cycle.") end
+    else
+      if message_level >= 1 then printmsg({"ltn-message.warning-dispatcher-disabled"}, nil, true) end
+      if debug_log then log("(OnTick) Dispatcher disabled.") end
     end
-    if debug_log then log("(OnTick) Created "..#created_deliveries.." deliveries this cycle.") end
 
   -- tick 60: reset
-  elseif global.tickCount == dispatcher_update_interval then
+  else
     global.tickCount = 0 -- reset tick count
   end
 
