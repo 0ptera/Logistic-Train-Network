@@ -788,10 +788,10 @@ local function GetProviders(requestStation, item, req_count, min_length, max_len
   end
   -- sort best matching station to the top
   sort(stations, function(a, b)
-      if a.activeDeliveryCount ~= b.activeDeliveryCount then --sort by #deliveries 1st
-        return a.activeDeliveryCount < b.activeDeliveryCount
-      elseif a.priority ~= b.priority then --sort by priority 2nd
+      if a.priority ~= b.priority then --sort by priority, will result in train queues if trainlimit is not set
         return a.priority > b.priority
+      elseif a.activeDeliveryCount ~= b.activeDeliveryCount then --sort by #deliveries
+        return a.activeDeliveryCount < b.activeDeliveryCount      
       else
         return a.count > b.count --finally sort by item count
       end
