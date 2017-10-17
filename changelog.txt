@@ -1,6 +1,6 @@
 1.5.0
 - fixed request threshold icon to show ≤ instead of ≥
-- added request priority control signal
+- added request priority control signal #22
 - changed provider priority icon to be in line with request priority
 - changed provider prioritization to provider priority > #existing deliveries from provider > amount #69
 - fixed locked slots where subtracted from total train slots instead of per wagon
