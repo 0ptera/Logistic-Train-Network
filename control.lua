@@ -846,7 +846,7 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size, re
   local minDistance = 0
   for trainID, trainData in pairs (global.Dispatcher.availableTrains) do
     if trainData.train.valid and trainData.train.station then
-      local inventorySize = trainData.capacity - reserved
+      local inventorySize = trainData.capacity - (reserved * #trainData.train.cargo_wagons) -- subtract locked slots from every cargo wagon
       if type == "fluid" then
         inventorySize = trainData.fluid_capacity
       end

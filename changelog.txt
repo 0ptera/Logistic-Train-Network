@@ -3,6 +3,7 @@
 - added request priority control signal
 - changed provider priority icon to be in line with request priority
 - changed provider prioritisation to provider priority > #existing deliveries from provider > amount #69
+- fixed locked slots where subtracted from total train slots instead of per wagon
 
 1.4.14
 - added mod setting "Dispatcher Enabled"
