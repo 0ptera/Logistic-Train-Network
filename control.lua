@@ -8,9 +8,10 @@ local MINTRAINLENGTH = "ltn-min-train-length"
 local MAXTRAINLENGTH = "ltn-max-train-length"
 local MAXTRAINS = "ltn-max-trains"
 local MINREQUESTED = "ltn-requester-threshold"
+local REQPRIORITY = "ltn-requester-priority"
 local NOWARN = "ltn-disable-warnings"
 local MINPROVIDED = "ltn-provider-threshold"
-local PRIORITY = "ltn-provider-priority"
+local PROVPRIORITY = "ltn-provider-priority"
 local LOCKEDSLOTS = "ltn-locked-slots"
 
 local ControlSignals = {
@@ -19,9 +20,10 @@ local ControlSignals = {
   [MAXTRAINLENGTH] = true,
   [MAXTRAINS] = true,
   [MINREQUESTED] = true,
+  [REQPRIORITY] = true,
   [NOWARN] = true,
   [MINPROVIDED] = true,
-  [PRIORITY] = true,
+  [PROVPRIORITY] = true,
   [LOCKEDSLOTS] = true,
 }
 
@@ -89,6 +91,12 @@ local function initialize(oldVersion, newVersion)
     end
   end
 
+   -- update to 1.4.0
+  if oldVersion and oldVersion < "01.04.00" then
+    global.Dispatcher.Requests = {} -- wipe exisitng requests
+    global.Dispatcher.RequestAge = {}
+  end
+
   -- update to 1.4.2
   if oldVersion and oldVersion < "01.04.02" then
     for trainID, train in pairs (global.Dispatcher.availableTrains) do
@@ -103,10 +111,15 @@ local function initialize(oldVersion, newVersion)
       end
     end
   end
-  -- update to 1.4.0
-  if oldVersion and oldVersion < "01.04.00" then
-    global.Dispatcher.Requests = {}
-    global.Dispatcher.RequestAge = {}
+
+  -- update to 1.5.0
+  if oldVersion and oldVersion < "01.05.00" then
+    for stopID, stop in pairs (global.LogisticTrainStops) do
+      global.LogisticTrainStops[stopID].providePriority = global.LogisticTrainStops[stopID].priority or 0
+      global.LogisticTrainStops[stopID].priority = nil
+    end
+
+    global.Dispatcher.Requests = {} -- wipe exisitng requests
   end
 
   ---- initialize stops
@@ -116,12 +129,6 @@ local function initialize(oldVersion, newVersion)
   if next(global.LogisticTrainStops) then
     for stopID, stop in pairs (global.LogisticTrainStops) do
       global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or 0
-
-      -- update to 1.3.0
-      global.LogisticTrainStops[stopID].minDelivery = nil
-      global.LogisticTrainStops[stopID].ignoreMinDeliverySize = nil
-      global.LogisticTrainStops[stopID].minRequested = global.LogisticTrainStops[stopID].minRequested or 0
-      global.LogisticTrainStops[stopID].minProvided = global.LogisticTrainStops[stopID].minProvided or 0
 
       -- update to 0.3.8
       if stop.lampControl == nil then
@@ -159,6 +166,16 @@ local function initialize(oldVersion, newVersion)
       global.LogisticTrainStops[stopID].trainLimit = global.LogisticTrainStops[stopID].trainLimit or 0
       global.LogisticTrainStops[stopID].parkedTrainFacesStop = global.LogisticTrainStops[stopID].parkedTrainFacesStop or true
       global.LogisticTrainStops[stopID].lockedSlots = global.LogisticTrainStops[stopID].lockedSlots or 0
+
+      -- update to 1.3.0
+      global.LogisticTrainStops[stopID].minDelivery = nil
+      global.LogisticTrainStops[stopID].ignoreMinDeliverySize = nil
+      global.LogisticTrainStops[stopID].minRequested = global.LogisticTrainStops[stopID].minRequested or 0
+      global.LogisticTrainStops[stopID].minProvided = global.LogisticTrainStops[stopID].minProvided or 0
+
+      -- update to 1.5.0
+      global.LogisticTrainStops[stopID].reqestPriority = global.LogisticTrainStops[stopID].reqestPriority or 0
+      global.LogisticTrainStops[stopID].providePriority = global.LogisticTrainStops[stopID].providePriority or 0
 
       UpdateStopOutput(stop) --make sure output is set
       --UpdateStop(stopID)
@@ -276,6 +293,7 @@ script.on_configuration_changed(function(data)
     updateEntities()
     registerEvents()
     log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..tostring(newVersionString).." initialized. Previous version: "..tostring(oldVersionString))
+    printmsg("LTN updated to version "..tostring(newVersionString))
   end
 end)
 
@@ -674,7 +692,11 @@ function OnTick(event)
 
     -- sort requests by age
     sort(global.Dispatcher.Requests, function(a, b)
-        return a.age < b.age
+        if a.priority ~= b.priority then --sort by priority
+          return a.priority > b.priority
+        else
+          return a.age < b.age
+        end
       end)
 
   -- tick 59: parse requests and dispatch trains
@@ -781,17 +803,17 @@ local function GetProviders(requestStation, item, req_count, min_length, max_len
     and (stop.maxTraincars == 0 or min_length == 0 or stop.maxTraincars >= min_length) then --check if provider can actually service trains from requester
       local activeDeliveryCount = #stop.activeDeliveries
       if activeDeliveryCount and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
-        if debug_log then log("found "..count.."("..tostring(stop.minProvided)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name..", priority: "..stop.priority..", active Deliveries: "..activeDeliveryCount.." minTraincars: "..stop.minTraincars..", maxTraincars: "..stop.maxTraincars..", locked Slots: "..stop.lockedSlots) end
-        stations[#stations +1] = {entity = stop.entity, priority = stop.priority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
+        if debug_log then log("found "..count.."("..tostring(stop.minProvided)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name..", priority: "..stop.providePriority..", active Deliveries: "..activeDeliveryCount.." minTraincars: "..stop.minTraincars..", maxTraincars: "..stop.maxTraincars..", locked Slots: "..stop.lockedSlots) end
+        stations[#stations +1] = {entity = stop.entity, priority = stop.providePriority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
       end
     end
   end
   -- sort best matching station to the top
   sort(stations, function(a, b)
-      if a.activeDeliveryCount ~= b.activeDeliveryCount then --sort by #deliveries 1st
-        return a.activeDeliveryCount < b.activeDeliveryCount
-      elseif a.priority ~= b.priority then --sort by priority 2nd
+      if a.priority ~= b.priority then --sort by priority, will result in train queues if trainlimit is not set
         return a.priority > b.priority
+      elseif a.activeDeliveryCount ~= b.activeDeliveryCount then --sort by #deliveries
+        return a.activeDeliveryCount < b.activeDeliveryCount
       else
         return a.count > b.count --finally sort by item count
       end
@@ -824,7 +846,7 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size, re
   local minDistance = 0
   for trainID, trainData in pairs (global.Dispatcher.availableTrains) do
     if trainData.train.valid and trainData.train.station then
-      local inventorySize = trainData.capacity - reserved
+      local inventorySize = trainData.capacity - (reserved * #trainData.train.cargo_wagons) -- subtract locked slots from every cargo wagon
       if type == "fluid" then
         inventorySize = trainData.fluid_capacity
       end
@@ -884,7 +906,7 @@ function ProcessRequest(reqIndex, request)
   local minTraincars = requestStation.minTraincars
   local requestForce = requestStation.entity.force
 
-  if debug_log then log("request "..reqIndex.."/"..#global.Dispatcher.Requests..": "..count.."("..minRequested..")".." "..item.." to "..requestStation.entity.backer_name.." min length: "..minTraincars.." max length: "..maxTraincars ) end
+  if debug_log then log("request "..reqIndex.."/"..#global.Dispatcher.Requests..": "..count.."("..minRequested..")".." "..item.." to "..requestStation.entity.backer_name.." priority: "..request.priority.." min length: "..minTraincars.." max length: "..maxTraincars ) end
 
   if not( global.Dispatcher.Requests_by_Stop[toID] and global.Dispatcher.Requests_by_Stop[toID][item] ) then
     if debug_log then log("Skipping request "..requestStation.entity.backer_name..": "..item..". Item has already been processed.") end
@@ -1317,12 +1339,14 @@ function UpdateStop(stopID)
   circuitValues["virtual,"..MAXTRAINS] = nil
   local minRequested = abs(circuitValues["virtual,"..MINREQUESTED] or min_requested)
   circuitValues["virtual,"..MINREQUESTED] = nil
+  local requestPriority = circuitValues["virtual,"..REQPRIORITY] or 0
+  circuitValues["virtual,"..REQPRIORITY] = nil
   local noWarnings = circuitValues["virtual,"..NOWARN] or 0
   circuitValues["virtual,"..NOWARN] = nil
   local minProvided = abs(circuitValues["virtual,"..MINPROVIDED] or min_provided)
   circuitValues["virtual,"..MINPROVIDED] = nil
-  local priority = circuitValues["virtual,"..PRIORITY] or 0
-  circuitValues["virtual,"..PRIORITY] = nil
+  local providePriority = circuitValues["virtual,"..PROVPRIORITY] or 0
+  circuitValues["virtual,"..PROVPRIORITY] = nil
   local lockedSlots = circuitValues["virtual,"..LOCKEDSLOTS]
   if not lockedSlots or lockedSlots < 0 then lockedSlots = 0 end
   circuitValues["virtual,"..LOCKEDSLOTS] = nil
@@ -1360,7 +1384,7 @@ function UpdateStop(stopID)
       global.LogisticTrainStops[stopID].minTraincars = 0
       global.LogisticTrainStops[stopID].maxTraincars = 0
       global.LogisticTrainStops[stopID].trainLimit = 0
-      global.LogisticTrainStops[stopID].priority = 0
+      global.LogisticTrainStops[stopID].providePriority = 0
       global.LogisticTrainStops[stopID].lockedSlots = 0
       global.LogisticTrainStops[stopID].noWarnings = 0
 
@@ -1457,14 +1481,14 @@ function UpdateStop(stopID)
           local provided = global.Dispatcher.Provided[item] or {}
           provided[stopID] = count
           global.Dispatcher.Provided[item] = provided
-          if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count.."("..minProvided..")"..", min length: "..minTraincars..", max length: "..maxTraincars) end
+          if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count.."("..minProvided..")"..", priority: "..providePriority..", min length: "..minTraincars..", max length: "..maxTraincars) end
         elseif count*-1 >= minRequested then
           count = count * -1
           local ageIndex = item..","..stopID
           global.Dispatcher.RequestAge[ageIndex] = global.Dispatcher.RequestAge[ageIndex] or game.tick
-          global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[ageIndex], stopID = stopID, item = item, count = count}
+          global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[ageIndex], stopID = stopID, priority = requestPriority, item = item, count = count}
           global.Dispatcher.Requests_by_Stop[stopID][item] = count
-          if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." requests "..item.." "..count.."("..minRequested..")"..", min length: "..minTraincars..", max length: "..maxTraincars..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick) end
+          if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." requests "..item.." "..count.."("..minRequested..")"..", priority: "..requestPriority..", min length: "..minTraincars..", max length: "..maxTraincars..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick) end
         end
 
       end -- for circuitValues
@@ -1474,7 +1498,7 @@ function UpdateStop(stopID)
       global.LogisticTrainStops[stopID].minTraincars = minTraincars
       global.LogisticTrainStops[stopID].maxTraincars = maxTraincars
       global.LogisticTrainStops[stopID].trainLimit = trainLimit
-      global.LogisticTrainStops[stopID].priority = priority
+      global.LogisticTrainStops[stopID].providePriority = providePriority
       global.LogisticTrainStops[stopID].lockedSlots = lockedSlots
       if noWarnings > 0 then
         global.LogisticTrainStops[stopID].noWarnings = true
