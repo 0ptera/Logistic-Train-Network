@@ -1302,6 +1302,23 @@ function UpdateStop(stopID)
     return
   end
 
+  -- remove invalid trains
+  if stop.parkedTrain and not stop.parkedTrain.valid then
+    global.LogisticTrainStops[stopID].parkedTrain = nil
+    global.LogisticTrainStops[stopID].parkedTrainID = nil
+  end
+
+  -- reset stop parameters just in case something goes wrong
+  stop.errorCode = 0
+  stop.minProvided = nil
+  stop.minRequested = nil
+  stop.minTraincars = 0
+  stop.maxTraincars = 0
+  stop.trainLimit = 0
+  stop.providePriority = 0
+  stop.lockedSlots = 0
+  stop.noWarnings = 0
+
   -- reject any stop not in name list
   if not global.TrainStopNames[stop.entity.backer_name] then
     stop.errorCode = 2
@@ -1310,13 +1327,24 @@ function UpdateStop(stopID)
     return
   end
 
-  local stopForce = stop.entity.force
-
-  -- remove invalid trains
-  if stop.parkedTrain and not stop.parkedTrain.valid then
-    global.LogisticTrainStops[stopID].parkedTrain = nil
-    global.LogisticTrainStops[stopID].parkedTrainID = nil
+  -- skip short circuited stops
+  if detectShortCircuit(stop) then
+    stop.errorCode = 1
+    setLamp(stopID, ErrorCodes[1])
+    if debug_log then log("(UpdateStop) Short circuit error: "..stop.entity.backer_name) end
+    return
   end
+
+  -- skip deactivated stops
+  local stopCB = stop.entity.get_control_behavior()
+  if stopCB and stopCB.disabled then
+    stop.errorCode = 1
+    setLamp(stopID, ErrorCodes[1])
+    if debug_log then log("(UpdateStop) Circuit deactivated stop: "..stop.entity.backer_name) end
+    return
+  end
+
+  local stopForce = stop.entity.force
 
   -- get circuit values
   local circuitValues = getCircuitValues(stop.input)
@@ -1354,11 +1382,6 @@ function UpdateStop(stopID)
   if isDepot > 0 then
     stop.isDepot = true
 
-    -- reset duplicate name error
-    if stop.errorCode == 2 then
-      stop.errorCode = 0
-    end
-
     -- add parked train to available trains
     if stop.parkedTrainID and stop.parkedTrain.valid and not global.Dispatcher.Deliveries[stop.parkedTrainID] and not global.Dispatcher.availableTrains[stop.parkedTrainID] then
       local loco = GetMainLocomotive(stop.parkedTrain)
@@ -1370,41 +1393,17 @@ function UpdateStop(stopID)
       end
     end
 
-    if detectShortCircuit(stop) then
-      -- signal error
-      global.LogisticTrainStops[stopID].errorCode = 1
-      setLamp(stopID, ErrorCodes[1])
+    if stop.parkedTrain then
+      setLamp(stopID, "blue")
+      if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." is depot with parked train "..tostring(GetTrainName(stop.parkedTrain)) ) end
     else
-      -- signal error fixed, depots ignore all other errors
-      global.LogisticTrainStops[stopID].errorCode = 0
-
-      -- reset signal parameters just in case something goes wrong
-      global.LogisticTrainStops[stopID].minProvided = nil
-      global.LogisticTrainStops[stopID].minRequested = nil
-      global.LogisticTrainStops[stopID].minTraincars = 0
-      global.LogisticTrainStops[stopID].maxTraincars = 0
-      global.LogisticTrainStops[stopID].trainLimit = 0
-      global.LogisticTrainStops[stopID].providePriority = 0
-      global.LogisticTrainStops[stopID].lockedSlots = 0
-      global.LogisticTrainStops[stopID].noWarnings = 0
-
-      if stop.parkedTrain then
-        setLamp(stopID, "blue")
-        if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." is depot with parked train "..tostring(GetTrainName(stop.parkedTrain)) ) end
-      else
-        setLamp(stopID, "green")
-        if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." is empty depot.") end
-      end
+      setLamp(stopID, "green")
+      if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." is empty depot.") end
     end
 
   -- not a depot > check if the name is unique
   elseif #global.TrainStopNames[stop.entity.backer_name] == 1 then
     stop.isDepot = false
-
-    -- reset duplicate name error
-    if stop.errorCode == 2 then
-      stop.errorCode = 0
-    end
 
     -- remove parked train from available trains
     if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
@@ -1413,110 +1412,101 @@ function UpdateStop(stopID)
       global.Dispatcher.availableTrains[stop.parkedTrainID] = nil
     end
 
-    -- update input signals of stop
-    if detectShortCircuit(stop) then
-      -- signal error
-      global.LogisticTrainStops[stopID].errorCode = 1
-      setLamp(stopID, ErrorCodes[1])
-    else
-      -- signal error fixed
-      global.LogisticTrainStops[stopID].errorCode = 0
-      global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
-      for item, count in pairs (circuitValues) do
-        for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
-          local deliverycount = delivery.shipment[item]
-          if deliverycount then
-            if stop.parkedTrain and stop.parkedTrainID == trainID then
-              -- calculate items +- train inventory
-              local itype, iname = match(item, "([^,]+),([^,]+)")
-              if itype and iname then
-                local traincount = 0
-                if itype == "fluid" then
-                  traincount = stop.parkedTrain.get_fluid_count(iname)
-                else
-                  traincount = stop.parkedTrain.get_item_count(iname)
-                end
-
-                if delivery.to == stop.entity.backer_name then
-                  local newcount = count + traincount
-                  if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
-                  if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." updating requested count with train inventory: "..item.." "..count.."+"..traincount.."="..newcount) end
-                  count = newcount
-                elseif delivery.from == stop.entity.backer_name then
-                  if traincount <= deliverycount then
-                    local newcount = count - (deliverycount - traincount)
-                    if newcount < 0 then newcount = 0 end --make sure we don't turn it into a request
-                    if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." updating provided count with train inventory: "..item.." "..count.."-"..deliverycount - traincount.."="..newcount) end
-                    count = newcount
-                  else --train loaded more than delivery
-                    if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." updating delivery count with overloaded train inventory: "..item.." "..traincount) end
-                    -- update delivery to new size
-                    global.Dispatcher.Deliveries[trainID].shipment[item] = traincount
-                  end
-                end
+    global.LogisticTrainStops[stopID].errorCode = 0
+    global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
+    for item, count in pairs (circuitValues) do
+      for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
+        local deliverycount = delivery.shipment[item]
+        if deliverycount then
+          if stop.parkedTrain and stop.parkedTrainID == trainID then
+            -- calculate items +- train inventory
+            local itype, iname = match(item, "([^,]+),([^,]+)")
+            if itype and iname then
+              local traincount = 0
+              if itype == "fluid" then
+                traincount = stop.parkedTrain.get_fluid_count(iname)
+              else
+                traincount = stop.parkedTrain.get_item_count(iname)
               end
 
-            else
-              -- calculate items +- deliveries
               if delivery.to == stop.entity.backer_name then
-                local newcount = count + deliverycount
+                local newcount = count + traincount
                 if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
-                if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." updating requested count with delivery: "..item.." "..count.."+"..deliverycount.."="..newcount) end
+                if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." updating requested count with train inventory: "..item.." "..count.."+"..traincount.."="..newcount) end
                 count = newcount
-              elseif delivery.from == stop.entity.backer_name and not delivery.pickupDone then
-                local newcount = count - deliverycount
-                if newcount < 0 then newcount = 0 end --make sure we don't turn it into a request
-                if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." updating provided count with delivery: "..item.." "..count.."-"..deliverycount.."="..newcount) end
-                count = newcount
+              elseif delivery.from == stop.entity.backer_name then
+                if traincount <= deliverycount then
+                  local newcount = count - (deliverycount - traincount)
+                  if newcount < 0 then newcount = 0 end --make sure we don't turn it into a request
+                  if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." updating provided count with train inventory: "..item.." "..count.."-"..deliverycount - traincount.."="..newcount) end
+                  count = newcount
+                else --train loaded more than delivery
+                  if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." updating delivery count with overloaded train inventory: "..item.." "..traincount) end
+                  -- update delivery to new size
+                  global.Dispatcher.Deliveries[trainID].shipment[item] = traincount
+                end
               end
-
             end
+
+          else
+            -- calculate items +- deliveries
+            if delivery.to == stop.entity.backer_name then
+              local newcount = count + deliverycount
+              if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
+              if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." updating requested count with delivery: "..item.." "..count.."+"..deliverycount.."="..newcount) end
+              count = newcount
+            elseif delivery.from == stop.entity.backer_name and not delivery.pickupDone then
+              local newcount = count - deliverycount
+              if newcount < 0 then newcount = 0 end --make sure we don't turn it into a request
+              if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." updating provided count with delivery: "..item.." "..count.."-"..deliverycount.."="..newcount) end
+              count = newcount
+            end
+
           end
-        end -- for delivery
-
-        -- update Dispatcher Storage
-        -- Providers are used when above Provider Threshold
-        -- Requests are handled when above Requester Threshold
-        if count >= minProvided then
-          local provided = global.Dispatcher.Provided[item] or {}
-          provided[stopID] = count
-          global.Dispatcher.Provided[item] = provided
-          if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count.."("..minProvided..")"..", priority: "..providePriority..", min length: "..minTraincars..", max length: "..maxTraincars) end
-        elseif count*-1 >= minRequested then
-          count = count * -1
-          local ageIndex = item..","..stopID
-          global.Dispatcher.RequestAge[ageIndex] = global.Dispatcher.RequestAge[ageIndex] or game.tick
-          global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[ageIndex], stopID = stopID, priority = requestPriority, item = item, count = count}
-          global.Dispatcher.Requests_by_Stop[stopID][item] = count
-          if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." requests "..item.." "..count.."("..minRequested..")"..", priority: "..requestPriority..", min length: "..minTraincars..", max length: "..maxTraincars..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick) end
         end
+      end -- for delivery
 
-      end -- for circuitValues
-
-      global.LogisticTrainStops[stopID].minProvided = minProvided
-      global.LogisticTrainStops[stopID].minRequested = minRequested
-      global.LogisticTrainStops[stopID].minTraincars = minTraincars
-      global.LogisticTrainStops[stopID].maxTraincars = maxTraincars
-      global.LogisticTrainStops[stopID].trainLimit = trainLimit
-      global.LogisticTrainStops[stopID].providePriority = providePriority
-      global.LogisticTrainStops[stopID].lockedSlots = lockedSlots
-      if noWarnings > 0 then
-        global.LogisticTrainStops[stopID].noWarnings = true
-      else
-        global.LogisticTrainStops[stopID].noWarnings = false
+      -- update Dispatcher Storage
+      -- Providers are used when above Provider Threshold
+      -- Requests are handled when above Requester Threshold
+      if count >= minProvided then
+        local provided = global.Dispatcher.Provided[item] or {}
+        provided[stopID] = count
+        global.Dispatcher.Provided[item] = provided
+        if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count.."("..minProvided..")"..", priority: "..providePriority..", min length: "..minTraincars..", max length: "..maxTraincars) end
+      elseif count*-1 >= minRequested then
+        count = count * -1
+        local ageIndex = item..","..stopID
+        global.Dispatcher.RequestAge[ageIndex] = global.Dispatcher.RequestAge[ageIndex] or game.tick
+        global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[ageIndex], stopID = stopID, priority = requestPriority, item = item, count = count}
+        global.Dispatcher.Requests_by_Stop[stopID][item] = count
+        if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." requests "..item.." "..count.."("..minRequested..")"..", priority: "..requestPriority..", min length: "..minTraincars..", max length: "..maxTraincars..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick) end
       end
 
-      if #stop.activeDeliveries > 0 then
-        setLamp(stopID, "yellow")
-      else
-        setLamp(stopID, "green")
-      end
+    end -- for circuitValues
 
-    end --if detectShortCircuit(stop)
+    stop.minProvided = minProvided
+    stop.minRequested = minRequested
+    stop.minTraincars = minTraincars
+    stop.maxTraincars = maxTraincars
+    stop.trainLimit = trainLimit
+    stop.providePriority = providePriority
+    stop.lockedSlots = lockedSlots
+    if noWarnings > 0 then
+      stop.noWarnings = true
+    else
+      stop.noWarnings = false
+    end
+
+    if #stop.activeDeliveries > 0 then
+      setLamp(stopID, "yellow")
+    else
+      setLamp(stopID, "green")
+    end
 
   else
     -- duplicate stop name error
-    global.LogisticTrainStops[stopID].errorCode = 2
+    stop.errorCode = 2
     setLamp(stopID, ErrorCodes[2])
   end
 end
