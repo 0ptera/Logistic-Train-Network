@@ -1,3 +1,9 @@
+1.5.1
+- Chinese translation
+- stops deactivated by circuit condition or other scripts are not updated
+- short circuited stops are skipped without reading circuit signals
+- short circuit and deactivated error state take priority over duplicate name
+
 1.5.0
 - fixed request threshold icon to show ≤ instead of ≥
 - added request priority control signal #22
@@ -40,7 +46,7 @@
 
 1.4.6
 - bumped required Factorio version to current stable
-- fixed: Dispatcher picked trains closesest to request stop instead of providing stop
+- fixed: Dispatcher picked trains closest to request stop instead of providing stop
 - fixed: local wagon capacity lookup table could potentially cause desync
 
 1.4.5
@@ -69,8 +75,8 @@
 1.3.5
 - removed "log level" and "log output" settings
 - added "message level" for console messages only (no level 4: debug)
-- added "write debug logfile" checkbox for debug log generation into factorio-current.log
-- changed provider prioritisation making deliveries merge more reliably (#trains > provider priority > #existing deliveries from provider > amount)
+- added "write debug logfile" checkbox for debug log generation into Factorio-current.log
+- changed provider prioritization making deliveries merge more reliably (#trains > provider priority > #existing deliveries from provider > amount)
 - fixed potential nil reference during stop update
 
 1.3.4
@@ -138,7 +144,7 @@
 
 1.2.0
 - moved config.lua to mod settings
-- added support for any FluidWagon for fluid transport
+- added support for any Fluid Wagon for fluid transport
 - removed support of RailTanker (RailTankers will be ignored, removed fake item conversions)
 - short circuit detection uses network id
   - removed grey detection signal from output
@@ -153,7 +159,7 @@
 - automatically remove orphaned lamp control entities
 - speed up loading by skipping parts of initialization according to old_version
 - messages differing only in item count are treated as the same message by the message filter
-- decreased delivery-removed-timeout and delivery-removed-train-invalid from loglevel 2 to 1
+- decreased delivery-removed-timeout and delivery-removed-train-invalid from log level 2 to 1
 
 1.1.0
 - added finish_loading to config: prevents trains from leaving while inserters are working by adding 2s inactivity
