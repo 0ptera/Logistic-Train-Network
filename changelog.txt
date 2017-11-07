@@ -1,3 +1,6 @@
+1.5.2
+- changed station time out from inactivity to time passed
+
 1.5.1
 - Chinese translation
 - stops deactivated by circuit condition or other scripts are not updated

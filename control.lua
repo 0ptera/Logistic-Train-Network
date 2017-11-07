@@ -752,7 +752,7 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
       local condFluid = nil
       if itemlist[i].type == "fluid" then
         condFluid = "fluid_count"
-        -- workaround for leaving with fluid residue, could time out trains
+        -- workaround for leaving with fluid residue, can time out trains
         if condComp == "=" and countOverride == 0 then
           waitEmpty = true
         end
@@ -773,8 +773,8 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
       record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "and", ticks = 120 }
     end
 
-    if stop_timeout > 0 then -- if stop_timeout is set add inactivity condition
-      record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "or", ticks = stop_timeout } -- send stuck trains away
+    if stop_timeout > 0 then -- if stop_timeout is set add time passed condition
+      record.wait_conditions[#record.wait_conditions+1] = {type = "time", compare_type = "or", ticks = stop_timeout } -- send stuck trains away
     end
   elseif condType == "inactivity" then
     record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp }
