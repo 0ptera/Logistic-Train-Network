@@ -1,5 +1,6 @@
 1.5.2
 - changed station time out from inactivity to time passed
+- reduced overhead in on_train_changed_state
 
 1.5.1
 - Chinese translation
