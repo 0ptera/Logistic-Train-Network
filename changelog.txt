@@ -1,6 +1,7 @@
 1.5.2
 - changed station time out from inactivity to time passed
 - reduced overhead in on_train_changed_state
+- pushed base to 0.15.37 (stable)
 
 1.5.1
 - Chinese translation
@@ -19,7 +20,7 @@
 - added mod setting "Dispatcher Enabled"
 
 1.4.13
-- reverted base dependency  to 0.15.34 (stable)
+- reverted base dependency to 0.15.34 (stable)
 
 1.4.12
 - allowed negative provider priority again #64
