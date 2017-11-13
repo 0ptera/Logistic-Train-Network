@@ -752,7 +752,7 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
       local condFluid = nil
       if itemlist[i].type == "fluid" then
         condFluid = "fluid_count"
-        -- workaround for leaving with fluid residue, could time out trains
+        -- workaround for leaving with fluid residue, can time out trains
         if condComp == "=" and countOverride == 0 then
           waitEmpty = true
         end
@@ -773,8 +773,8 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
       record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "and", ticks = 120 }
     end
 
-    if stop_timeout > 0 then -- if stop_timeout is set add inactivity condition
-      record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "or", ticks = stop_timeout } -- send stuck trains away
+    if stop_timeout > 0 then -- if stop_timeout is set add time passed condition
+      record.wait_conditions[#record.wait_conditions+1] = {type = "time", compare_type = "or", ticks = stop_timeout } -- send stuck trains away
     end
   elseif condType == "inactivity" then
     record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp }
@@ -1111,8 +1111,20 @@ end -- ProcessRequest Block
 
 ------------------------------------- TRAIN FUNCTIONS -------------------------------------
 
+local train_states_leaving_stop = {
+  [defines.train_state.on_the_path] = "on_the_path",
+  [defines.train_state.no_path] = "no_path",
+  [defines.train_state.no_schedule] = "no_schedule",
+  [defines.train_state.manual_control] = "manual_control",
+}
+
 -- update stop output when train enters/leaves
 function UpdateTrain(train)
+  if not train.valid then
+    if debug_log then log("(UpdateTrain) train invalid") end
+    return
+  end
+
   local trainForce = nil
   local loco = GetMainLocomotive(train)
   if loco then trainForce = loco.force end
@@ -1121,12 +1133,11 @@ function UpdateTrain(train)
 
   if not trainID then --train has no locomotive
     if debug_log then log("(UpdateTrain) couldn't assign train id") end
-    --TODO: Update all stops?
     return
   end
 
-  -- train arrived at station
-  if train.valid and train.manual_mode == false and train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
+  -- train stopping at station
+  if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
     local stopID = train.station.unit_number
     local stop = global.LogisticTrainStops[stopID]
     if stop then
@@ -1167,9 +1178,11 @@ function UpdateTrain(train)
       UpdateStopOutput(stop)
       return
     end
+  end
 
-  -- train left station
-  else
+  -- train left station, possible states after wait_station: manual_control, on_the_path, no_path, no_schedule
+  if train_states_leaving_stop[train.state] then
+    -- log("(UpdateTrain) Train "..tostring(trainName).." changed state to "..tostring(train_states_leaving_stop[train.state]))
     for stopID, stop in pairs(global.LogisticTrainStops) do
       if stop.parkedTrainID == trainID then
 
