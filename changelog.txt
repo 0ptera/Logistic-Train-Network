@@ -1,3 +1,9 @@
+1.5.3
+- fixed active deliveries to/from a stop sometimes isn't properly updated
+- lamp outputs number of active deliveries as value of yellow signal (green wire only)
+- lamp outputs error code as values of red/pink signal (green wire only)
+- depots, short circuited and disabled stops reset stops active deliveries count completely (use to reset stops showing wrong counts)
+
 1.5.2
 - changed station time out from inactivity to time passed
 - reduced overhead in on_train_changed_state
