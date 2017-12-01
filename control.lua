@@ -633,7 +633,7 @@ local function trainArrives(train)
     if debug_log then log("(trainArrives) couldn't assign train id") end
     return
   end
-  
+
   local stopID = train.station.unit_number
   local stop = global.LogisticTrainStops[stopID]
   if stop then
@@ -671,7 +671,7 @@ local function trainArrives(train)
       end
     end
 
-    UpdateStopOutput(stop)    
+    UpdateStopOutput(stop)
   end
 end
 
@@ -687,7 +687,7 @@ local function trainLeaves(train)
     if debug_log then log("(rainLeaves) couldn't assign train id") end
     return
   end
-  
+
   for stopID, stop in pairs(global.LogisticTrainStops) do
     if stop.parkedTrainID == trainID then
 
@@ -708,9 +708,9 @@ local function trainLeaves(train)
             table.remove(stop.activeDeliveries, i)
           end
         end
-        
+
         local delivery = global.Dispatcher.Deliveries[trainID]
-        if delivery then          
+        if delivery then
           if delivery.from == stop.entity.backer_name then
             -- update delivery counts to train inventory
             for item, count in pairs (delivery.shipment) do
@@ -750,7 +750,7 @@ end
 
 function OnTrainStateChanged(event)
 -- script.on_event(defines.events.on_train_changed_state, function(event)
-  local train = event.train  
+  local train = event.train
   if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
     trainArrives(train)
   elseif train_states_leaving_stop[train.state] then
@@ -1332,14 +1332,14 @@ function UpdateStop(stopID)
     global.LogisticTrainStops[stopID].parkedTrain = nil
     global.LogisticTrainStops[stopID].parkedTrainID = nil
   end
-  
+
   -- remove invalid activeDeliveries -- shouldn't be necessary
   -- for i=#stop.activeDeliveries, 1, -1 do
     -- if not global.Dispatcher.Deliveries[stop.activeDeliveries[i]] then
       -- table.remove(stop.activeDeliveries, i)
     -- end
   -- end
-  
+
   -- reset stop parameters just in case something goes wrong
   stop.errorCode = 0
   stop.minProvided = nil
@@ -1414,10 +1414,10 @@ function UpdateStop(stopID)
   if not lockedSlots or lockedSlots < 0 then lockedSlots = 0 end
   circuitValues["virtual,"..LOCKEDSLOTS] = nil
   -- check if it's a depot
-  if isDepot > 0 then   
+  if isDepot > 0 then
     stop.isDepot = true
-    stop.activeDeliveries = {} -- reset delivery count in case stops are toggled 
-    
+    stop.activeDeliveries = {} -- reset delivery count in case stops are toggled
+
     -- add parked train to available trains
     if stop.parkedTrainID and stop.parkedTrain.valid and not global.Dispatcher.Deliveries[stop.parkedTrainID] and not global.Dispatcher.availableTrains[stop.parkedTrainID] then
       local loco = GetMainLocomotive(stop.parkedTrain)
@@ -1508,13 +1508,13 @@ function UpdateStop(stopID)
       if count >= minProvided then
         local provided = global.Dispatcher.Provided[item] or {}
         provided[stopID] = count
-        global.Dispatcher.Provided[item] = provided       
-        if debug_log then 
+        global.Dispatcher.Provided[item] = provided
+        if debug_log then
           local trainsEnRoute = "";
           for k,v in pairs(stop.activeDeliveries) do
             trainsEnRoute=trainsEnRoute.." "..v
           end
-          log("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count.."("..minProvided..")"..", priority: "..providePriority..", min length: "..minTraincars..", max length: "..maxTraincars..", trains en route: "..trainsEnRoute) 
+          log("(UpdateStop) "..stop.entity.backer_name.." provides "..item.." "..count.."("..minProvided..")"..", priority: "..providePriority..", min length: "..minTraincars..", max length: "..maxTraincars..", trains en route: "..trainsEnRoute)
         end
       elseif count*-1 >= minRequested then
         count = count * -1
@@ -1522,12 +1522,12 @@ function UpdateStop(stopID)
         global.Dispatcher.RequestAge[ageIndex] = global.Dispatcher.RequestAge[ageIndex] or game.tick
         global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[ageIndex], stopID = stopID, priority = requestPriority, item = item, count = count}
         global.Dispatcher.Requests_by_Stop[stopID][item] = count
-        if debug_log then 
+        if debug_log then
           local trainsEnRoute = "";
           for k,v in pairs(stop.activeDeliveries) do
             trainsEnRoute=trainsEnRoute.." "..v
           end
-          log("(UpdateStop) "..stop.entity.backer_name.." requests "..item.." "..count.."("..minRequested..")"..", priority: "..requestPriority..", min length: "..minTraincars..", max length: "..maxTraincars..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick..", trains en route: "..trainsEnRoute) 
+          log("(UpdateStop) "..stop.entity.backer_name.." requests "..item.." "..count.."("..minRequested..")"..", priority: "..requestPriority..", min length: "..minTraincars..", max length: "..maxTraincars..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick..", trains en route: "..trainsEnRoute)
         end
       end
 
