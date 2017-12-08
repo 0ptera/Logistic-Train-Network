@@ -68,8 +68,15 @@ data:extend({
   },
   {
     type = "bool-setting",
-    name = "ltn-dispatcher-finish-loading",
+    name = "ltn-dispatcher-requester-delivery-reset",
     order = "cc",
+    setting_type = "runtime-global",
+    default_value = false
+  },
+  {
+    type = "bool-setting",
+    name = "ltn-dispatcher-finish-loading",
+    order = "cd",
     setting_type = "runtime-global",
     default_value = true
   },

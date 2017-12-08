@@ -1,3 +1,6 @@
+1.5.4
+- added option to reset delivery and schedule when trains leave requester
+
 1.5.3
 - fixed active deliveries to/from a stop sometimes isn't properly updated
 - lamp outputs number of active deliveries as value of yellow signal (green wire only)

@@ -733,6 +733,14 @@ local function trainLeaves(train)
           elseif global.Dispatcher.Deliveries[trainID].to == stop.entity.backer_name then
             -- remove completed delivery
             global.Dispatcher.Deliveries[trainID] = nil
+            -- reset schedule when ltn-dispatcher-early-schedule-reset is active
+            if requester_delivery_reset then
+              removeDelivery(trainID)
+              local schedule = {current = 1, records = {}}
+              -- log("Depot Name = "..train.schedule.records[1].station)
+              schedule.records[1] = NewScheduleRecord(train.schedule.records[1].station, "inactivity", 300)
+              train.schedule = schedule
+            end
           end
         end
       end
