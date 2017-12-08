@@ -6,6 +6,7 @@ min_provided = settings.global["ltn-dispatcher-provider-threshold"].value
 stop_timeout = settings.global["ltn-dispatcher-stop-timeout"].value
 delivery_timeout = settings.global["ltn-dispatcher-delivery-timeout"].value
 finish_loading = settings.global["ltn-dispatcher-finish-loading"].value
+requester_delivery_reset = settings.global["ltn-dispatcher-requester-delivery-reset"].value
 dispatcher_enabled = settings.global["ltn-dispatcher-enabled"].value
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
@@ -18,6 +19,7 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if event.setting == "ltn-dispatcher-stop-timeout" then  stop_timeout = settings.global["ltn-dispatcher-stop-timeout"].value end
   if event.setting == "ltn-dispatcher-delivery-timeout" then delivery_timeout = settings.global["ltn-dispatcher-delivery-timeout"].value end
   if event.setting == "ltn-dispatcher-finish-loading" then finish_loading = settings.global["ltn-dispatcher-finish-loading"].value end
+  if event.setting == "ltn-dispatcher-requester-delivery-reset" then requester_delivery_reset = settings.global["ltn-dispatcher-requester-delivery-reset"].value end
   if event.setting == "ltn-dispatcher-enabled" then dispatcher_enabled = settings.global["ltn-dispatcher-enabled"].value end
 end)
 
