@@ -664,7 +664,7 @@ local function trainArrives(train)
       -- log("added available train "..trainID..", inventory: "..tostring(global.Dispatcher.availableTrains[trainID].capacity)..", fluid capacity: "..tostring(global.Dispatcher.availableTrains[trainID].fluid_capacity))
       -- reset schedule
       local schedule = {current = 1, records = {}}
-      schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "inactivity", 300)
+      schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "inactivity", depot_inactivity)
       train.schedule = schedule
       if stop.errorCode == 0 then
         setLamp(stopID, "blue", 1)
@@ -738,7 +738,7 @@ local function trainLeaves(train)
               removeDelivery(trainID)
               local schedule = {current = 1, records = {}}
               -- log("Depot Name = "..train.schedule.records[1].station)
-              schedule.records[1] = NewScheduleRecord(train.schedule.records[1].station, "inactivity", 300)
+              schedule.records[1] = NewScheduleRecord(train.schedule.records[1].station, "inactivity", depot_inactivity)
               train.schedule = schedule
             end
           end
@@ -1221,7 +1221,7 @@ function ProcessRequest(reqIndex, request)
   local selectedTrain = global.Dispatcher.availableTrains[train.id].train
   local depot = global.LogisticTrainStops[selectedTrain.station.unit_number]
   local schedule = {current = 1, records = {}}
-  schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", 120)
+  schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", depot_inactivity)
   schedule.records[2] = NewScheduleRecord(from, "item_count", ">", loadingList)
   schedule.records[3] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
   selectedTrain.schedule = schedule
