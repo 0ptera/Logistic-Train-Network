@@ -3,6 +3,7 @@ message_filter_age = settings.global["ltn-interface-message-filter-age"].value
 debug_log = settings.global["ltn-interface-debug-logfile"].value
 min_requested = settings.global["ltn-dispatcher-requester-threshold"].value
 min_provided = settings.global["ltn-dispatcher-provider-threshold"].value
+depot_inactivity = settings.global["ltn-dispatcher-depot-inactivity"].value
 stop_timeout = settings.global["ltn-dispatcher-stop-timeout"].value
 delivery_timeout = settings.global["ltn-dispatcher-delivery-timeout"].value
 finish_loading = settings.global["ltn-dispatcher-finish-loading"].value
@@ -16,6 +17,7 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if event.setting == "ltn-interface-debug-logfile" then debug_log = settings.global["ltn-interface-debug-logfile"].value end
   if event.setting == "ltn-dispatcher-requester-threshold" then min_requested = settings.global["ltn-dispatcher-requester-threshold"].value end
   if event.setting == "ltn-dispatcher-provider-threshold" then min_provided = settings.global["ltn-dispatcher-provider-threshold"].value end
+  if event.setting == "ltn-dispatcher-depot-inactivity" then  depot_inactivity = settings.global["ltn-dispatcher-depot-inactivity"].value end
   if event.setting == "ltn-dispatcher-stop-timeout" then  stop_timeout = settings.global["ltn-dispatcher-stop-timeout"].value end
   if event.setting == "ltn-dispatcher-delivery-timeout" then delivery_timeout = settings.global["ltn-dispatcher-delivery-timeout"].value end
   if event.setting == "ltn-dispatcher-finish-loading" then finish_loading = settings.global["ltn-dispatcher-finish-loading"].value end

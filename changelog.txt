@@ -1,3 +1,7 @@
+1.5.5
+- changed Mod Description to include LTN
+- added depot inactivity setting
+
 1.5.4
 - added option to reset delivery and schedule when trains leave requester
 

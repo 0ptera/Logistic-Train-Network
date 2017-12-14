@@ -50,8 +50,17 @@ data:extend({
   },
   {
     type = "int-setting",
-    name = "ltn-dispatcher-stop-timeout",
+    name = "ltn-dispatcher-depot-inactivity",
     order = "ca",
+    setting_type = "runtime-global",
+    default_value = 300, --5s
+    minimum_value = 60, --1s
+    maximum_value = 4294967295, -- prevent 32bit signed overflow
+  },  
+  {
+    type = "int-setting",
+    name = "ltn-dispatcher-stop-timeout",
+    order = "cb",
     setting_type = "runtime-global",
     default_value = 7200, --2min
     minimum_value = 0, --0:off
@@ -60,7 +69,7 @@ data:extend({
   {
     type = "int-setting",
     name = "ltn-dispatcher-delivery-timeout",
-    order = "cb",
+    order = "cc",
     setting_type = "runtime-global",
     default_value = 18000, --5min
     minimum_value = 3600, -- 1min
@@ -69,14 +78,14 @@ data:extend({
   {
     type = "bool-setting",
     name = "ltn-dispatcher-requester-delivery-reset",
-    order = "cc",
+    order = "cd",
     setting_type = "runtime-global",
     default_value = false
   },
   {
     type = "bool-setting",
     name = "ltn-dispatcher-finish-loading",
-    order = "cd",
+    order = "ce",
     setting_type = "runtime-global",
     default_value = true
   },
