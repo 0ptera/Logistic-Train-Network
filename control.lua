@@ -1,4 +1,3 @@
-require "config"
 require "interface"
 
 local MOD_NAME = "LogisticTrainNetwork"
@@ -26,6 +25,8 @@ local ControlSignals = {
   [PROVPRIORITY] = true,
   [LOCKEDSLOTS] = true,
 }
+
+local dispatcher_update_interval = 60
 
 local ErrorCodes = {
   "red",    -- circuit/signal error
@@ -239,7 +240,7 @@ end
 local function registerEvents()
   -- always track built/removed train stops for duplicate name list
   script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity}, OnEntityCreated)
-  script.on_event({defines.events.on_preplayer_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, OnEntityRemoved)
+  script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, OnEntityRemoved)
   if global.LogisticTrainStops and next(global.LogisticTrainStops) then
     script.on_event(defines.events.on_tick, OnTick)
     script.on_event(defines.events.on_train_changed_state, OnTrainStateChanged)
@@ -525,7 +526,7 @@ function removeStop(entity)
 end
 
 function OnEntityRemoved(event)
--- script.on_event({defines.events.on_preplayer_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, function(event)
+-- script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, function(event)
   local entity = event.entity
   if entity.type == "train-stop" then
     RemoveStopName(entity.unit_number, entity.backer_name)
@@ -614,12 +615,6 @@ end)
 
 
 do --train state changed
-local train_states_leaving_stop = {
-  [defines.train_state.on_the_path] = "on_the_path",
-  [defines.train_state.no_path] = "no_path",
-  [defines.train_state.no_schedule] = "no_schedule",
-  [defines.train_state.manual_control] = "manual_control",
-}
 
 -- update stop output when train enters stop
 local function trainArrives(train)
@@ -761,7 +756,8 @@ function OnTrainStateChanged(event)
   local train = event.train
   if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
     trainArrives(train)
-  elseif train_states_leaving_stop[train.state] then
+  -- elseif train_states_leaving_stop[train.state] then
+  elseif event.old_state == defines.train_state.wait_station then -- update to 0.16
     trainLeaves(train)
   end
 end
@@ -776,7 +772,6 @@ function OnTrainCreated(event)
 end
 
 end
-
 
 function OnTick(event)
   -- exit when there are no logistic train stops

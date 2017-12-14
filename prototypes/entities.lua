@@ -1,10 +1,12 @@
 local ltn_stop = copyPrototype("train-stop", "train-stop", "logistic-train-stop")
 ltn_stop.icon = "__LogisticTrainNetwork__/graphics/icons/train-stop.png"
+ltn_stop.icon_size = 32
 ltn_stop.selection_box = {{-0.6, -0.6}, {0.6, 0.6}}
 ltn_stop.collision_box = {{-0.5, -0.1}, {0.5, 0.5}}
 
 local ltn_stop_in = copyPrototype("lamp", "small-lamp","logistic-train-stop-input")
 ltn_stop_in.icon = "__LogisticTrainNetwork__/graphics/icons/train-stop.png"
+ltn_stop_in.icon_size = 32
 ltn_stop_in.selection_box = {{-0.5, -0.5}, {0.5, 0.5}}
 ltn_stop_in.collision_box = {{-0.15, -0.15}, {0.15, 0.15}}
 ltn_stop_in.energy_usage_per_tick = "10W"
@@ -12,10 +14,11 @@ ltn_stop_in.light = { intensity = 1, size = 6 }
 
 local ltn_stop_out = copyPrototype("constant-combinator","constant-combinator","logistic-train-stop-output")
 ltn_stop_out.icon = "__LogisticTrainNetwork__/graphics/icons/output.png"
+ltn_stop_out.icon_size = 32
 ltn_stop_out.selection_box = {{-0.5, -0.5}, {0.5, 0.5}}
 ltn_stop_out.collision_box = {{-0.15, -0.15}, {0.15, 0.15}}
 ltn_stop_out.item_slot_count = 50
-ltn_stop_out.sprites = 
+ltn_stop_out.sprites =
 {
   north =
   {
@@ -60,12 +63,13 @@ ltn_stop_out.sprites =
 
 local ltn_lamp_control = copyPrototype("constant-combinator","constant-combinator","logistic-train-stop-lamp-control")
 ltn_lamp_control.icon = "__LogisticTrainNetwork__/graphics/icons/empty.png"
+ltn_lamp_control.icon_size = 32
 ltn_lamp_control.selection_box = {{-0.0, -0.0}, {0.0, 0.0}}
 ltn_lamp_control.collision_box = {{-0.0, -0.0}, {0.0, 0.0}}
 ltn_lamp_control.collision_mask = { "resource-layer" }
 ltn_lamp_control.item_slot_count = 50
 ltn_lamp_control.flags = {"not-blueprintable", "not-deconstructable"}
-ltn_lamp_control.sprites = 
+ltn_lamp_control.sprites =
 {
   north =
   {
@@ -143,12 +147,12 @@ ltn_lamp_control.activity_led_sprites =
     shift = {0.0, 0.0},
   }
 }
-ltn_lamp_control.activity_led_light = 
+ltn_lamp_control.activity_led_light =
 {
   intensity = 0.0,
   size = 0,
 }
-ltn_lamp_control.circuit_wire_connection_points = 
+ltn_lamp_control.circuit_wire_connection_points =
 {
   {
     shadow =
@@ -197,7 +201,7 @@ ltn_lamp_control.circuit_wire_connection_points =
       red = {0.40625, 0.34375},
       green = {0.40625, 0.5},
     }
-  }  
+  }
 }
 
 

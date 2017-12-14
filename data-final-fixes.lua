@@ -4,6 +4,7 @@ for _, loco in pairs(data.raw["locomotive"]) do
     type = "virtual-signal",
     name = "LTN-"..loco.name,
     icon = "__base__/graphics/icons/diesel-locomotive.png", --fallback
+    icon_size = loco.icon_size,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-u",
     localised_name = {"virtual-signal-name.LTN-locomotive", {"entity-name." .. loco.name}}
@@ -25,6 +26,7 @@ for _, wagon in pairs(data.raw["cargo-wagon"]) do
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
     icon = "__base__/graphics/icons/cargo-wagon.png", --fallback
+    icon_size = wagon.icon_size,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v",
     localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
@@ -43,6 +45,26 @@ for _, wagon in pairs(data.raw["fluid-wagon"]) do
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
     icon = "__base__/graphics/icons/fluid-wagon.png", --fallback
+    icon_size = wagon.icon_size,
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-v",
+    localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
+  }
+  if wagon.icon then
+    signal.icon = wagon.icon
+  elseif wagon.icons then
+    signal.icon = nil
+    signal.icons = wagon.icons
+  end
+  data:extend({signal})
+  wagoncount=wagoncount+1
+end
+for _, wagon in pairs(data.raw["artillery-wagon"]) do
+  local signal = {
+    type = "virtual-signal",
+    name = "LTN-"..wagon.name,
+    icon = "__base__/graphics/icons/artillery-wagon.png", --fallback
+    icon_size = wagon.icon_size,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v",
     localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
