@@ -1,3 +1,7 @@
+1.6.0
+- updated to Factorio 0.16
+- added train composition signal for artillery wagon
+
 1.5.5
 - changed Mod Description to include LTN
 - added depot inactivity setting
