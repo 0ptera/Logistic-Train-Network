@@ -65,11 +65,20 @@ data:extend({
     default_value = 7200, --2min
     minimum_value = 0, --0:off
     maximum_value = 216000, -- 60min
+  },  
+  {
+    type = "int-setting",
+    name = "ltn-dispatcher-stop-inactivity-timeout",
+    order = "cc",
+    setting_type = "runtime-global",
+    default_value = 1200, --20sec
+    minimum_value = 0, --0:off
+    maximum_value = 216000, -- 60min
   },
   {
     type = "int-setting",
     name = "ltn-dispatcher-delivery-timeout",
-    order = "cc",
+    order = "cd",
     setting_type = "runtime-global",
     default_value = 18000, --5min
     minimum_value = 3600, -- 1min
@@ -78,14 +87,14 @@ data:extend({
   {
     type = "bool-setting",
     name = "ltn-dispatcher-requester-delivery-reset",
-    order = "cd",
+    order = "ce",
     setting_type = "runtime-global",
     default_value = false
   },
   {
     type = "bool-setting",
     name = "ltn-dispatcher-finish-loading",
-    order = "ce",
+    order = "cf",
     setting_type = "runtime-global",
     default_value = true
   },
