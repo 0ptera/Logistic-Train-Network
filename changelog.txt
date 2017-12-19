@@ -1,3 +1,9 @@
+1.6.1
+- removed migration support for versions < 1.2.0 (May 2017)
+- added hr graphics
+- changed train references from MainLocomotive.unit_number to train.id
+- todo: depots switch from blue to green when trains are assigned instead of when they actually leave
+
 1.6.0
 - updated to Factorio 0.16
 - added train composition signal for artillery wagon
