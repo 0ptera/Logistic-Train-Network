@@ -1,8 +1,11 @@
 1.6.1
-- removed migration support for versions < 1.2.0 (May 2017)
-- added hr graphics
-- changed train references from MainLocomotive.unit_number to train.id
-- todo: depots switch from blue to green when trains are assigned instead of when they actually leave
+- removed: migration support for versions < 1.2.0 (May 2017)
+- added: hr graphics
+- added: yellow depot lamp color indicating a train with assigned delivery still being parked
+- changed: train references from MainLocomotive.unit_number to train.id
+- changed: deliveries will be removed instantly if the assigned train changes composition e.g a wagon is removed
+- changed: lamp colors update faster
+- fixed: mining a single locomotive sent to an ltn stop would not update the stop
 
 1.6.0
 - updated to Factorio 0.16
