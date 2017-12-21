@@ -2,7 +2,7 @@
 - removed: migration support for versions < 1.2.0 (May 2017)
 - added: hr graphics
 - added: yellow depot lamp color indicating a train with assigned delivery still being parked
-- changed: stop timeout description no longer mentions inactivity
+- changed: stop timeout description no longer mentions inactivity #83
 - changed: train references from MainLocomotive.unit_number to train.id
 - changed: deliveries will be removed instantly if the assigned train changes composition e.g a wagon is removed
 - changed: lamp colors update faster
