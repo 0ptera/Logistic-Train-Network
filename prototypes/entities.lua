@@ -18,48 +18,45 @@ ltn_stop_out.icon_size = 32
 ltn_stop_out.selection_box = {{-0.5, -0.5}, {0.5, 0.5}}
 ltn_stop_out.collision_box = {{-0.15, -0.15}, {0.15, 0.15}}
 ltn_stop_out.item_slot_count = 50
-ltn_stop_out.sprites =
-{
-  north =
-  {
-    filename = "__LogisticTrainNetwork__/graphics/entity/output.png",
-    x = 158,
-    y = 5,
-    width = 79,
-    height = 63,
-    frame_count = 1,
-    shift = {0.140625, 0.140625},
-  },
-  east =
-  {
-    filename = "__LogisticTrainNetwork__/graphics/entity/output.png",
-    y = 5,
-    width = 79,
-    height = 63,
-    frame_count = 1,
-    shift = {0.140625, 0.140625},
-  },
-  south =
-  {
-    filename = "__LogisticTrainNetwork__/graphics/entity/output.png",
-    x = 237,
-    y = 5,
-    width = 79,
-    height = 63,
-    frame_count = 1,
-    shift = {0.140625, 0.140625},
-  },
-  west =
-  {
-    filename = "__LogisticTrainNetwork__/graphics/entity/output.png",
-    x = 79,
-    y = 5,
-    width = 79,
-    height = 63,
-    frame_count = 1,
-    shift = {0.140625, 0.140625},
-  }
-}
+ltn_stop_out.sprites = make_4way_animation_from_spritesheet(
+  { layers =
+    {
+      {
+        filename = "__LogisticTrainNetwork__/graphics/entity/output.png",
+        width = 58,
+        height = 52,
+        frame_count = 1,
+        shift = util.by_pixel(0, 5),
+        hr_version =
+        {
+          scale = 0.5,
+          filename = "__LogisticTrainNetwork__/graphics/entity/hr-output.png",
+          width = 114,
+          height = 102,
+          frame_count = 1,
+          shift = util.by_pixel(0, 5),
+        },
+      },
+      {
+        filename = "__base__/graphics/entity/combinator/constant-combinator-shadow.png",
+        width = 50,
+        height = 34,
+        frame_count = 1,
+        shift = util.by_pixel(9, 6),
+        draw_as_shadow = true,
+        hr_version =
+        {
+          scale = 0.5,
+          filename = "__base__/graphics/entity/combinator/hr-constant-combinator-shadow.png",
+          width = 98,
+          height = 66,
+          frame_count = 1,
+          shift = util.by_pixel(8.5, 5.5),
+          draw_as_shadow = true,
+        },
+      },
+    },
+  })
 
 local ltn_lamp_control = copyPrototype("constant-combinator","constant-combinator","logistic-train-stop-lamp-control")
 ltn_lamp_control.icon = "__LogisticTrainNetwork__/graphics/icons/empty.png"
