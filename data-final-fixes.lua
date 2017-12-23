@@ -83,34 +83,18 @@ end
 -- sum items, fluids and train composition signals for number of slots required in stop output
 -- items may be are generated after this so additional safeguard in updating the output needs to be taken
 -- turns out there are a lot of specialized types that act as items
-local itemtypes =
-{
-  "item",
-  "item-with-entity-data",  -- 0.13
-  "item-with-label",        -- 0.13
-  "module",
-  "tool",                   -- science packs
-  "armor",
-  "gun",
-  "ammo",
-  "capsule",
-  "repair-tool",
-  "mining-tool",
-  "selection-tool",
-  "blueprint",
-  "blueprint-book",
-  "rail-planner",           -- no idea what that even is
-}
 local itemcount = 0
-for _, itemtype in pairs(itemtypes) do
-  for _, v in pairs(data.raw[itemtype]) do
-    -- log("item type: "..v.type..", name: "..v.name)
-    itemcount = itemcount + 1
-  end
-end
 local fluidcount = 0
-for _, v in pairs(data.raw["fluid"]) do
-  fluidcount = fluidcount + 1
-end
+for type, type_data in pairs(data.raw) do
+  for item_name, item in pairs(type_data) do
+    if item.stack_size then
+      itemcount = itemcount + 1
+    end
+    if type == "fluid" then
+      fluidcount = fluidcount + 1
+    end
+  end
+end 
+
 data.raw["constant-combinator"]["logistic-train-stop-output"].item_slot_count = lococount + wagoncount + itemcount + fluidcount
 log("[LTN] found "..tostring(itemcount).." items, "..tostring(fluidcount).." fluids, "..tostring(lococount).." locomotives, "..tostring(wagoncount).." wagons")

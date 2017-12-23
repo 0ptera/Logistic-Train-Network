@@ -364,7 +364,7 @@ function TrainLeaves(trainID)
   local stoppedTrain = global.StoppedTrains[trainID]
   if not stoppedTrain then
     -- train wasn't stopped at ltn stop
-    log("(TrainLeaves) train.id:"..tostring(trainID).." wasn't found in global.StoppedTrains")
+    if debug_log then log("(TrainLeaves) train.id:"..tostring(trainID).." wasn't found in global.StoppedTrains") end
     -- log(serpent.block(global.StoppedTrains) )
     return
   end
@@ -373,7 +373,7 @@ function TrainLeaves(trainID)
   local stop = global.LogisticTrainStops[stopID]
   if not stop then
     -- stop became invalid
-    log("(TrainLeaves) StopID: "..tostring(stopID).." wasn't found in global.LogisticTrainStops")
+    if debug_log then log("(TrainLeaves) StopID: "..tostring(stopID).." wasn't found in global.LogisticTrainStops") end
     -- log(serpent.block(stoppedTrain) )
     -- log(serpent.block(global.LogisticTrainStops) )
     return
@@ -1743,6 +1743,7 @@ local function getWagonCapacity(entity)
     capacity = entity.prototype.get_inventory_size(defines.inventory.cargo_wagon)
   elseif entity.type == "fluid-wagon" then
     for n=1, #entity.fluidbox do
+      log("get fluidbox "..n.."/"..#entity.fluidbox)
       capacity = capacity + entity.fluidbox.get_capacity(n)
     end
   end

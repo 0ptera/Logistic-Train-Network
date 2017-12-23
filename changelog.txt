@@ -1,3 +1,6 @@
+1.6.2
+- made data phase item detection more robust
+
 1.6.1
 - removed: migration support for versions < 1.2.0 (May 2017)
 - added: hr graphics
