@@ -1742,9 +1742,7 @@ local function getWagonCapacity(entity)
   if entity.type == "cargo-wagon" then
     capacity = entity.prototype.get_inventory_size(defines.inventory.cargo_wagon)
   elseif entity.type == "fluid-wagon" then
-    for n=1, #entity.fluidbox do
-      capacity = capacity + entity.fluidbox.get_capacity(n)
-    end
+    capacity = capacity + entity.fluidbox.get_capacity(1)
   end
   global.WagonCapacity[entity.name] = capacity
   return capacity
