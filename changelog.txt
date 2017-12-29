@@ -4,6 +4,7 @@ Date: 28.12.2017
   Features:
     - in game changelog  
   Changes:
+    - pushed base to 0.16.8
     - data phase item detection is more robust
     - migrating from versions older than 1.1.1 displays error message    
 ---------------------------------------------------------------------------------------------------
