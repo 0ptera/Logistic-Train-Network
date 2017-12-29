@@ -110,7 +110,7 @@ local function initialize(oldVersion, newVersion)
           locoID_to_trainID[loco.unit_number] = train.id
         end
         -- fill global.StoppedTrains
-        if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then             
+        if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
           local trainForce = nil
           local trainName = nil
           if loco then
@@ -249,7 +249,7 @@ script.on_load(function()
     end
     stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1))
   end
-  registerEvents()  
+  registerEvents()
   log("[LTN] on_load: complete")
 end)
 
@@ -264,7 +264,7 @@ script.on_init(function()
   end
   initialize(oldVersion, newVersion)
   updateEntities()
-  registerEvents()  
+  registerEvents()
   log("[LTN] on_init: ".. MOD_NAME.." "..tostring(newVersionString).." initialized.")
 end)
 
@@ -283,16 +283,16 @@ script.on_configuration_changed(function(data)
       newVersion = string.format("%02d.%02d.%02d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
     end
 
-    if oldVersion and oldVersion < "01.01.01" then      
-      log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..tostring(newVersionString).." migration Error. Direct migration from previous version: "..tostring(oldVersionString).."not supported.")    
+    if oldVersion and oldVersion < "01.01.01" then
+      log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..tostring(newVersionString).." migration Error. Direct migration from previous version: "..tostring(oldVersionString).."not supported.")
       printmsg("[LTN] Error: Direct migration from "..tostring(oldVersionString).." to "..tostring(newVersionString).." is not supported. Oldest supported version: 1.1.1.")
       return
     else
       initialize(oldVersion, newVersion)
       updateEntities()
       registerEvents()
-      log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..tostring(newVersionString).." initialized. Previous version: "..tostring(oldVersionString))          
-      printmsg("LTN updated from "..tostring(oldVersionString).." to "..tostring(newVersionString))    
+      log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..tostring(newVersionString).." initialized. Previous version: "..tostring(oldVersionString))
+      printmsg("LTN updated from "..tostring(oldVersionString).." to "..tostring(newVersionString))
     end
   end
 end)
@@ -315,8 +315,8 @@ function TrainArrives(train)
     if loco then
       trainName = loco.backer_name
       trainForce = loco.force
-    end   
-        
+    end
+
     -- add train to global.StoppedTrains
     global.StoppedTrains[train.id] = {
       train = train,
@@ -374,7 +374,7 @@ function TrainLeaves(trainID)
     -- log(serpent.block(global.StoppedTrains) )
     return
   end
-  
+
   local stopID = stoppedTrain.stopID
   local stop = global.LogisticTrainStops[stopID]
   if not stop then
@@ -383,8 +383,8 @@ function TrainLeaves(trainID)
     -- log(serpent.block(stoppedTrain) )
     -- log(serpent.block(global.LogisticTrainStops) )
     return
-  end  
-  
+  end
+
   -- train was stopped at LTN depot
   if stop.isDepot then
     if global.Dispatcher.availableTrains[trainID] then -- trains are normally removed when deliveries are created
@@ -445,7 +445,7 @@ function TrainLeaves(trainID)
       else
         setLamp(stopID, "green", 1)
       end
-    end     
+    end
   end
 
   -- remove train reference
@@ -727,7 +727,7 @@ function OnEntityRemoved(event)
         if debug_log then log("(OnEntityRemoved) Removed last LTN Stop: OnTick, OnTrainStateChanged, OnTrainCreated unregistered") end
       end
     end
-  end  
+  end
 end
 end
 
@@ -1275,7 +1275,7 @@ function ProcessRequest(reqIndex, request)
 
   -- train is no longer available => set depot to green even if train might has to wait inactivity timer
   setLamp(selectedTrain.station.unit_number, "yellow", 1)
-  
+
   -- set lamps on stations to yellow
   -- trains will pick a stop by their own logic so we have to parse by name
   for stopID, stop in pairs (global.LogisticTrainStops) do
@@ -1377,7 +1377,7 @@ function UpdateStop(stopID)
     -- end
   -- end
 
-  -- reset stop parameters just in case something goes wrong  
+  -- reset stop parameters just in case something goes wrong
   stop.minProvided = nil
   stop.minRequested = nil
   stop.minTraincars = 0
@@ -1424,7 +1424,7 @@ function UpdateStop(stopID)
   local abs = math.abs
   -- read configuration signals and remove them from the signal list (should leave only item and fluid signal types)
   local isDepot = circuitValues["virtual,"..ISDEPOT] or 0
-  if isDepot > 0 then 
+  if isDepot > 0 then
     isDepot = true
   else
     isDepot = false
@@ -1463,17 +1463,17 @@ function UpdateStop(stopID)
   end
 
   --update lamp colors when errorCode or isDepot changed state
-  if stop.errorCode ~=0 or stop.isDepot ~= isDepot then    
-    stop.errorCode = 0 -- we are error free here    
+  if stop.errorCode ~=0 or stop.isDepot ~= isDepot then
+    stop.errorCode = 0 -- we are error free here
     if isDepot then
       if stop.parkedTrainID and stop.parkedTrain.valid then
         if global.Dispatcher.Deliveries[stop.parkedTrainID] then
-          setLamp(stopID, "yellow", 1)          
+          setLamp(stopID, "yellow", 1)
         else
-          setLamp(stopID, "blue", 1)          
+          setLamp(stopID, "blue", 1)
         end
       else
-        setLamp(stopID, "green", 1)        
+        setLamp(stopID, "green", 1)
       end
     else
       if #stop.activeDeliveries > 0 then
@@ -1483,7 +1483,7 @@ function UpdateStop(stopID)
       end
     end
   end
-  
+
   -- check if it's a depot
   if isDepot then
     stop.isDepot = true
@@ -1491,7 +1491,7 @@ function UpdateStop(stopID)
 
     -- add parked train to available trains
     if stop.parkedTrainID and stop.parkedTrain.valid then
-      if global.Dispatcher.Deliveries[stop.parkedTrainID] then        
+      if global.Dispatcher.Deliveries[stop.parkedTrainID] then
         if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." is depot with train.id "..stop.parkedTrainID.." assigned to delivery" ) end
       else
         if not global.Dispatcher.availableTrains[stop.parkedTrainID] then
@@ -1503,11 +1503,11 @@ function UpdateStop(stopID)
             global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity + fluid_capacity
           end
         end
-        if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." is depot with available train.id "..stop.parkedTrainID ) end          
+        if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." is depot with available train.id "..stop.parkedTrainID ) end
       end
-    else      
+    else
       if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." is empty depot.") end
-    end   
+    end
 
   -- not a depot > check if the name is unique
   else
@@ -1743,7 +1743,7 @@ end
 ---------------------------------- HELPER FUNCTIONS ----------------------------------
 
 do --GetTrainCapacity(train)
-local function getCargoWagonCapacity(entity)  
+local function getCargoWagonCapacity(entity)
   local capacity = entity.prototype.get_inventory_size(defines.inventory.cargo_wagon)
   log("(getCargoWagonCapacity) capacity for "..entity.name.." = "..capacity)
   global.WagonCapacity[entity.name] = capacity
@@ -1752,7 +1752,7 @@ end
 
 local function getFluidWagonCapacity(entity)
   local capacity = 0
-  for n=1, #entity.fluidbox do    
+  for n=1, #entity.fluidbox do
     capacity = capacity + entity.fluidbox.get_capacity(n)
   end
   log("(getFluidWagonCapacity) capacity for "..entity.name.." = "..capacity)
@@ -1767,12 +1767,12 @@ function GetTrainCapacity(train)
   if train and train.valid then
     for _,wagon in pairs(train.cargo_wagons) do
       local capacity = global.WagonCapacity[wagon.name] or getCargoWagonCapacity(wagon)
-      fluidCapacity = fluidCapacity + capacity
-    end    
+       inventorySize = inventorySize + capacity
+    end
     for _,wagon in pairs(train.fluid_wagons) do
       local capacity = global.WagonCapacity[wagon.name] or getFluidWagonCapacity(wagon)
-      inventorySize = inventorySize + capacity
-    end   
+      fluidCapacity = fluidCapacity + capacity
+    end
   end
   return inventorySize, fluidCapacity
 end
