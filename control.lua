@@ -685,7 +685,7 @@ function removeStop(entity)
   end
 
   -- remove available train
-  if stop and stop.isDepot and stop.parkedTrainID then
+  if stop and stop.isDepot and stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
     global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].capacity
     global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].fluid_capacity
     global.Dispatcher.availableTrains[stop.parkedTrainID] = nil
