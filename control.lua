@@ -460,7 +460,7 @@ function TrainLeaves(trainID)
   if debug_log then log("Train ["..trainID.."] "..tostring(stoppedTrain.trainName).." left LTN-stop ["..stopID.."] "..stop.entity.backer_name) end
   UpdateStopOutput(stop)
 
-  global.StoppedTrains[trainID] = nil    
+  global.StoppedTrains[trainID] = nil
 end
 
 

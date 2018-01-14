@@ -2,8 +2,8 @@
 Version: 1.6.4
 Date: 14.1.2018
   Bugfixes:
-    - Trains are reinitialized each configuration change to catch changes to locomotives and wagons 
-    - Trains could trigger station leaving event twice causing stop outputs to loose signals
+    - Trains are reinitialized each configuration change to catch changes to locomotives and wagons
+    - Trains where not properly removed from lookup table when leaving stops
 ---------------------------------------------------------------------------------------------------
 Version: 1.6.3
 Date: 7.1.2018
@@ -15,11 +15,11 @@ Date: 7.1.2018
 Version: 1.6.2
 Date: 30.12.2017
   Features:
-    - in game changelog  
+    - in game changelog
   Changes:
     - pushed base to 0.16.8
     - data phase item detection is more robust
-    - migrating from versions older than 1.1.1 displays error message    
+    - migrating from versions older than 1.1.1 displays error message
 ---------------------------------------------------------------------------------------------------
 Version: 1.6.1
 Date: 20.12.2017
