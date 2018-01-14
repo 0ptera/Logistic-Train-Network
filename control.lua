@@ -60,10 +60,12 @@ local function initialize(oldVersion, newVersion)
   global.WagonCapacity = { --preoccupy table with wagons to ignore at 0 capacity
     ["rail-tanker"] = 0
   }
+  -- set in UpdateAllTrains
   global.StoppedTrains = global.StoppedTrains or {} -- trains stopped at LTN stops
 
   ---- initialize Dispatcher
   global.Dispatcher = global.Dispatcher or {}
+  -- set in UpdateAllTrains
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity or 0
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity or 0
@@ -172,7 +174,6 @@ local function initialize(oldVersion, newVersion)
 
   ---- initialize stops
   global.LogisticTrainStops = global.LogisticTrainStops or {}
-  local validLampControls = {}
 
   if next(global.LogisticTrainStops) then
     for stopID, stop in pairs (global.LogisticTrainStops) do
@@ -187,8 +188,6 @@ local function initialize(oldVersion, newVersion)
       -- update to 1.5.0
       global.LogisticTrainStops[stopID].reqestPriority = global.LogisticTrainStops[stopID].reqestPriority or 0
       global.LogisticTrainStops[stopID].providePriority = global.LogisticTrainStops[stopID].providePriority or 0
-
-      UpdateStopOutput(stop) --make sure output is set
     end
   end
 
@@ -209,22 +208,27 @@ local function buildStopNameList()
 end
 
 -- run every time the mod configuration is changed to catch changes to wagon capacities by other mods
-local function updateEntities()
+local function updateAllTrains()
   global.Dispatcher.availableTrains_total_capacity = 0
   global.Dispatcher.availableTrains_total_fluid_capacity = 0
-  for trainID, trainData in pairs (global.Dispatcher.availableTrains) do
-    if trainData.train and trainData.train.valid and trainData.train.station then
-      local loco = GetMainLocomotive(trainData.train)
-      if loco then
-        local capacity, fluid_capacity = GetTrainCapacity(trainData.train)
-        global.Dispatcher.availableTrains[trainID] = {train = trainData.train, force = loco.force.name, capacity = capacity, fluid_capacity = fluid_capacity}
-        global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity + capacity
-        global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity + fluid_capacity
-      else
-        global.Dispatcher.availableTrains[trainID] = nil
+  global.Dispatcher.availableTrains = {}
+  global.StoppedTrains = {}
+  -- remove all parked train from logistic stops
+  for stopID, stop in pairs (global.LogisticTrainStops) do
+    stop.parkedTrain =  nil
+    stop.parkedTrainID = nil
+    UpdateStopOutput(stop)
+  end
+
+  -- add still valid trains back to stops
+  for force_name, force in pairs(game.forces) do
+    local trains = force.get_trains()
+    if trains then
+      for _, train in pairs(trains) do
+        if train.station and train.station.name == "logistic-train-stop" then
+          TrainArrives(train)
+        end
       end
-    else
-      global.Dispatcher.availableTrains[trainID] = nil
     end
   end
 end
@@ -254,23 +258,22 @@ script.on_load(function()
 end)
 
 script.on_init(function()
-  buildStopNameList()
-
   -- format version string to "00.00.00"
   local oldVersion, newVersion = nil
   local newVersionString = game.active_mods[MOD_NAME]
   if newVersionString then
     newVersion = string.format("%02d.%02d.%02d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
   end
+
+  buildStopNameList()
   initialize(oldVersion, newVersion)
-  updateEntities()
+  updateAllTrains()
   registerEvents()
-  log("[LTN] on_init: ".. MOD_NAME.." "..tostring(newVersionString).." initialized.")
+  log("[LTN] on_init: ".. MOD_NAME.." "..tostring(newVersionString).." complete.")
 end)
 
 script.on_configuration_changed(function(data)
   buildStopNameList()
-
   if data and data.mod_changes[MOD_NAME] then
     -- format version string to "00.00.00"
     local oldVersion, newVersion = nil
@@ -284,17 +287,18 @@ script.on_configuration_changed(function(data)
     end
 
     if oldVersion and oldVersion < "01.01.01" then
-      log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..tostring(newVersionString).." migration Error. Direct migration from previous version: "..tostring(oldVersionString).."not supported.")
+      log("[LTN] ".. MOD_NAME.." "..tostring(newVersionString).." migration Error. Direct migration from previous version: "..tostring(oldVersionString).."not supported.")
       printmsg("[LTN] Error: Direct migration from "..tostring(oldVersionString).." to "..tostring(newVersionString).." is not supported. Oldest supported version: 1.1.1.")
       return
     else
       initialize(oldVersion, newVersion)
-      updateEntities()
-      registerEvents()
-      log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..tostring(newVersionString).." initialized. Previous version: "..tostring(oldVersionString))
-      printmsg("LTN updated from "..tostring(oldVersionString).." to "..tostring(newVersionString))
+      log("[LTN] ".. MOD_NAME.." "..tostring(newVersionString).." updated. Previous version: "..tostring(oldVersionString))
+      printmsg("[LTN] Migration from "..tostring(oldVersionString).." to "..tostring(newVersionString).." complete.")
     end
   end
+  updateAllTrains()
+  registerEvents()
+  log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..tostring(newVersionString).." complete.")
 end)
 
 end
@@ -330,7 +334,7 @@ function TrainArrives(train)
     stop.parkedTrainID = train.id
 
     if message_level >= 3 then printmsg({"ltn-message.train-arrived", tostring(trainName), stop.entity.backer_name}, trainForce, false) end
-    if debug_log then log("Train[ "..train.id.."] "..tostring(trainName).." arrived at LTN-stop "..stop.entity.backer_name) end
+    if debug_log then log("Train ["..train.id.."] "..tostring(trainName).." arrived at LTN-stop ["..stopID.."] "..stop.entity.backer_name) end
 
     local frontDistance = GetDistance(train.front_stock.position, train.station.position)
     local backDistance = GetDistance(train.back_stock.position, train.station.position)
@@ -382,6 +386,7 @@ function TrainLeaves(trainID)
     if debug_log then log("(TrainLeaves) StopID: "..tostring(stopID).." wasn't found in global.LogisticTrainStops") end
     -- log(serpent.block(stoppedTrain) )
     -- log(serpent.block(global.LogisticTrainStops) )
+    global.StoppedTrains[trainID] = nil
     return
   end
 
@@ -452,10 +457,10 @@ function TrainLeaves(trainID)
   stop.parkedTrain = nil
   stop.parkedTrainID = nil
   if message_level >= 3 then printmsg({"ltn-message.train-left", tostring(stoppedTrain.name), stop.entity.backer_name}, stoppedTrain.force) end
-  if debug_log then log("Train[ "..trainID.."] "..tostring(stoppedTrain.trainName).." left LTN-stop "..stop.entity.backer_name) end
+  if debug_log then log("Train ["..trainID.."] "..tostring(stoppedTrain.trainName).." left LTN-stop ["..stopID.."] "..stop.entity.backer_name) end
   UpdateStopOutput(stop)
 
-  stoppedTrain = nil
+  global.StoppedTrains[trainID] = nil
 end
 
 
@@ -1732,11 +1737,13 @@ function UpdateStopOutput(trainStop)
     end
     if index ~= #signals then
       if message_level >= 1 then printmsg({"ltn-message.error-stop-output-truncated", tostring(trainStop.entity.backer_name), tostring(trainStop.parkedTrain), trainStop.output.get_control_behavior().signals_count, index-#signals}, trainStop.entity.force) end
-      if debug_log then log("(UpdateStopOutput) Inventory of train "..tostring(trainStop.parkedTrain).." at stop "..tostring(trainStop.entity.backer_name).." exceeds stop output limit of "..trainStop.output.get_control_behavior().signals_count.." by "..index-#signals.." signals.") end
+      if debug_log then log("(UpdateStopOutput) Inventory of train "..tostring(trainStop.parkedTrain.id).." at stop "..tostring(trainStop.entity.backer_name).." exceeds stop output limit of "..trainStop.output.get_control_behavior().signals_count.." by "..index-#signals.." signals.") end
     end
     trainStop.output.get_control_behavior().parameters = {parameters=signals}
+    if debug_log then log("(UpdateStopOutput) Updating signals for "..tostring(trainStop.entity.backer_name)..": train "..tostring(trainStop.parkedTrain.id)..": "..index.." signals") end
   else
     trainStop.output.get_control_behavior().parameters = nil
+    if debug_log then log("(UpdateStopOutput) Resetting signals for "..tostring(trainStop.entity.backer_name)..".") end
   end
 end
 
