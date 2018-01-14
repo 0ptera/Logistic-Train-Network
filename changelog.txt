@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.6.4
+Date: 14.1.2018
+  Bugfixes:
+    - Trains are reinitialized each configuration change to catch changes to locomotives and wagons 
+    - Trains could trigger station leaving event twice causing stop outputs to loose signals
+---------------------------------------------------------------------------------------------------
 Version: 1.6.3
 Date: 7.1.2018
   Bugfixes:
