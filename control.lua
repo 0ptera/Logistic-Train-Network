@@ -111,34 +111,10 @@ local function initialize(oldVersion, newVersion)
         if loco then
           locoID_to_trainID[loco.unit_number] = train.id
         end
-        -- fill global.StoppedTrains
-        if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
-          local trainForce = nil
-          local trainName = nil
-          if loco then
-            trainName = loco.backer_name
-            trainForce = loco.force
-          end
-          global.StoppedTrains[train.id] = {
-            train = train,
-            name = trainName,
-            force = trainForce,
-            stopID = train.station.unit_number,
-          }
-        end
+
       end
     end
     -- log("locoID_to_trainID: "..serpent.block(locoID_to_trainID))
-
-    for locoID, trainData in pairs(global.Dispatcher.availableTrains) do
-      local trainID = locoID_to_trainID[locoID]
-      if trainID then
-        log("Migrating global.Dispatcher.availableTrains from ["..tostring(locoID).."] to ["..tostring(trainID).."]")
-        new_availableTrains[trainID] = trainData
-      end
-    end
-    -- log("new_availableTrains: "..serpent.dump(new_availableTrains))
-    global.Dispatcher.availableTrains = new_availableTrains
 
     for locoID, delivery in pairs(global.Dispatcher.Deliveries) do
       local trainID = locoID_to_trainID[locoID]
@@ -149,27 +125,6 @@ local function initialize(oldVersion, newVersion)
     end
     -- log("new_Deliveries: "..serpent.dump(new_Deliveries))
     global.Dispatcher.Deliveries = new_Deliveries
-
-    for stopID, stop in pairs(global.LogisticTrainStops) do
-      if stop.parkedTrainID and stop.parkedTrain then
-        stop.parkedTrainID = stop.parkedTrain.id
-      else
-        stop.parkedTrainID = nil
-        stop.parkedTrain = nil
-      end
-
-      new_activeDeliveries = {}
-      for _, locoID in pairs(stop.activeDeliveries) do
-        local trainID = locoID_to_trainID[locoID]
-        if trainID then
-          log("Migrating global.LogisticTrainStops["..stopID.."].activeDeliveries from ["..tostring(locoID).."] to ["..tostring(trainID).."]")
-          table.insert(new_activeDeliveries, trainID)
-        end
-
-      end
-      stop.activeDeliveries = new_activeDeliveries
-    end
-
   end
 
   ---- initialize stops
@@ -269,7 +224,7 @@ script.on_init(function()
   initialize(oldVersion, newVersion)
   updateAllTrains()
   registerEvents()
-  log("[LTN] on_init: ".. MOD_NAME.." "..tostring(newVersionString).." complete.")
+  log("[LTN] ".. MOD_NAME.." "..tostring(newVersionString).." initialized.")
 end)
 
 script.on_configuration_changed(function(data)
@@ -287,18 +242,18 @@ script.on_configuration_changed(function(data)
     end
 
     if oldVersion and oldVersion < "01.01.01" then
-      log("[LTN] ".. MOD_NAME.." "..tostring(newVersionString).." migration Error. Direct migration from previous version: "..tostring(oldVersionString).."not supported.")
+      log("[LTN] Migration failed. Migrating from "..tostring(oldVersionString).." to "..tostring(newVersionString).."not supported.")
       printmsg("[LTN] Error: Direct migration from "..tostring(oldVersionString).." to "..tostring(newVersionString).." is not supported. Oldest supported version: 1.1.1.")
       return
     else
       initialize(oldVersion, newVersion)
-      log("[LTN] ".. MOD_NAME.." "..tostring(newVersionString).." updated. Previous version: "..tostring(oldVersionString))
+      log("[LTN] Migrating from "..tostring(oldVersionString).." to "..tostring(newVersionString).." complete.")
       printmsg("[LTN] Migration from "..tostring(oldVersionString).." to "..tostring(newVersionString).." complete.")
     end
   end
   updateAllTrains()
   registerEvents()
-  log("[LTN] on_configuration_changed: ".. MOD_NAME.." "..tostring(newVersionString).." complete.")
+  log("[LTN] ".. MOD_NAME.." "..tostring(game.active_mods[MOD_NAME]).." configuration updated.")
 end)
 
 end
