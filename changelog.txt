@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.7.0
+Date: 20.1.2018
+  Features:
+    - Added binary encoded network ID
+    - Encoded position signals have unique icons
+    - Encoded position signals are properly grouped by locomotive and wagon types
+  Changes:
+    - Removed obsolete migration
+---------------------------------------------------------------------------------------------------
 Version: 1.6.4
 Date: 14.1.2018
   Bugfixes:

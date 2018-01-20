@@ -1,4 +1,4 @@
-License:
+Copyright (c) 2018 Optera
 
 This software is provided without warranty and the author/license holder cannot be held liable.
 
