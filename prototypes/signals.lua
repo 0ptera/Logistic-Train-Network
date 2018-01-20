@@ -16,6 +16,14 @@ data:extend({
   },
   {
     type = "virtual-signal",
+    name = "ltn-network-id",
+    icon = "__LogisticTrainNetwork__/graphics/icons/network-id.png",
+    icon_size = 32,
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-ab[ltn-network-id]"
+  },  
+  {
+    type = "virtual-signal",
     name = "ltn-min-train-length",
     icon = "__LogisticTrainNetwork__/graphics/icons/min-train-length.png",
     icon_size = 32,
