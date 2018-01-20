@@ -1,84 +1,81 @@
+
+local function createIcons(entity)
+  if entity.icon then
+    local icons =
+    {
+      { icon = entity.icon,
+        tint = {r=1, g=1, b=1, a=1}
+      },
+      { icon = "__LogisticTrainNetwork__/graphics/icons/encoded-position.png",
+        tint = {r=1, g=1, b=1, a=1}
+      },
+    }
+    return icons
+  elseif entity.icons then
+    local icons = entity.icons
+    table.insert(icons, { icon = "__LogisticTrainNetwork__/graphics/icons/encoded-position.png", tint = {r=1, g=1, b=1, a=1} })
+    return icons
+  else
+    local icons = { {icon = "__LogisticTrainNetwork__/graphics/icons/encoded-position.png", tint = {r=1, g=1, b=1, a=1} } }
+    return icons
+  end
+end
+
 local lococount = 0
 for _, loco in pairs(data.raw["locomotive"]) do
+  lococount=lococount+1
   local signal = {
     type = "virtual-signal",
     name = "LTN-"..loco.name,
-    icon = "__base__/graphics/icons/diesel-locomotive.png", --fallback
-    icon_size = loco.icon_size,
+    icons = createIcons(loco),
+    icon_size = loco.icon_size or 32,
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-u",
+    order = "z[LTN-signal]-u"..string.format("%02d", lococount),
     localised_name = {"virtual-signal-name.LTN-locomotive", {"entity-name." .. loco.name}}
   }
-  if loco.icon then
-    signal.icon = loco.icon
-  elseif loco.icons then
-    signal.icon = nil
-    signal.icons = loco.icons
-  end
   data:extend({signal})
-  lococount=lococount+1
 end
--- log("[LTN] "..lococount.." locomotives added")
 
 wagoncount = 0
 for _, wagon in pairs(data.raw["cargo-wagon"]) do
+  wagoncount=wagoncount+1
   local signal = {
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
-    icon = "__base__/graphics/icons/cargo-wagon.png", --fallback
-    icon_size = wagon.icon_size,
+    icons = createIcons(wagon),
+    icon_size = wagon.icon_size or 32,
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-v",
+    order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
     localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
   }
-  if wagon.icon then
-    signal.icon = wagon.icon
-  elseif wagon.icons then
-    signal.icon = nil
-    signal.icons = wagon.icons
-  end
   data:extend({signal})
-  wagoncount=wagoncount+1
 end
 for _, wagon in pairs(data.raw["fluid-wagon"]) do
+  wagoncount=wagoncount+1
   local signal = {
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
-    icon = "__base__/graphics/icons/fluid-wagon.png", --fallback
-    icon_size = wagon.icon_size,
+    icons = createIcons(wagon),
+    icon_size = wagon.icon_size or 32,
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-v",
+    order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
     localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
   }
-  if wagon.icon then
-    signal.icon = wagon.icon
-  elseif wagon.icons then
-    signal.icon = nil
-    signal.icons = wagon.icons
-  end
   data:extend({signal})
-  wagoncount=wagoncount+1
 end
 for _, wagon in pairs(data.raw["artillery-wagon"]) do
+  wagoncount=wagoncount+1
   local signal = {
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
-    icon = "__base__/graphics/icons/artillery-wagon.png", --fallback
-    icon_size = wagon.icon_size,
+    icons = createIcons(wagon),
+    icon_size = wagon.icon_size or 32,
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-v",
+    order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
     localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
   }
-  if wagon.icon then
-    signal.icon = wagon.icon
-  elseif wagon.icons then
-    signal.icon = nil
-    signal.icons = wagon.icons
-  end
   data:extend({signal})
-  wagoncount=wagoncount+1
 end
--- log("[LTN] "..wagoncount.." wagons added")
 
 -- sum items, fluids and train composition signals for number of slots required in stop output
 -- items may be are generated after this so additional safeguard in updating the output needs to be taken
@@ -94,7 +91,7 @@ for type, type_data in pairs(data.raw) do
       fluidcount = fluidcount + 1
     end
   end
-end 
+end
 
 data.raw["constant-combinator"]["logistic-train-stop-output"].item_slot_count = lococount + wagoncount + itemcount + fluidcount
 log("[LTN] found "..tostring(itemcount).." items, "..tostring(fluidcount).." fluids, "..tostring(lococount).." locomotives, "..tostring(wagoncount).." wagons")

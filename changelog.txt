@@ -3,6 +3,7 @@ Version: 1.6.5
 Date: 15.1.2018
   Changes:
     - Removed obsolete migration 
+    - Encoded position signals have unique icons
 ---------------------------------------------------------------------------------------------------
 Version: 1.6.4
 Date: 14.1.2018
