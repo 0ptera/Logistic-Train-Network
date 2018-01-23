@@ -3,6 +3,8 @@ Version: 1.7.0
 Date: 20.1.2018
   Bugfixes:
     - automatically generated icons are always cropped to 32x32
+  Changes:
+    - Updated Chinese translation 
 ---------------------------------------------------------------------------------------------------
 Version: 1.7.0
 Date: 20.1.2018
