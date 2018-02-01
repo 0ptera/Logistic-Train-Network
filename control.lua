@@ -728,35 +728,20 @@ script.on_event(defines.events.on_entity_renamed, function(event)
   local uid = event.entity.unit_number
   local oldName = event.old_name
   local newName = event.entity.backer_name
-  
+
   if event.entity.type == "train-stop" then
     RemoveStopName(uid, oldName)
     AddStopName(uid, newName)
   end
   -- log("stoplist: "..serpent.block(global.TrainStopNames))
-  
-  
+
+
   if event.entity.name == "logistic-train-stop" then
     --log("(on_entity_renamed) uid:"..uid..", old name: "..oldName..", new name: "..newName)
     renamedStop(uid, oldName, newName)
   end
 end)
 
--- script.on_event(defines.events.on_pre_entity_settings_pasted, function(event)
-  -- local uid = event.destination.unit_number
-  -- local oldName = event.destination.backer_name
-  -- local newName = event.source.backer_name
-
-  -- if event.destination.type == "train-stop" then
-    -- RemoveStopName(uid, oldName)
-    -- AddStopName(uid, newName)
-  -- end
-
-  -- if event.destination.name == "logistic-train-stop" then
-    -- --log("(on_pre_entity_settings_pasted) uid:"..uid..", old name: "..oldName..", new name: "..newName)
-    -- renamedStop(uid, oldName, newName)
-  -- end
--- end)
 end
 
 -- update global.Dispatcher.Deliveries.force when forces are removed/merged
