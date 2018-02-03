@@ -56,7 +56,7 @@ data:extend({
     default_value = 300, --5s
     minimum_value = 60, --1s
     maximum_value = 4294967295, -- prevent 32bit signed overflow
-  },  
+  },
   {
     type = "int-setting",
     name = "ltn-dispatcher-stop-timeout",
@@ -86,6 +86,13 @@ data:extend({
     type = "bool-setting",
     name = "ltn-dispatcher-finish-loading",
     order = "ce",
+    setting_type = "runtime-global",
+    default_value = true
+  },
+  {
+    type = "bool-setting",
+    name = "ltn-depot-reset-filters",
+    order = "da",
     setting_type = "runtime-global",
     default_value = true
   },

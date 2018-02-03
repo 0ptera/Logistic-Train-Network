@@ -322,6 +322,25 @@ function TrainArrives(train)
       if stop.errorCode == 0 then
         setLamp(stopID, "blue", 1)
       end
+
+      -- reset filters and bars
+      if reset_filters and train.cargo_wagons then
+      for n,wagon in pairs(train.cargo_wagons) do
+        local inventory = wagon.get_inventory(defines.inventory.cargo_wagon)
+        if inventory then
+          if inventory.is_filtered() then
+            log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory).." filtered slots.")
+            for slotIndex=1, #inventory, 1 do
+              inventory.set_filter(slotIndex, nil)
+            end
+          end
+          if inventory.hasbar and #inventory - inventory.getbar() > 0 then
+            log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory - inventory.getbar()).." locked slots.")
+            inventory.setbar()
+          end
+        end
+      end
+      end
     end
 
     UpdateStopOutput(stop)
@@ -487,7 +506,7 @@ function RemoveStopName(stopID, stopName)
         -- log("removed "..stopID.." from "..stopName)
       end
     end
-  else
+  elseif global.TrainStopNames[stopName][1] == stopID then
     -- remove name-id entry
     global.TrainStopNames[stopName] = nil
     -- log("removed entry "..stopName..": "..stopID)
@@ -733,6 +752,8 @@ script.on_event(defines.events.on_entity_renamed, function(event)
     RemoveStopName(uid, oldName)
     AddStopName(uid, newName)
   end
+  -- log("stoplist: "..serpent.block(global.TrainStopNames))
+
 
   if event.entity.name == "logistic-train-stop" then
     --log("(on_entity_renamed) uid:"..uid..", old name: "..oldName..", new name: "..newName)
@@ -740,21 +761,6 @@ script.on_event(defines.events.on_entity_renamed, function(event)
   end
 end)
 
-script.on_event(defines.events.on_pre_entity_settings_pasted, function(event)
-  local uid = event.destination.unit_number
-  local oldName = event.destination.backer_name
-  local newName = event.source.backer_name
-
-  if event.destination.type == "train-stop" then
-    RemoveStopName(uid, oldName)
-    AddStopName(uid, newName)
-  end
-
-  if event.destination.name == "logistic-train-stop" then
-    --log("(on_pre_entity_settings_pasted) uid:"..uid..", old name: "..oldName..", new name: "..newName)
-    renamedStop(uid, oldName, newName)
-  end
-end)
 end
 
 -- update global.Dispatcher.Deliveries.force when forces are removed/merged
