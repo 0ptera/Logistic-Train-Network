@@ -1,10 +1,19 @@
 ---------------------------------------------------------------------------------------------------
-Version: 1.7.0
+Version: 1.7.2
+Date: 3.2.2018
+  Features:
+    - remove filters and locked slots from trains entering a depot
+  Bugfixes:
+    - renaming could cause wrong stations being removed from station name list
+  Removed:
+    - Chinese translation, please use a language pack like https://mods.factorio.com/mod/zh-CN
+---------------------------------------------------------------------------------------------------
+Version: 1.7.1
 Date: 20.1.2018
   Bugfixes:
     - automatically generated icons are always cropped to 32x32
   Changes:
-    - Updated Chinese translation 
+    - Updated Chinese translation
 ---------------------------------------------------------------------------------------------------
 Version: 1.7.0
 Date: 20.1.2018

@@ -322,6 +322,25 @@ function TrainArrives(train)
       if stop.errorCode == 0 then
         setLamp(stopID, "blue", 1)
       end
+
+      -- reset filters and bars
+      if reset_filters and train.cargo_wagons then
+      for n,wagon in pairs(train.cargo_wagons) do
+        local inventory = wagon.get_inventory(defines.inventory.cargo_wagon)
+        if inventory then
+          if inventory.is_filtered() then
+            log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory).." filtered slots.")
+            for slotIndex=1, #inventory, 1 do
+              inventory.set_filter(slotIndex, nil)
+            end
+          end
+          if inventory.hasbar and #inventory - inventory.getbar() > 0 then
+            log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory - inventory.getbar()).." locked slots.")
+            inventory.setbar()
+          end
+        end
+      end
+      end
     end
 
     UpdateStopOutput(stop)

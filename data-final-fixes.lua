@@ -4,10 +4,12 @@ local function createIcons(entity)
     local icons = {
       {
         icon = entity.icon,
+        icon_size = entity.icon_size,
         tint = {r=1, g=1, b=1, a=1}
       },
       {
         icon = "__LogisticTrainNetwork__/graphics/icons/encoded-position.png",
+        icon_size = 32,
         tint = {r=1, g=1, b=1, a=1}
       },
     }
@@ -16,6 +18,7 @@ local function createIcons(entity)
     local icons = entity.icons
     table.insert(icons, {
       icon = "__LogisticTrainNetwork__/graphics/icons/encoded-position.png",
+      icon_size = 32,
       tint = {r=1, g=1, b=1, a=1}
     })
     return icons
@@ -23,6 +26,7 @@ local function createIcons(entity)
     local icons = {
       {
         icon = "__LogisticTrainNetwork__/graphics/icons/encoded-position.png",
+        icon_size = 32,
         tint = {r=1, g=1, b=1, a=1}
       }
     }
@@ -37,7 +41,7 @@ for _, loco in pairs(data.raw["locomotive"]) do
     type = "virtual-signal",
     name = "LTN-"..loco.name,
     icons = createIcons(loco),
-    icon_size = 32,
+    -- icon_size = 32,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-u"..string.format("%02d", lococount),
     localised_name = {"virtual-signal-name.LTN-locomotive", {"entity-name." .. loco.name}}
@@ -65,7 +69,7 @@ for _, wagon in pairs(data.raw["fluid-wagon"]) do
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
     icons = createIcons(wagon),
-    icon_size = 32,
+    -- icon_size = 32,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
     localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
@@ -78,7 +82,7 @@ for _, wagon in pairs(data.raw["artillery-wagon"]) do
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
     icons = createIcons(wagon),
-    icon_size = 32,
+    -- icon_size = 32,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
     localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
