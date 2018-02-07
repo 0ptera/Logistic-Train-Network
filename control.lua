@@ -307,7 +307,7 @@ function TrainArrives(train)
 
     if stop.isDepot then
       -- remove delivery
-      removeDelivery(train.id)
+      RemoveDelivery(train.id)
 
       -- make train available for new deliveries
       local capacity, fluid_capacity = GetTrainCapacity(train)
@@ -415,7 +415,7 @@ function TrainLeaves(trainID)
         global.Dispatcher.Deliveries[trainID] = nil
         -- reset schedule when ltn-dispatcher-early-schedule-reset is active
         if requester_delivery_reset then
-          -- removeDelivery(trainID) -- make sure stop counters are reset
+          -- RemoveDelivery(trainID) -- make sure stop counters are reset
           local schedule = {current = 1, records = {}}
           -- log("Depot Name = "..train.schedule.records[1].station)
           schedule.records[1] = NewScheduleRecord(stoppedTrain.train.schedule.records[1].station, "inactivity", depot_inactivity)
@@ -459,11 +459,11 @@ function OnTrainCreated(event)
   -- old train ids "leave" stops and deliveries are removed
   if event.old_train_id_1 then
     TrainLeaves(event.old_train_id_1)
-    removeDelivery(event.old_train_id_1)
+    RemoveDelivery(event.old_train_id_1)
   end
   if event.old_train_id_2 then
     TrainLeaves(event.old_train_id_2)
-    removeDelivery(event.old_train_id_2)
+    RemoveDelivery(event.old_train_id_2)
   end
   -- trains are always created in manual_control, they will be added in on_train_state_changed
 end
@@ -498,7 +498,7 @@ end
 
 -- remove stop from TrainStopNames
 function RemoveStopName(stopID, stopName)
-  if global.TrainStopNames[stopName] and #global.TrainStopNames[stopName] > 1 then
+  if global.TrainStopNames[stopName] then
     -- multiple stops of same name > remove id from the list
     for i=#global.TrainStopNames[stopName], 1, -1 do
       if global.TrainStopNames[stopName][i] == stopID then
@@ -506,7 +506,8 @@ function RemoveStopName(stopID, stopName)
         -- log("removed "..stopID.." from "..stopName)
       end
     end
-  elseif global.TrainStopNames[stopName][1] == stopID then
+  end
+  if not next(global.TrainStopNames[stopName]) then
     -- remove name-id entry
     global.TrainStopNames[stopName] = nil
     -- log("removed entry "..stopName..": "..stopID)
@@ -700,6 +701,7 @@ function OnEntityRemoved(event)
   local entity = event.entity
   if  entity.type == "locomotive" then -- single locomotives are not handled by on_train_created
     TrainLeaves(entity.train.id) -- possible overhead from using shared function
+    RemoveDelivery(entity.train.id)
   elseif entity.type == "train-stop" then
     RemoveStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
     if entity.name == "logistic-train-stop" then
@@ -818,11 +820,11 @@ function OnTick(event)
       if not(delivery.train and delivery.train.valid) then
         if message_level >= 1 then printmsg({"ltn-message.delivery-removed-train-invalid", delivery.from, delivery.to}, delivery.force, false) end
         if debug_log then log("(OnTick) Delivery from "..delivery.from.." to "..delivery.to.." removed. Train no longer valid.") end
-        removeDelivery(trainID)
+        RemoveDelivery(trainID)
       elseif tick-delivery.started > delivery_timeout then
         if message_level >= 1 then printmsg({"ltn-message.delivery-removed-timeout", delivery.from, delivery.to, tick-delivery.started}, delivery.force, false) end
         if debug_log then log("(OnTick) Delivery from "..delivery.from.." to "..delivery.to.." removed. Timed out after "..tick-delivery.started.."/"..delivery_timeout.." ticks.") end
-        removeDelivery(trainID)
+        RemoveDelivery(trainID)
       else
         activeDeliveryTrains = activeDeliveryTrains.." "..trainID
       end
@@ -879,7 +881,7 @@ end
 ---------------------------------- DISPATCHER FUNCTIONS ----------------------------------
 
 -- ensures removal of trainID from global.Dispatcher.Deliveries and stop.activeDeliveries
-function removeDelivery(trainID)
+function RemoveDelivery(trainID)
   for stopID, stop in pairs(global.LogisticTrainStops) do
     for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
       if stop.activeDeliveries[i] == trainID then
