@@ -1,8 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.7.3
-Date: 7.2.2018
+Date: 10.2.2018
   Bugfixes:
-    - Error when copy-pasting station names https://forums.factorio.com/viewtopic.php?f=214&t=57578
+    - Error when copy-pasting station names https://forums.factorio.com/viewtopic.php?f=214&t=57578 and #102
 ---------------------------------------------------------------------------------------------------
 Version: 1.7.2
 Date: 3.2.2018
