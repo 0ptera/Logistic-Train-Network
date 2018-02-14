@@ -1605,7 +1605,7 @@ function UpdateStop(stopID)
     end -- for circuitValues
     
     if (autoLockedSlots and minStackSize) then
-        lockedSlots = math.ceil((10 * (1 + stop.entity.force.stack_inserter_capacity_bonus))/minStackSize)
+        lockedSlots = math.min(math.ceil((12 * (1 + stop.entity.force.stack_inserter_capacity_bonus))/minStackSize), 8)
         --game.print("Locked slots set to "..lockedSlots.. "minStackSize: ".. minStackSize .. ", items: "..serpent.block(circuitValues))
     end
 
