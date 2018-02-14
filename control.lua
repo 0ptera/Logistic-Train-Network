@@ -1436,6 +1436,7 @@ function UpdateStop(stopID)
   local providePriority = circuitValues["virtual,"..PROVPRIORITY] or 0
   circuitValues["virtual,"..PROVPRIORITY] = nil
   local lockedSlots = circuitValues["virtual,"..LOCKEDSLOTS]
+  local autoLockedSlots = not lockedSlots or lockedSlots == 0
   if not lockedSlots or lockedSlots < 0 then lockedSlots = 0 end
   circuitValues["virtual,"..LOCKEDSLOTS] = nil
 
@@ -1511,14 +1512,15 @@ function UpdateStop(stopID)
       global.Dispatcher.availableTrains[stop.parkedTrainID] = nil
     end
 
+    local minStackSize
     global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
     for item, count in pairs (circuitValues) do
+      local itype, iname = match(item, "([^,]+),([^,]+)")
       for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
         local deliverycount = delivery.shipment[item]
         if deliverycount then
           if stop.parkedTrain and stop.parkedTrainID == trainID then
             -- calculate items +- train inventory
-            local itype, iname = match(item, "([^,]+),([^,]+)")
             if itype and iname then
               local traincount = 0
               if itype == "fluid" then
@@ -1568,6 +1570,13 @@ function UpdateStop(stopID)
       -- Providers are used when above Provider Threshold
       -- Requests are handled when above Requester Threshold
       if count >= minProvided then
+        if itype=="item" then
+            local prototype = game.item_prototypes[iname]
+            local stackSize = prototype and prototype.stack_size or 0
+            if (not minStackSize) or (minStackSize > stackSize) then
+                minStackSize = stackSize
+            end
+        end
         local provided = global.Dispatcher.Provided[item] or {}
         provided[stopID] = count
         global.Dispatcher.Provided[item] = provided
@@ -1594,6 +1603,11 @@ function UpdateStop(stopID)
       end
 
     end -- for circuitValues
+    
+    if (autoLockedSlots and minStackSize) then
+        lockedSlots = math.min(math.ceil((12 * (1 + stop.entity.force.stack_inserter_capacity_bonus))/minStackSize), 8)
+        --game.print("Locked slots set to "..lockedSlots.. "minStackSize: ".. minStackSize .. ", items: "..serpent.block(circuitValues))
+    end
 
     stop.network_id = network_id
     stop.minProvided = minProvided
