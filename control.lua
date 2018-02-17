@@ -1279,28 +1279,6 @@ end -- ProcessRequest Block
 ------------------------------------- STOP FUNCTIONS -------------------------------------
 
 do --UpdateStop
-local function getCircuitValues(entity)
-  local greenWire = entity.get_circuit_network(defines.wire_type.green)
-  local redWire =  entity.get_circuit_network(defines.wire_type.red)
-  local signals = {}
-  if greenWire and greenWire.signals then
-    for _, v in pairs(greenWire.signals) do
-      if v.signal.type ~= "virtual" or ControlSignals[v.signal.name] then
-        local item = v.signal.type..","..v.signal.name
-        signals[item] = v.count
-      end
-    end
-  end
-  if redWire and redWire.signals then
-    for _, v in pairs(redWire.signals) do
-      if v.signal.type ~= "virtual" or ControlSignals[v.signal.name] then
-        local item = v.signal.type..","..v.signal.name
-        signals[item] = v.count + (signals[item] or 0) -- 2.7% faster than original non localized access
-      end
-    end
-  end
-  return signals
-end
 
 -- return true if stop, output, lamp are on same logic network
 local function detectShortCircuit(checkStop)
@@ -1399,47 +1377,75 @@ function UpdateStop(stopID)
     return
   end
 
-  -- get circuit values
-  local circuitValues = getCircuitValues(stop.input)
-  if not circuitValues then
+
+  -- get circuit values 0.16.24
+  local signals = stop.input.get_merged_signals()
+  local signal_dict = {}
+  -- log(stop.entity.backer_name.." signals: "..serpent.block(signals))
+
+  if not signals then
     return
   end
 
-  local abs = math.abs
-  -- read configuration signals and remove them from the signal list (should leave only item and fluid signal types)
-  local isDepot = circuitValues["virtual,"..ISDEPOT] or 0
-  if isDepot > 0 then
-    isDepot = true
-  else
-    isDepot = false
-  end
-  circuitValues["virtual,"..ISDEPOT] = nil
-  local network_id = circuitValues["virtual,"..NETWORKID] or -1
-  local network_id_string = "0x"..string.format("%x", bit32.band(network_id))
-  local minTraincars = circuitValues["virtual,"..MINTRAINLENGTH]
-  if not minTraincars or minTraincars < 0 then minTraincars = 0 end
-  circuitValues["virtual,"..MINTRAINLENGTH] = nil
-  local maxTraincars = circuitValues["virtual,"..MAXTRAINLENGTH]
-  if not maxTraincars or maxTraincars < 0 then maxTraincars = 0 end
-  circuitValues["virtual,"..MAXTRAINLENGTH] = nil
-  local trainLimit = circuitValues["virtual,"..MAXTRAINS]
-  if not trainLimit or trainLimit < 0 then trainLimit = 0 end
-  circuitValues["virtual,"..MAXTRAINS] = nil
-  local minRequested = abs(circuitValues["virtual,"..MINREQUESTED] or min_requested)
-  circuitValues["virtual,"..MINREQUESTED] = nil
-  local requestPriority = circuitValues["virtual,"..REQPRIORITY] or 0
-  circuitValues["virtual,"..REQPRIORITY] = nil
-  local noWarnings = circuitValues["virtual,"..NOWARN] or 0
-  circuitValues["virtual,"..NOWARN] = nil
-  local minProvided = abs(circuitValues["virtual,"..MINPROVIDED] or min_provided)
-  circuitValues["virtual,"..MINPROVIDED] = nil
-  local providePriority = circuitValues["virtual,"..PROVPRIORITY] or 0
-  circuitValues["virtual,"..PROVPRIORITY] = nil
-  local lockedSlots = circuitValues["virtual,"..LOCKEDSLOTS]
-  if not lockedSlots or lockedSlots < 0 then lockedSlots = 0 end
-  circuitValues["virtual,"..LOCKEDSLOTS] = nil
+  local signals_filtered = {}
+  local vr_type = "virtual"
 
-   -- skip duplicated names on non depots
+  -- initialize control signal values to defaults
+  local isDepot = false
+  local network_id = -1
+  local minTraincars = 0
+  local maxTraincars = 0
+  local trainLimit = 0
+  local minRequested = min_requested
+  local requestPriority = 0
+  local noWarnings = false
+  local minProvided = min_provided
+  local providePriority = 0
+  local lockedSlots = 0
+
+  local abs = math.abs
+
+  for _,v in pairs(signals) do
+      if v.signal.type ~= vr_type then
+        -- add item and fluid signals to new array
+        signals_filtered[#signals_filtered+1] = v
+      elseif ControlSignals[v.signal.name] then
+        -- read out control signals
+        if v.signal.name == ISDEPOT and v.count > 0 then
+          isDepot = true
+        elseif v.signal.name == NETWORKID then
+          network_id = v.count
+        elseif v.signal.name == MINTRAINLENGTH and v.count > 0 then
+          minTraincars = v.count
+        elseif v.signal.name == MAXTRAINLENGTH and v.count > 0 then
+          maxTraincars = v.count
+        elseif v.signal.name == MAXTRAINS and v.count > 0 then
+          trainLimit = v.count
+        elseif v.signal.name == MINREQUESTED then
+          minRequested = abs(v.count)
+        elseif v.signal.name == REQPRIORITY then
+          requestPriority = v.count
+        elseif v.signal.name == NOWARN and v.count > 0 then
+          noWarnings = true
+        elseif v.signal.name == MINPROVIDED then
+           minProvided = abs(v.count)
+        elseif v.signal.name == PROVPRIORITY then
+          providePriority = v.count
+        elseif v.signal.name == LOCKEDSLOTS and v.count > 0 then
+          lockedSlots = v.count
+        end
+      end
+  end
+  local network_id_string = "0x"..string.format("%x", bit32.band(network_id))
+
+  -- log(stop.entity.backer_name.." filtered signals: "..serpent.block(signals_filtered))
+  -- log("Control Signals: isDepot:"..tostring(isDepot).." network_id:"..network_id.." network_id_string:"..network_id_string
+  -- .." minTraincars:"..minTraincars.." maxTraincars:"..maxTraincars.." trainLimit:"..trainLimit
+  -- .." minRequested:"..minRequested.." requestPriority:"..requestPriority.." noWarnings:"..tostring(noWarnings)
+  -- .." minProvided:"..minProvided.." providePriority:"..providePriority.." lockedSlots:"..lockedSlots)
+
+
+  -- skip duplicated names on non depots
   if #global.TrainStopNames[stop.entity.backer_name] ~= 1 and not isDepot then
     stop.errorCode = 2
     stop.activeDeliveries = {}
@@ -1512,37 +1518,36 @@ function UpdateStop(stopID)
     end
 
     global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
-    for item, count in pairs (circuitValues) do
+    for _,sig in pairs (signals_filtered) do
+      local item = sig.signal.type..","..sig.signal.name
+      local count = sig.count
       for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
         local deliverycount = delivery.shipment[item]
         if deliverycount then
           if stop.parkedTrain and stop.parkedTrainID == trainID then
             -- calculate items +- train inventory
-            local itype, iname = match(item, "([^,]+),([^,]+)")
-            if itype and iname then
-              local traincount = 0
-              if itype == "fluid" then
-                traincount = stop.parkedTrain.get_fluid_count(iname)
-              else
-                traincount = stop.parkedTrain.get_item_count(iname)
-              end
+            local traincount = 0
+            if sig.signal.type == "fluid" then
+              traincount = stop.parkedTrain.get_fluid_count(sig.signal.name)
+            else
+              traincount = stop.parkedTrain.get_item_count(sig.signal.name)
+            end
 
-              if delivery.to == stop.entity.backer_name then
-                local newcount = count + traincount
-                if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
-                if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating requested count with train inventory: "..item.." "..count.."+"..traincount.."="..newcount) end
+            if delivery.to == stop.entity.backer_name then
+              local newcount = count + traincount
+              if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
+              if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating requested count with train inventory: "..item.." "..count.."+"..traincount.."="..newcount) end
+              count = newcount
+            elseif delivery.from == stop.entity.backer_name then
+              if traincount <= deliverycount then
+                local newcount = count - (deliverycount - traincount)
+                if newcount < 0 then newcount = 0 end --make sure we don't turn it into a request
+                if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating provided count with train inventory: "..item.." "..count.."-"..deliverycount - traincount.."="..newcount) end
                 count = newcount
-              elseif delivery.from == stop.entity.backer_name then
-                if traincount <= deliverycount then
-                  local newcount = count - (deliverycount - traincount)
-                  if newcount < 0 then newcount = 0 end --make sure we don't turn it into a request
-                  if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating provided count with train inventory: "..item.." "..count.."-"..deliverycount - traincount.."="..newcount) end
-                  count = newcount
-                else --train loaded more than delivery
-                  if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating delivery count with overloaded train inventory: "..item.." "..traincount) end
-                  -- update delivery to new size
-                  global.Dispatcher.Deliveries[trainID].shipment[item] = traincount
-                end
+              else --train loaded more than delivery
+                if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating delivery count with overloaded train inventory: "..item.." "..traincount) end
+                -- update delivery to new size
+                global.Dispatcher.Deliveries[trainID].shipment[item] = traincount
               end
             end
 
@@ -1603,11 +1608,7 @@ function UpdateStop(stopID)
     stop.trainLimit = trainLimit
     stop.providePriority = providePriority
     stop.lockedSlots = lockedSlots
-    if noWarnings > 0 then
-      stop.noWarnings = true
-    else
-      stop.noWarnings = false
-    end
+    stop.noWarnings = noWarnings
   end
 end
 
