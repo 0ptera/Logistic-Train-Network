@@ -949,19 +949,21 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
 
   for stopID, count in pairs (providers) do
     local stop = global.LogisticTrainStops[stopID]
-    local matched_networks = bit32.band(requestStation.network_id, stop.network_id)
-    -- log("DEBUG: comparing 0x"..string.format("%x", bit32.band(requestStation.network_id)).." & 0x"..string.format("%x", bit32.band(stop.network_id)).." = 0x"..string.format("%x", bit32.band(matched_networks)) )
+    if stop then
+      local matched_networks = bit32.band(requestStation.network_id, stop.network_id)
+      -- log("DEBUG: comparing 0x"..string.format("%x", bit32.band(requestStation.network_id)).." & 0x"..string.format("%x", bit32.band(stop.network_id)).." = 0x"..string.format("%x", bit32.band(matched_networks)) )
 
-    if stop and stop.entity.force.name == force.name
-    and matched_networks ~= 0
-    and count >= stop.minProvided
-    and (stop.minTraincars == 0 or max_length == 0 or stop.minTraincars <= max_length)
-    and (stop.maxTraincars == 0 or min_length == 0 or stop.maxTraincars >= min_length) then --check if provider can actually service trains from requester
-      local activeDeliveryCount = #stop.activeDeliveries
-      local from_network_id_string = "0x"..string.format("%x", bit32.band(stop.network_id))
-      if activeDeliveryCount and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
-        if debug_log then log("found "..count.."("..tostring(stop.minProvided)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.providePriority..", active Deliveries: "..activeDeliveryCount.." minTraincars: "..stop.minTraincars..", maxTraincars: "..stop.maxTraincars..", locked Slots: "..stop.lockedSlots) end
-        stations[#stations +1] = {entity = stop.entity, network_id = matched_networks, priority = stop.providePriority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
+      if stop.entity.force.name == force.name
+      and matched_networks ~= 0
+      and count >= stop.minProvided
+      and (stop.minTraincars == 0 or max_length == 0 or stop.minTraincars <= max_length)
+      and (stop.maxTraincars == 0 or min_length == 0 or stop.maxTraincars >= min_length) then --check if provider can actually service trains from requester
+        local activeDeliveryCount = #stop.activeDeliveries
+        local from_network_id_string = "0x"..string.format("%x", bit32.band(stop.network_id))
+        if activeDeliveryCount and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
+          if debug_log then log("found "..count.."("..tostring(stop.minProvided)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.providePriority..", active Deliveries: "..activeDeliveryCount.." minTraincars: "..stop.minTraincars..", maxTraincars: "..stop.maxTraincars..", locked Slots: "..stop.lockedSlots) end
+          stations[#stations +1] = {entity = stop.entity, network_id = matched_networks, priority = stop.providePriority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
+        end
       end
     end
   end
