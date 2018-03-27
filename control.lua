@@ -341,6 +341,17 @@ function TrainArrives(train)
         end
       end
       end
+    
+    else
+      -- set lamp to blue for LTN controlled trains
+      if stop.errorCode == 0 then        
+        for i=1, #stop.activeDeliveries, 1 do
+          if stop.activeDeliveries[i] == train.id then
+            setLamp(stopID, "blue", #stop.activeDeliveries)
+            break
+          end
+        end
+      end
     end
 
     UpdateStopOutput(stop)
