@@ -664,10 +664,26 @@ function OnEntityCreated(event)
 end
 end
 
-do -- stop removed
+do -- stop removed: entity can be an actual stop or its ID (for when children may still exist but the entity doesn't)
 function removeStop(entity)
-  local stopID = entity.unit_number
-  local stop = global.LogisticTrainStops[stopID]
+  local stopID
+  local stop
+  
+  if type(entity) == "number" then
+     stopID = entity
+     stop = global.LogisticTrainStops[stopID]
+     entity = stop.entity
+  elseif entity.valid then
+      stopID = entity.unit_number
+      stop = global.LogisticTrainStops[stopID]
+  else
+    for k,v in pairs(global.LogisticTrainStops) do
+      if v.entity == entity then
+        stopID, stop = k,v
+        break
+      end
+    end
+  end
 
   -- clean lookup tables
   for i=#StopIDList, 1, -1 do
@@ -694,12 +710,15 @@ function removeStop(entity)
     stop.output.destroy()
     stop.lampControl.destroy()
   else
+    local first_valid_entity = (entity.valid and entity) or (stop.input and stop.input.valid and stop.input) or (stop.output and stop.output.valid and stop.output) or (stop.lampControl and stop.lampControl.valid and stop.lampControl)
     -- destroy broken IO entities
-    local ghosts = entity.surface.find_entities({{entity.position.x-1.1, entity.position.y-1.1},{entity.position.x+1.1, entity.position.y+1.1}} )
-    for _,ghost in pairs (ghosts) do
-      if ghost.name == "logistic-train-stop-input" or ghost.name == "logistic-train-stop-output" or ghost.name == "logistic-train-stop-lamp-control" then
-        --printmsg("removing broken "..ghost.name.." at "..ghost.position.x..", "..ghost.position.y)
-        ghost.destroy()
+    if first_valid_entity then
+      local ghosts = first_valid_entity.surface.find_entities({{first_valid_entity.position.x-1.1, first_valid_entity.position.y-1.1},{first_valid_entity.position.x+1.1, first_valid_entity.position.y+1.1}} )
+      for _,ghost in pairs (ghosts) do
+        if ghost.name == "logistic-train-stop-input" or ghost.name == "logistic-train-stop-output" or ghost.name == "logistic-train-stop-lamp-control" then
+          --printmsg("removing broken "..ghost.name.." at "..ghost.position.x..", "..ghost.position.y)
+          ghost.destroy()
+        end
       end
     end
   end
@@ -1330,12 +1349,8 @@ function UpdateStop(stopID)
   -- if not stop or not (stop.entity and stop.entity.valid) or not (stop.input and stop.input.valid) or not (stop.output and stop.output.valid) or not (stop.lampControl and stop.lampControl.valid) then
   if not(stop and stop.entity and stop.entity.valid and stop.input and stop.input.valid and stop.output and stop.output.valid and stop.lampControl and stop.lampControl.valid) then
     if message_level >= 1 then printmsg({"ltn-message.error-invalid-stop", stopID}) end
-    if debug_log then log("(UpdateStop) Invalid stop: "..stopID) end
-    for i=#StopIDList, 1, -1 do
-      if StopIDList[i] == stopID then
-        table.remove(StopIDList, i)
-      end
-    end
+    if debug_log then log("(UpdateStop) Invalid stop: "..stopID.." - Removing...") end
+    removeStop(stopID)
     return
   end
 
