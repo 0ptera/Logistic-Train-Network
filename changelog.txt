@@ -2,9 +2,11 @@
 Version: 1.7.7
 Date: 12.5.2018
   Changes:
+    - pushed to 0.16.36 stable
+    - added creative mode (fix for 0.16) to optional dependencies
     - added requester network id to provider not found message
     - added requester & provider merged network id to train not found and train found message
-    - moved train not found message to from detailed to notification level
+    - moved train not found message to from detailed to notification level    
 ---------------------------------------------------------------------------------------------------
 Version: 1.7.6
 Date: 37.3.2018
