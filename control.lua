@@ -1124,7 +1124,7 @@ function ProcessRequest(reqIndex, request)
   -- get providers ordered by priority
   local providers = getProviders(requestStation, item, count, minTraincars, maxTraincars)
   if not providers or #providers < 1 then
-    if requestStation.noWarnings == false and message_level >= 1 then printmsg({"ltn-message.no-provider-found", localname}, requestForce, true) end
+    if requestStation.noWarnings == false and message_level >= 1 then printmsg({"ltn-message.no-provider-found", localname, to_network_id_string}, requestForce, true) end
     if debug_log then log("No station supplying "..item.." found.") end
     -- goto skipRequestItem
     return nil
@@ -1133,6 +1133,7 @@ function ProcessRequest(reqIndex, request)
   local providerStation = providers[1] -- only one delivery/request is created so use only the best provider
   local fromID = providerStation.entity.unit_number
   local from = providerStation.entity.backer_name
+  local matched_network_id_string = "0x"..string.format("%x", bit32.band(providerStation.network_id))
 
   if message_level >= 3 then printmsg({"ltn-message.provider-found", from, tostring(providerStation.priority), tostring(providerStation.activeDeliveryCount), providerStation.count, localname}, requestForce, true) end
   -- if debug_log then
@@ -1198,12 +1199,12 @@ function ProcessRequest(reqIndex, request)
   -- TODO: rewrite train into availableTrains[train.id]
   local train = getFreeTrain(providerStation, minTraincars, maxTraincars, loadingList[1].type, totalStacks)
   if not train then
-    if message_level >= 3 then printmsg({"ltn-message.no-train-found-merged", tostring(minTraincars), tostring(maxTraincars), tostring(totalStacks)}, requestForce, true) end
-    if debug_log then log("No train with "..tostring(minTraincars).." <= length <= "..tostring(maxTraincars).." to transport "..tostring(totalStacks).." stacks found in Depot.") end
+    if message_level >= 2 then printmsg({"ltn-message.no-train-found-merged", tostring(minTraincars), tostring(maxTraincars), tostring(totalStacks), matched_network_id_string}, requestForce, true) end
+    if debug_log then log("No train with "..tostring(minTraincars).." <= length <= "..tostring(maxTraincars).." to transport "..tostring(totalStacks).." stacks in network "..matched_network_id_string.." found in Depot.") end
     return nil
   end
-  if message_level >= 3 then printmsg({"ltn-message.train-found", tostring(train.inventorySize), tostring(totalStacks)}, requestForce) end
-  if debug_log then log("Train to transport "..tostring(train.inventorySize).."/"..tostring(totalStacks).." stacks found in Depot.") end
+  if message_level >= 3 then printmsg({"ltn-message.train-found", tostring(train.inventorySize), tostring(totalStacks), matched_network_id_string}, requestForce) end
+  if debug_log then log("Train to transport "..tostring(train.inventorySize).."/"..tostring(totalStacks).." stacks in network "..matched_network_id_string.." found in Depot.") end
 
   -- recalculate delivery amount to fit in train
   if train.inventorySize < totalStacks then
