@@ -1,6 +1,6 @@
 
 local function createIcons(entity)
-  if entity.icon then
+  if entity.icon and entity.icon_size then
     local icons = {
       {
         icon = entity.icon,
@@ -13,6 +13,7 @@ local function createIcons(entity)
         tint = {r=1, g=1, b=1, a=1}
       },
     }
+    -- log(serpent.block(icons))
     return icons
   elseif entity.icons then
     local icons = entity.icons
@@ -21,6 +22,7 @@ local function createIcons(entity)
       icon_size = 32,
       tint = {r=1, g=1, b=1, a=1}
     })
+    -- log(serpent.block(icons))
     return icons
   else
     local icons = {
@@ -30,6 +32,7 @@ local function createIcons(entity)
         tint = {r=1, g=1, b=1, a=1}
       }
     }
+    -- log(serpent.block(icons))
     return icons
   end
 end
@@ -41,7 +44,7 @@ for _, loco in pairs(data.raw["locomotive"]) do
     type = "virtual-signal",
     name = "LTN-"..loco.name,
     icons = createIcons(loco),
-    -- icon_size = 32,
+    icon_size = 32,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-u"..string.format("%02d", lococount),
     localised_name = {"virtual-signal-name.LTN-locomotive", {"entity-name." .. loco.name}}
@@ -69,7 +72,7 @@ for _, wagon in pairs(data.raw["fluid-wagon"]) do
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
     icons = createIcons(wagon),
-    -- icon_size = 32,
+    icon_size = 32,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
     localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
@@ -82,7 +85,7 @@ for _, wagon in pairs(data.raw["artillery-wagon"]) do
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
     icons = createIcons(wagon),
-    -- icon_size = 32,
+    icon_size = 32,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
     localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
@@ -108,3 +111,4 @@ end
 
 data.raw["constant-combinator"]["logistic-train-stop-output"].item_slot_count = lococount + wagoncount + itemcount + fluidcount
 log("[LTN] found "..tostring(itemcount).." items, "..tostring(fluidcount).." fluids, "..tostring(lococount).." locomotives, "..tostring(wagoncount).." wagons")
+
