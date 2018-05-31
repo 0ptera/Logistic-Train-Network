@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.7.9
+Date: 31.5.2018
+  Bugfixes:
+    - newly created deliveries reset stop lamps from blue to yellow
+    - FARL (and possibly other mods) could mine IO entities
+---------------------------------------------------------------------------------------------------
 Version: 1.7.8
 Date: 23.5.2018
   Bugfixes:
