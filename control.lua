@@ -1271,15 +1271,21 @@ function ProcessRequest(reqIndex, request)
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[train.id].fluid_capacity
   global.Dispatcher.availableTrains[train.id] = nil
 
-  -- train is no longer available => set depot to green even if train might has to wait inactivity timer
+  -- train is no longer available => set depot to yellow
   setLamp(selectedTrain.station.unit_number, "yellow", 1)
 
-  -- set lamps on stations to yellow
+  -- update delivery count and lamps on stations
   -- trains will pick a stop by their own logic so we have to parse by name
   for stopID, stop in pairs (global.LogisticTrainStops) do
     if stop.entity.backer_name == from or stop.entity.backer_name == to then
       table.insert(global.LogisticTrainStops[stopID].activeDeliveries, train.id)
-      setLamp(stopID, "yellow", #stop.activeDeliveries)
+      -- only update blue lamp count, otherwise change to yellow
+      local current_signal = stop.lampControl.get_control_behavior().get_signal(1)
+      if current_signal and current_signal.signal.name == "signal-blue" then
+        setLamp(stopID, "blue", #stop.activeDeliveries)
+      else
+        setLamp(stopID, "yellow", #stop.activeDeliveries)
+      end
     end
   end
 
@@ -1642,8 +1648,11 @@ local ColorLookup = {
 }
 
 function setLamp(stopID, color, count)
-  if ColorLookup[color] and global.LogisticTrainStops[stopID] then
-    global.LogisticTrainStops[stopID].lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name=ColorLookup[color]}, count = count }}}
+  local stop = global.LogisticTrainStops[stopID]
+  
+  -- skip invalid stops and colors
+  if stop and ColorLookup[color] then
+    stop.lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name=ColorLookup[color]}, count = count }}}
     return true
   end
   return false
