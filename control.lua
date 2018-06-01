@@ -760,8 +760,7 @@ script.on_event(defines.events.on_entity_renamed, function(event)
   local uid = event.entity.unit_number
   local oldName = event.old_name
   local newName = event.entity.backer_name
-
-  if event.entity.type == "train-stop" then
+  if event.entity.type == "train-stop" and event.entity.name ~= "smart-display-mapmark" then
     RemoveStopName(uid, oldName)
     AddStopName(uid, newName)
   end
