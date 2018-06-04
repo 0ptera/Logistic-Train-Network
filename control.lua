@@ -29,6 +29,7 @@ local ControlSignals = {
 }
 
 local dispatcher_update_interval = 60
+local last_no_train_found_notification = 0
 
 local ErrorCodes = {
   [-1] = "white", -- not initialized
@@ -1199,7 +1200,12 @@ function ProcessRequest(reqIndex, request)
   -- TODO: rewrite train into availableTrains[train.id]
   local train = getFreeTrain(providerStation, minTraincars, maxTraincars, loadingList[1].type, totalStacks)
   if not train then
-    if message_level >= 2 then printmsg({"ltn-message.no-train-found-merged", tostring(minTraincars), tostring(maxTraincars), tostring(totalStacks), matched_network_id_string}, requestForce, true) end
+    if message_level >= 2 then
+      if last_no_train_found_notification + 7200 < game.tick then
+        printmsg({"ltn-message.no-train-found-merged", tostring(minTraincars), tostring(maxTraincars), tostring(totalStacks), matched_network_id_string}, requestForce, true)
+        last_no_train_found_notification = game.tick
+      end
+    end
     if debug_log then log("No train with "..tostring(minTraincars).." <= length <= "..tostring(maxTraincars).." to transport "..tostring(totalStacks).." stacks in network "..matched_network_id_string.." found in Depot.") end
     return nil
   end
