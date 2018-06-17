@@ -517,11 +517,11 @@ function RemoveStopName(stopID, stopName)
         -- log("removed "..stopID.." from "..stopName)
       end
     end
-  end
-  if not next(global.TrainStopNames[stopName]) then
-    -- remove name-id entry
-    global.TrainStopNames[stopName] = nil
-    -- log("removed entry "..stopName..": "..stopID)
+    if not next(global.TrainStopNames[stopName]) then
+      -- remove name-id entry
+      global.TrainStopNames[stopName] = nil
+      -- log("removed entry "..stopName..": "..stopID)
+    end
   end
 end
 
