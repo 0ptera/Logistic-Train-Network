@@ -341,10 +341,10 @@ function TrainArrives(train)
         end
       end
       end
-    
+
     else
       -- set lamp to blue for LTN controlled trains
-      if stop.errorCode == 0 then        
+      if stop.errorCode == 0 then
         for i=1, #stop.activeDeliveries, 1 do
           if stop.activeDeliveries[i] == train.id then
             setLamp(stopID, "blue", #stop.activeDeliveries)
@@ -1649,7 +1649,7 @@ local ColorLookup = {
 
 function setLamp(stopID, color, count)
   local stop = global.LogisticTrainStops[stopID]
-  
+
   -- skip invalid stops and colors
   if stop and ColorLookup[color] then
     stop.lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name=ColorLookup[color]}, count = count }}}
