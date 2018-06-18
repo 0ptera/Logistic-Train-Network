@@ -464,7 +464,7 @@ function OnTrainStateChanged(event)
 end
 
 function OnTrainCreated(event)
-  log("(on_train_created) Train name: "..tostring(GetTrainName(event.train))..", train.id:"..tostring(event.train.id)..", .old_train_id_1:"..tostring(event.old_train_id_1)..", .old_train_id_2:"..tostring(event.old_train_id_2)..", state: "..tostring(event.train.state))
+  -- log("(on_train_created) Train name: "..tostring(GetTrainName(event.train))..", train.id:"..tostring(event.train.id)..", .old_train_id_1:"..tostring(event.old_train_id_1)..", .old_train_id_2:"..tostring(event.old_train_id_2)..", state: "..tostring(event.train.state))
   local train = event.train
 
   -- old train ids "leave" stops and deliveries are removed
