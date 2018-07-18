@@ -563,17 +563,6 @@ local function createStop(entity)
     return
   end
 
-  local lampctrl = entity.surface.create_entity
-  {
-    name = "logistic-train-stop-lamp-control",
-    position = posIn,
-    force = entity.force
-  }
-  lampctrl.operable = false -- disable gui
-  lampctrl.minable = false
-  lampctrl.destructible = false -- don't bother checking if alive
-  lampctrl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}}
-
   local input, output
   -- revive ghosts (should preserve connections)
   --local ghosts = entity.surface.find_entities_filtered{area={{entity.position.x-2, entity.position.y-2},{entity.position.x+2, entity.position.y+2}} , name="entity-ghost"}
@@ -597,6 +586,17 @@ local function createStop(entity)
     end
   end
 
+  local lampctrl = entity.surface.create_entity
+  {
+    name = "logistic-train-stop-lamp-control",
+    position = posIn,
+    force = entity.force
+  }
+  lampctrl.operable = false -- disable gui
+  lampctrl.minable = false
+  lampctrl.destructible = false -- don't bother checking if alive
+  lampctrl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}}
+  
   if input == nil then -- create new
     input = entity.surface.create_entity
     {
