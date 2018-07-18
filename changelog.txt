@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.7.11
+Date: 15.7.2018
+  Changes:
+    - flagged there-is-my-ghost as incompatible until that mod stops messing up LTN's composite stop entity
+---------------------------------------------------------------------------------------------------
 Version: 1.7.10
 Date: 17.6.2018
   Bugfixes:
