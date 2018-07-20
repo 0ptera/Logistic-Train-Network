@@ -215,8 +215,7 @@ script.on_load(function()
   if global.LogisticTrainStops and next(global.LogisticTrainStops) then
     for stopID, stop in pairs(global.LogisticTrainStops) do --outputs are not stored in save
       -- UpdateStopOutput(stop)
-      StopIDList[#StopIDList+1] = stopID
-      log("StopIDList["..tostring(#StopIDList).."] adding stopID: "..stopID)
+      StopIDList[#StopIDList+1] = stopID      
     end
     stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1))
   end
