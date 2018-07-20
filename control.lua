@@ -155,22 +155,22 @@ end
 
 -- run every time the mod configuration is changed to catch stops from other mods
 local function buildStopNameList()
-  global.TrainStopNames = global.TrainStopNames or {} -- dictionary of all train stops by all mods  
+  global.TrainStopNames = global.TrainStopNames or {} -- dictionary of all train stops by all mods
 
   for _, surface in pairs(game.surfaces) do
     local foundStops = surface.find_entities_filtered{type="train-stop"}
     if foundStops then
       local missing_stop_count = 0
-      for k, stop in pairs(foundStops) do        
+      for k, stop in pairs(foundStops) do
         if stop.name == "logistic-train-stop" and not global.LogisticTrainStops[stop.unit_number] then
           CreateStop(stop) -- recreate LTN stops missing from global.LogisticTrainStops, savegame corruption?
           missing_stop_count = missing_stop_count +1
-        end       
+        end
         AddStopName(stop.unit_number, stop.backer_name)
       end
       log("[LTN] recreated "..tostring(missing_stop_count).." LTN stops missing from global.LogisticTrainStops")
     end
-  end  
+  end
 end
 
 -- run every time the mod configuration is changed to catch changes to wagon capacities by other mods
@@ -211,7 +211,7 @@ local function registerEvents()
   end
 end
 
-script.on_load(function()  
+script.on_load(function()
   if global.LogisticTrainStops and next(global.LogisticTrainStops) then
     for stopID, stop in pairs(global.LogisticTrainStops) do --outputs are not stored in save
       -- UpdateStopOutput(stop)
