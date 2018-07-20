@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.7.12
+Date: 20.7.2018
+  Bugfixes:
+    - LTN recreates stops missing from global stop list in on_configuration_changed
+  Changes:
+    - removed incompatible flag of there-is-my-ghost 0.16.7 seems to work well with LTN
+    - removed creative mode from optional dependencies until it's updated to 0.16
+---------------------------------------------------------------------------------------------------
 Version: 1.7.11
 Date: 15.7.2018
   Changes:
@@ -9,7 +17,7 @@ Date: 17.6.2018
   Bugfixes:
     - Avoid nil error when station is renamed during build #122
   Changes:
-    - pushed to 0.16.51 stable    
+    - pushed to 0.16.51 stable
 ---------------------------------------------------------------------------------------------------
 Version: 1.7.9
 Date: 31.5.2018
@@ -29,7 +37,7 @@ Date: 12.5.2018
     - added creative mode (fix for 0.16) to optional dependencies
     - added requester network id to provider not found message
     - added requester & provider merged network id to train not found and train found message
-    - moved train not found message to from detailed to notification level    
+    - moved train not found message to from detailed to notification level
 ---------------------------------------------------------------------------------------------------
 Version: 1.7.6
 Date: 37.3.2018

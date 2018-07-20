@@ -160,9 +160,15 @@ local function buildStopNameList()
   for _, surface in pairs(game.surfaces) do
     local foundStops = surface.find_entities_filtered{type="train-stop"}
     if foundStops then
+      local missing_stop_count = 0
       for k, stop in pairs(foundStops) do
+        if stop.name == "logistic-train-stop" and not global.LogisticTrainStops[stop.unit_number] then
+          CreateStop(stop) -- recreate LTN stops missing from global.LogisticTrainStops, savegame corruption?
+          missing_stop_count = missing_stop_count +1
+        end
         AddStopName(stop.unit_number, stop.backer_name)
       end
+      log("[LTN] recreated "..tostring(missing_stop_count).." LTN stops missing from global.LogisticTrainStops")
     end
   end
 end
@@ -210,6 +216,7 @@ script.on_load(function()
     for stopID, stop in pairs(global.LogisticTrainStops) do --outputs are not stored in save
       -- UpdateStopOutput(stop)
       StopIDList[#StopIDList+1] = stopID
+      log("StopIDList["..tostring(#StopIDList).."] adding stopID: "..stopID)
     end
     stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1))
   end
@@ -527,10 +534,10 @@ end
 
 
 do --create stop
-local function createStop(entity)
+function CreateStop(entity)
   if global.LogisticTrainStops[entity.unit_number] then
     if message_level >= 1 then printmsg({"ltn-message.error-duplicated-unit_number", entity.unit_number}, entity.force) end
-    if debug_log then log("(createStop) duplicate stop unit number "..entity.unit_number) end
+    if debug_log then log("(CreateStop) duplicate stop unit number "..entity.unit_number) end
     return
   end
 
@@ -558,12 +565,12 @@ local function createStop(entity)
     rot = 6
   else --invalid orientation
     if message_level >= 1 then printmsg({"ltn-message.error-stop-orientation", entity.direction}, entity.force) end
-    if debug_log then log("(createStop) invalid train stop orientation "..entity.direction) end
+    if debug_log then log("(CreateStop) invalid train stop orientation "..entity.direction) end
     entity.destroy()
     return
   end
 
-  local input, output
+  local input, output, lampctrl
   -- revive ghosts (should preserve connections)
   --local ghosts = entity.surface.find_entities_filtered{area={{entity.position.x-2, entity.position.y-2},{entity.position.x+2, entity.position.y+2}} , name="entity-ghost"}
   local ghosts = entity.surface.find_entities({{entity.position.x-1.1, entity.position.y-1.1},{entity.position.x+1.1, entity.position.y+1.1}} )
@@ -575,6 +582,9 @@ local function createStop(entity)
       elseif ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-output" then
         --printmsg("reviving ghost output at "..ghost.position.x..", "..ghost.position.y)
         _, output = ghost.revive()
+      elseif ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-lamp-control" then
+        --printmsg("reviving ghost lamp-control at "..ghost.position.x..", "..ghost.position.y)
+        _, lampctrl = ghost.revive()
       -- something has built I/O already (e.g.) Creative Mode Instant Blueprint
       elseif ghost.name == "logistic-train-stop-input" then
         input = ghost
@@ -582,21 +592,26 @@ local function createStop(entity)
       elseif ghost.name == "logistic-train-stop-output" then
         output = ghost
         --printmsg("Found existing output at "..ghost.position.x..", "..ghost.position.y)
+      elseif ghost.name == "logistic-train-stop-lamp-control" then
+        lampctrl = ghost
+        --printmsg("Found existing lamp-control at "..ghost.position.x..", "..ghost.position.y)
       end
     end
   end
 
-  local lampctrl = entity.surface.create_entity
-  {
-    name = "logistic-train-stop-lamp-control",
-    position = posIn,
-    force = entity.force
-  }
+  if lampctrl == nil then
+    lampctrl = entity.surface.create_entity
+    {
+      name = "logistic-train-stop-lamp-control",
+      position = posIn,
+      force = entity.force
+    }
+  end
   lampctrl.operable = false -- disable gui
   lampctrl.minable = false
   lampctrl.destructible = false -- don't bother checking if alive
   lampctrl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}}
-  
+
   if input == nil then -- create new
     input = entity.surface.create_entity
     {
@@ -648,7 +663,7 @@ function OnEntityCreated(event)
   if entity.type == "train-stop" then
      AddStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
     if entity.name == "logistic-train-stop" then
-      createStop(entity)
+      CreateStop(entity)
       if #StopIDList == 1 then
         --initialize OnTick indexes
         stopsPerTick = 1
