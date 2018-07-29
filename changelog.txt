@@ -1,8 +1,14 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.7.13
+Date: 29.7.2018
+  Features:
+    - added notifications for skipping request processing due to no transport capacities in depot
+    - spam filter works with no-train-found notifications #128
+---------------------------------------------------------------------------------------------------
 Version: 1.7.12
 Date: 20.7.2018
   Bugfixes:
-    - LTN recreates stops missing from global stop list in on_configuration_changed
+    - recreate stops missing from global stop list in on_configuration_changed
   Changes:
     - removed incompatible flag of there-is-my-ghost 0.16.7 seems to work well with LTN
     - removed creative mode from optional dependencies until it's updated to 0.16
