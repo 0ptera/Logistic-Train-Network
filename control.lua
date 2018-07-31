@@ -215,7 +215,7 @@ script.on_load(function()
   if global.LogisticTrainStops and next(global.LogisticTrainStops) then
     for stopID, stop in pairs(global.LogisticTrainStops) do --outputs are not stored in save
       -- UpdateStopOutput(stop)
-      StopIDList[#StopIDList+1] = stopID
+      StopIDList[#StopIDList+1] = stopID      
     end
     stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1))
   end
@@ -646,6 +646,7 @@ function CreateStop(entity)
     output = output,
     lampControl = lampctrl,
     isDepot = false,
+    isEmptyPreserving = false,
     network_id = -1,         --any network
     trainLimit = 0,
     activeDeliveries = {},   --delivery IDs to/from stop
@@ -919,9 +920,14 @@ end
 
 -- return new schedule_record
 -- itemlist = {first_signal.type, first_signal.name, constant}
-function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverride)
+-- invenDict = {item_name -> count}
+function NewScheduleRecord(stationName, condType, condComp, itemlist, invenDict)
   local record = {station = stationName, wait_conditions = {}}
+  local countOverride = nil
 
+  if invenDict ~= nil then
+     countOverride = 0
+  end
   if condType == "item_count" then
     local waitEmpty = false
     -- write itemlist to conditions
@@ -942,6 +948,14 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
 
       local cond = {comparator = condComp, first_signal = {type = itemlist[i].type, name = itemlist[i].name}, constant = countOverride or itemlist[i].count}
       record.wait_conditions[#record.wait_conditions+1] = {type = condFluid or condType, compare_type = "and", condition = cond }
+    end
+
+    if invenDict ~= nil then
+      for itemName, itemCount in pairs(invenDict) do
+        local itemType = game.item_prototypes[itemName].type
+        local cond = {comparator = "=", first_signal = {type=itemType, name=itemName}, constant = itemCount}
+        record.wait_conditions[#record.wait_conditions+1] = {type = "item_count", compare_type = "and", condition = cond}
+      end
     end
 
     if waitEmpty then
@@ -1262,7 +1276,11 @@ function ProcessRequest(reqIndex, request)
   local schedule = {current = 1, records = {}}
   schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", depot_inactivity)
   schedule.records[2] = NewScheduleRecord(from, "item_count", ">", loadingList)
-  schedule.records[3] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
+  if depot.isEmptyPreserving then
+    schedule.records[3] = NewScheduleRecord(to, "item_count", "=", loadingList, selectedTrain.get_contents())
+  else
+    schedule.records[3] = NewScheduleRecord(to, "item_count", "=", loadingList, {})
+  end
   selectedTrain.schedule = schedule
 
 
@@ -1428,6 +1446,7 @@ function UpdateStop(stopID)
 
   -- initialize control signal values to defaults
   local isDepot = false
+  local isEmptyPreserving = false
   local network_id = -1
   local minTraincars = 0
   local maxTraincars = 0
@@ -1449,6 +1468,9 @@ function UpdateStop(stopID)
         -- read out control signals
         if v.signal.name == ISDEPOT and v.count > 0 then
           isDepot = true
+          if v.count >= 2^30 then
+             isEmptyPreserving = true
+          end
         elseif v.signal.name == NETWORKID then
           network_id = v.count
         elseif v.signal.name == MINTRAINLENGTH and v.count > 0 then
@@ -1515,6 +1537,7 @@ function UpdateStop(stopID)
   -- check if it's a depot
   if isDepot then
     stop.isDepot = true
+    stop.isEmptyPreserving = isEmptyPreserving
     stop.network_id = network_id
     stop.activeDeliveries = {} -- reset delivery count in case stops are toggled
 
@@ -1545,6 +1568,7 @@ function UpdateStop(stopID)
   -- not a depot > check if the name is unique
   else
     stop.isDepot = false
+    stop.isEmptyPreserving = false
 
     -- remove parked train from available trains
     if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
