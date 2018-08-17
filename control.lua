@@ -148,6 +148,10 @@ local function initialize(oldVersion, newVersion)
 
       -- update to 1.7.0
       global.LogisticTrainStops[stopID].network_id = global.LogisticTrainStops[stopID].network_id or -1 --all bits set = any network
+
+      -- update to 1.8.0
+      global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().send_to_train = true
+      global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().read_from_train = true
     end
   end
 
@@ -640,6 +644,10 @@ function CreateStop(entity)
   output.minable = false
   output.destructible = false -- don't bother checking if alive
 
+  -- enable reading contents and sending signals to trains
+  entity.get_or_create_control_behavior().send_to_train = true
+  entity.get_or_create_control_behavior().read_from_train = true
+
   global.LogisticTrainStops[entity.unit_number] = {
     entity = entity,
     input = input,
@@ -921,6 +929,8 @@ end
 -- itemlist = {first_signal.type, first_signal.name, constant}
 function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverride)
   local record = {station = stationName, wait_conditions = {}}
+  local cc_stop = {comparator = "=", first_signal = {type = "virtual", name = "signal-red"}, constant = 0}
+  local cc_go = {comparator = "≥", first_signal = {type = "virtual", name = "signal-green"}, constant = 1}
 
   if condType == "item_count" then
     local waitEmpty = false
@@ -950,11 +960,26 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
       record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "and", ticks = 120 }
     end
 
-    if stop_timeout > 0 then -- if stop_timeout is set add time passed condition
-      record.wait_conditions[#record.wait_conditions+1] = {type = "time", compare_type = "or", ticks = stop_timeout } -- send stuck trains away
+    -- with circuit control enabled keep trains waiting until red = 0 and force them out with green ≥ 1
+    if schedule_cc then
+      record.wait_conditions[#record.wait_conditions+1] = {type = "circuit", compare_type = "and", condition = cc_stop }
+      record.wait_conditions[#record.wait_conditions+1] = {type = "circuit", compare_type = "or", condition = cc_go }
+    end
+
+    if stop_timeout > 0 then -- send stuck trains away when stop_timeout is set
+      record.wait_conditions[#record.wait_conditions+1] = {type = "time", compare_type = "or", ticks = stop_timeout }
+      -- should it also wait for red = 0?
+      if schedule_cc then
+        record.wait_conditions[#record.wait_conditions+1] = {type = "circuit", compare_type = "and", condition = cc_stop }
+      end
     end
   elseif condType == "inactivity" then
     record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp }
+    -- with circuit control enabled keep trains waiting until red = 0 and force them out with green ≥ 1
+    if schedule_cc then
+      record.wait_conditions[#record.wait_conditions+1] = {type = "circuit", compare_type = "and", condition = cc_stop }
+      record.wait_conditions[#record.wait_conditions+1] = {type = "circuit", compare_type = "or", condition = cc_go }
+    end
   end
   return record
 end
@@ -1261,7 +1286,7 @@ function ProcessRequest(reqIndex, request)
   local depot = global.LogisticTrainStops[selectedTrain.station.unit_number]
   local schedule = {current = 1, records = {}}
   schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", depot_inactivity)
-  schedule.records[2] = NewScheduleRecord(from, "item_count", ">", loadingList)
+  schedule.records[2] = NewScheduleRecord(from, "item_count", "≥", loadingList)
   schedule.records[3] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
   selectedTrain.schedule = schedule
 
@@ -1724,16 +1749,20 @@ function UpdateStopOutput(trainStop)
         for _, c in pairs(conditions) do
           if c.condition and c.condition.first_signal then -- loading without mods can make first signal nil?
             if c.type == "item_count" then
-              if c.condition.comparator == ">" then --train expects to be loaded to x of this item
-                inventory[c.condition.first_signal.name] = c.condition.constant + 1
-              elseif (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
+              if (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
                 inventory[c.condition.first_signal.name] = nil
+              elseif c.condition.comparator == "≥" then --train expects to be loaded to x of this item
+                inventory[c.condition.first_signal.name] = c.condition.constant
+              elseif c.condition.comparator == ">" then --train expects to be loaded to x of this item
+                inventory[c.condition.first_signal.name] = c.condition.constant + 1
               end
             elseif c.type == "fluid_count" then
-              if c.condition.comparator == ">" then --train expects to be loaded to x of this fluid
-                fluidInventory[c.condition.first_signal.name] = c.condition.constant + 1
-              elseif (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this fluid
+              if (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this fluid
                 fluidInventory[c.condition.first_signal.name] = nil
+              elseif c.condition.comparator == "≥" then --train expects to be loaded to x of this fluid
+                fluidInventory[c.condition.first_signal.name] = c.condition.constant
+              elseif c.condition.comparator == ">" then --train expects to be loaded to x of this fluid
+                fluidInventory[c.condition.first_signal.name] = c.condition.constant + 1
               end
             end
           end
