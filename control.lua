@@ -219,8 +219,11 @@ script.on_load(function()
   if global.LogisticTrainStops and next(global.LogisticTrainStops) then
     for stopID, stop in pairs(global.LogisticTrainStops) do --outputs are not stored in save
       -- UpdateStopOutput(stop)
-      StopIDList[#StopIDList+1] = stopID
+      if stop and stop.entity and stop.entity.valid and stop.input and stop.input.valid and stop.output and stop.output.valid and stop.lampControl and stop.lampControl.valid then
+        StopIDList[#StopIDList+1] = stopID
+      end
     end
+    -- log("onload StopIDList:\n"..serpent.dump(StopIDList))
     stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1))
   end
   registerEvents()
