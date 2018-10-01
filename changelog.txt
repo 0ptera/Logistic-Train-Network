@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.8.2
+Date: 1.10.2018
+  Bugfixes:
+    - setting Stop timeout was missing some description
+    - changing Stop is Depot to 0 didn't properly remove available train
+---------------------------------------------------------------------------------------------------
 Version: 1.8.1
 Date: 12.9.2018
   Bugfixes:

@@ -1509,6 +1509,15 @@ function UpdateStop(stopID)
   -- .." minProvided:"..minProvided.." providePriority:"..providePriority.." lockedSlots:"..lockedSlots)
 
 
+  -- isDepot changed to false, remove available train
+  if not isDepot and stop.isDepot and stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
+    if debug_log then log("(UpdateStop) removing available train "..tostring(stop.parkedTrainID).." from depot." ) end
+    global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].capacity
+    global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].fluid_capacity
+    global.Dispatcher.availableTrains[stop.parkedTrainID] = nil
+  end
+
+
   -- skip duplicated names on non depots
   if #global.TrainStopNames[stop.entity.backer_name] ~= 1 and not isDepot then
     stop.errorCode = 2
@@ -1573,14 +1582,6 @@ function UpdateStop(stopID)
   -- not a depot > check if the name is unique
   else
     stop.isDepot = false
-
-    -- remove parked train from available trains
-    if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
-      global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].capacity
-      global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].fluid_capacity
-      global.Dispatcher.availableTrains[stop.parkedTrainID] = nil
-    end
-
     global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
     for _,sig in pairs (signals_filtered) do
       local item = sig.signal.type..","..sig.signal.name
