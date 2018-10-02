@@ -1372,6 +1372,13 @@ local function detectShortCircuit(checkStop)
   return scdetected
 end
 
+local function remove_available_train(trainID)
+  if debug_log then log("(UpdateStop) removing available train "..tostring(trainID).." from depot." ) end
+  global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[trainID].capacity
+  global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[trainID].fluid_capacity
+  global.Dispatcher.availableTrains[trainID] = nil
+end
+
 -- update stop input signals
 function UpdateStop(stopID)
   local stop = global.LogisticTrainStops[stopID]
@@ -1403,7 +1410,7 @@ function UpdateStop(stopID)
     -- end
   -- end
 
-  -- reset stop parameters just in case something goes wrong
+  -- reset stop parameters in case something goes wrong
   stop.minProvided = nil
   stop.minRequested = nil
   stop.minTraincars = 0
@@ -1417,6 +1424,9 @@ function UpdateStop(stopID)
   if not global.TrainStopNames[stop.entity.backer_name] then
     stop.errorCode = 2
     stop.activeDeliveries = {}
+    if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
+      remove_available_train(stop.parkedTrainID)
+    end
     if message_level >= 1 then printmsg({"ltn-message.error-invalid-stop", stop.entity.backer_name}) end
     if debug_log then log("(UpdateStop) Stop not in list global.TrainStopNames: "..stop.entity.backer_name) end
     return
@@ -1426,6 +1436,9 @@ function UpdateStop(stopID)
   if detectShortCircuit(stop) then
     stop.errorCode = 1
     stop.activeDeliveries = {}
+    if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
+      remove_available_train(stop.parkedTrainID)
+    end
     setLamp(stopID, ErrorCodes[stop.errorCode], 1)
     if debug_log then log("(UpdateStop) Short circuit error: "..stop.entity.backer_name) end
     return
@@ -1436,6 +1449,9 @@ function UpdateStop(stopID)
   if stopCB and stopCB.disabled then
     stop.errorCode = 1
     stop.activeDeliveries = {}
+    if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
+      remove_available_train(stop.parkedTrainID)
+    end
     setLamp(stopID, ErrorCodes[stop.errorCode], 2)
     if debug_log then log("(UpdateStop) Circuit deactivated stop: "..stop.entity.backer_name) end
     return
@@ -1513,6 +1529,9 @@ function UpdateStop(stopID)
   if #global.TrainStopNames[stop.entity.backer_name] ~= 1 and not isDepot then
     stop.errorCode = 2
     stop.activeDeliveries = {}
+    if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
+      remove_available_train(stop.parkedTrainID)
+    end    
     setLamp(stopID, ErrorCodes[stop.errorCode], 1)
     if debug_log then log("(UpdateStop) Duplicate stop name: "..stop.entity.backer_name) end
     return
@@ -1573,14 +1592,10 @@ function UpdateStop(stopID)
   -- not a depot > check if the name is unique
   else
     stop.isDepot = false
-
-    -- remove parked train from available trains
     if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
-      global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].capacity
-      global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].fluid_capacity
-      global.Dispatcher.availableTrains[stop.parkedTrainID] = nil
+      remove_available_train(stop.parkedTrainID)
     end
-
+    
     global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
     for _,sig in pairs (signals_filtered) do
       local item = sig.signal.type..","..sig.signal.name

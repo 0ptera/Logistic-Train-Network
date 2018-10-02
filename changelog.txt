@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.8.2
+Date: 2.10.2018
+  Bugfixes:
+    - setting Stop timeout was missing some description
+    - changing "Stop is Depot" signal to 0 didn't remove available train
+    - deactivating a depot through circuit condition didn't remove available train
+    - short circuited depot didn't remove available train
+---------------------------------------------------------------------------------------------------
 Version: 1.8.1
 Date: 12.9.2018
   Bugfixes:
