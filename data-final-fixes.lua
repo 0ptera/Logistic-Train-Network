@@ -94,7 +94,7 @@ for _, wagon in pairs(data.raw["artillery-wagon"]) do
 end
 
 -- sum items, fluids and train composition signals for number of slots required in stop output
--- items may be are generated after this so additional safeguard in updating the output needs to be taken
+-- badly written mods may generate prototypes in final-fixes after this so additional safeguard in updating the output needs to be taken
 -- turns out there are a lot of specialized types that act as items
 local itemcount = 0
 local fluidcount = 0
