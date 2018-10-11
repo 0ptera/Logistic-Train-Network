@@ -49,15 +49,15 @@ do
 -- ltn_interface allows mods to register for status updates from ltn
 remote.add_interface("ltn_interface",	{
   -- updates for ltn_stops
-  register_reciever_stop_status = function(interface_name, function_name)    
+  register_reciever_stop_status = function(interface_name, function_name)
     if interface_name and function_name and remote.interfaces[interface_name] and remote.interfaces[interface_name][function_name] then
       interface_recievers[interface_name] = interface_recievers[interface_name] or {}
-      interface_recievers[interface_name]["stop_status"] = function_name      
+      interface_recievers[interface_name]["stop_status"] = function_name
     end
   end,
 
   -- updates for whole dispatcher
-  register_reciever_dispatcher_status = function(interface_name, function_name)    
+  register_reciever_dispatcher_status = function(interface_name, function_name)
     if interface_name and function_name and remote.interfaces[interface_name] and remote.interfaces[interface_name][function_name] then
       interface_recievers[interface_name] = interface_recievers[interface_name] or {}
       interface_recievers[interface_name]["dispatcher_status"] = function_name
@@ -264,10 +264,10 @@ script.on_init(function()
   updateAllTrains()
   registerEvents()
 
-  for interface_name, options in pairs(interface_recievers) do    
+  for interface_name, options in pairs(interface_recievers) do
     for update_type, function_name in pairs(options) do
       printmsg("[LTN] remote interface "..tostring(interface_name).."."..tostring(function_name).." registered for "..tostring(update_type) )
-    end    
+    end
   end
   log("[LTN] ".. MOD_NAME.." "..tostring(newVersionString).." initialized.")
 end)
@@ -298,11 +298,11 @@ script.on_configuration_changed(function(data)
   end
   updateAllTrains()
   registerEvents()
-  for interface_name, options in pairs(interface_recievers) do    
+  for interface_name, options in pairs(interface_recievers) do
     for update_type, function_name in pairs(options) do
       printmsg("[LTN] remote interface "..tostring(interface_name).."."..tostring(function_name).." registered for "..tostring(update_type) )
-    end    
-  end    
+    end
+  end
   log("[LTN] ".. MOD_NAME.." "..tostring(game.active_mods[MOD_NAME]).." configuration updated.")
 end)
 
@@ -350,46 +350,44 @@ function TrainArrives(train)
       stop.parkedTrainFacesStop = true
     end
 
-    if stop.isDepot then
-      -- remove delivery
-      RemoveDelivery(train.id)
+    if stop.errorCode == 0 then
+      if stop.isDepot then
+        -- remove delivery
+        RemoveDelivery(train.id)
 
-      -- make train available for new deliveries
-      local capacity, fluid_capacity = GetTrainCapacity(train)
-      global.Dispatcher.availableTrains[train.id] = {train = train, force = loco.force.name, network_id = stop.network_id, capacity = capacity, fluid_capacity = fluid_capacity}
-      global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity + capacity
-      global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity + fluid_capacity
-      -- log("added available train "..train.id..", inventory: "..tostring(global.Dispatcher.availableTrains[train.id].capacity)..", fluid capacity: "..tostring(global.Dispatcher.availableTrains[train.id].fluid_capacity))
-      -- reset schedule
-      local schedule = {current = 1, records = {}}
-      schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "inactivity", depot_inactivity)
-      train.schedule = schedule
-      if stop.errorCode == 0 then
+        -- make train available for new deliveries
+        local capacity, fluid_capacity = GetTrainCapacity(train)
+        global.Dispatcher.availableTrains[train.id] = {train = train, force = loco.force.name, network_id = stop.network_id, capacity = capacity, fluid_capacity = fluid_capacity}
+        global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity + capacity
+        global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity + fluid_capacity
+        -- log("added available train "..train.id..", inventory: "..tostring(global.Dispatcher.availableTrains[train.id].capacity)..", fluid capacity: "..tostring(global.Dispatcher.availableTrains[train.id].fluid_capacity))
+        -- reset schedule
+        local schedule = {current = 1, records = {}}
+        schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "inactivity", depot_inactivity)
+        train.schedule = schedule
         setLamp(stopID, "blue", 1)
-      end
 
-      -- reset filters and bars
-      if reset_filters and train.cargo_wagons then
-      for n,wagon in pairs(train.cargo_wagons) do
-        local inventory = wagon.get_inventory(defines.inventory.cargo_wagon)
-        if inventory then
-          if inventory.is_filtered() then
-            log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory).." filtered slots.")
-            for slotIndex=1, #inventory, 1 do
-              inventory.set_filter(slotIndex, nil)
+        -- reset filters and bars
+        if reset_filters and train.cargo_wagons then
+        for n,wagon in pairs(train.cargo_wagons) do
+          local inventory = wagon.get_inventory(defines.inventory.cargo_wagon)
+          if inventory then
+            if inventory.is_filtered() then
+              log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory).." filtered slots.")
+              for slotIndex=1, #inventory, 1 do
+                inventory.set_filter(slotIndex, nil)
+              end
+            end
+            if inventory.hasbar and #inventory - inventory.getbar() > 0 then
+              log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory - inventory.getbar()).." locked slots.")
+              inventory.setbar()
             end
           end
-          if inventory.hasbar and #inventory - inventory.getbar() > 0 then
-            log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory - inventory.getbar()).." locked slots.")
-            inventory.setbar()
-          end
         end
-      end
-      end
+        end
 
-    else
-      -- set lamp to blue for LTN controlled trains
-      if stop.errorCode == 0 then
+      else -- stop is no Depot
+        -- set lamp to blue for LTN controlled trains
         for i=1, #stop.activeDeliveries, 1 do
           if stop.activeDeliveries[i] == train.id then
             setLamp(stopID, "blue", #stop.activeDeliveries)

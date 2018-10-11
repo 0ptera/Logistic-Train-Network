@@ -3,6 +3,8 @@ Version: 1.9.0
 Date: 8.10.2018
   Features:
     - added remote interface callbacks to recieve stop and dispatcher data
+  Bugfixes:
+    - Trains arriving at depots in error state will not be added to available train list
 ---------------------------------------------------------------------------------------------------
 Version: 1.8.2
 Date: 2.10.2018
