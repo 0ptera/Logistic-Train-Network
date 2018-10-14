@@ -43,26 +43,17 @@ local ceil = math.ceil
 local sort = table.sort
 
 ---- INITIALIZATION ----
-local interface_recievers = {}
+local on_stops_updated_event = script.generate_event_name()
+local on_dispatcher_updated_event = script.generate_event_name()
 
 do
--- ltn_interface allows mods to register for status updates from ltn
+-- ltn_interface allows mods to register for update events
 remote.add_interface("ltn_interface",	{
   -- updates for ltn_stops
-  register_reciever_stop_status = function(interface_name, function_name)
-    if interface_name and function_name and remote.interfaces[interface_name] and remote.interfaces[interface_name][function_name] then
-      interface_recievers[interface_name] = interface_recievers[interface_name] or {}
-      interface_recievers[interface_name]["stop_status"] = function_name
-    end
-  end,
+  get_on_stops_updated_event = function() return on_stops_updated_event end,
 
   -- updates for whole dispatcher
-  register_reciever_dispatcher_status = function(interface_name, function_name)
-    if interface_name and function_name and remote.interfaces[interface_name] and remote.interfaces[interface_name][function_name] then
-      interface_recievers[interface_name] = interface_recievers[interface_name] or {}
-      interface_recievers[interface_name]["dispatcher_status"] = function_name
-    end
-  end
+  get_on_dispatcher_updated_event = function() return on_dispatcher_updated_event end
 })
 
 local function initialize(oldVersion, newVersion)
@@ -231,8 +222,8 @@ local function registerEvents()
     script.on_event(defines.events.on_tick, OnTick)
     script.on_event(defines.events.on_train_changed_state, OnTrainStateChanged)
     script.on_event(defines.events.on_train_created, OnTrainCreated)
-  end  
-  
+  end
+
   -- disable instant blueprint in creative mode
   if remote.interfaces["creative-mode"] then
     remote.call("creative-mode", "exclude_from_instant_blueprint", "logistic-train-stop-input")
@@ -303,11 +294,6 @@ script.on_configuration_changed(function(data)
   end
   updateAllTrains()
   registerEvents()
-  for interface_name, options in pairs(interface_recievers) do
-    for update_type, function_name in pairs(options) do
-      printmsg("[LTN] remote interface "..tostring(interface_name).."."..tostring(function_name).." registered for "..tostring(update_type) )
-    end
-  end
   log("[LTN] ".. MOD_NAME.." "..tostring(game.active_mods[MOD_NAME]).." configuration updated.")
 end)
 
@@ -958,14 +944,9 @@ function OnTick(event)
 
   -- tick 60: reset
   else
-    for interface_name, options in pairs(interface_recievers) do
-      if options.stop_status then
-        remote.call(interface_name, options.stop_status, global.LogisticTrainStops)
-      end
-      if options.dispatcher_status then
-        remote.call(interface_name, options.dispatcher_status, global.Dispatcher)
-      end
-    end
+    -- raise events for interface mods
+    script.raise_event(on_stops_updated_event, {data = global.LogisticTrainStops})
+    script.raise_event(on_dispatcher_updated_event, {data = global.Dispatcher})
     global.tickCount = 0 -- reset tick count
   end
 
