@@ -33,7 +33,6 @@ script.on_load(function(data)
            do something with event.data
          end)
      ]]
-    end)
   end
 end)
 end
