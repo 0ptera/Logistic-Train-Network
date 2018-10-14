@@ -784,6 +784,22 @@ function OnEntityRemoved(event)
 end
 end
 
+-- remove references for surfaces before deletion
+script.on_event(defines.events.on_pre_surface_deleted, function(event)
+  local surfaceID = event.surface_index or "nauvis"
+  log("removing LTN stops on surface "..tostring(surfaceID) )
+  local surface = game.surfaces[surfaceID]
+  if surface then
+    local train_stops = surface.find_entities_filtered{type = "train-stop"}
+    for _, entity in pairs(train_stops) do
+      RemoveStopName(entity.unit_number, entity.backer_name)
+      if entity.name == "logistic-train-stop" then
+        removeStop(entity)
+      end
+    end
+  end
+end)
+
 
 do --rename stop
 local function renamedStop(targetID, old_name, new_name)
