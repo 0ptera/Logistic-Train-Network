@@ -3,15 +3,17 @@ Version: 1.9.2
 Date: 15.10.2018
   Bugfixes:
     - left over init from 1.9.0 caused error #141
+  Changes:
+    - renamed remote interface ltn-interface to logistic-train-network
 ---------------------------------------------------------------------------------------------------
 Version: 1.9.1
 Date: 14.10.2018
-  Features:
-    - turned remote interface callbacks into events
-    - added interface demo to /Interface_Demo/control.lua
   Bugfixes:
     - stops are removed before surface deletion #139
     - added creative mode blacklisting to on_load
+  Changes:
+    - turned remote interface callbacks into events
+    - added interface demo to /Interface_Demo/control.lua    
 ---------------------------------------------------------------------------------------------------
 Version: 1.9.0
 Date: 11.10.2018

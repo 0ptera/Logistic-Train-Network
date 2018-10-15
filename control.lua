@@ -48,7 +48,7 @@ local on_dispatcher_updated_event = script.generate_event_name()
 
 do
 -- ltn_interface allows mods to register for update events
-remote.add_interface("ltn_interface",	{
+remote.add_interface("logistic-train-network",	{
   -- updates for ltn_stops
   get_on_stops_updated_event = function() return on_stops_updated_event end,
 
