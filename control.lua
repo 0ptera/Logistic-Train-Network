@@ -260,11 +260,6 @@ script.on_init(function()
   updateAllTrains()
   registerEvents()
 
-  for interface_name, options in pairs(interface_recievers) do
-    for update_type, function_name in pairs(options) do
-      printmsg("[LTN] remote interface "..tostring(interface_name).."."..tostring(function_name).." registered for "..tostring(update_type) )
-    end
-  end
   log("[LTN] ".. MOD_NAME.." "..tostring(newVersionString).." initialized.")
 end)
 
