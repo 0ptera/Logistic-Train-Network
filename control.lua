@@ -48,7 +48,7 @@ local on_dispatcher_updated_event = script.generate_event_name()
 
 do
 -- ltn_interface allows mods to register for update events
-remote.add_interface("logistic-train-network",	{
+remote.add_interface("logistic-train-network", {
   -- updates for ltn_stops
   get_on_stops_updated_event = function() return on_stops_updated_event end,
 
@@ -140,24 +140,30 @@ local function initialize(oldVersion, newVersion)
 
   if next(global.LogisticTrainStops) then
     for stopID, stop in pairs (global.LogisticTrainStops) do
-      global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or -1
+      if stop and stop.entity and stop.entity.valid and stop.input and stop.input.valid and stop.output and stop.output.valid and stop.lampControl and stop.lampControl.valid then
+        global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or -1
 
-      -- update to 1.3.0
-      global.LogisticTrainStops[stopID].minDelivery = nil
-      global.LogisticTrainStops[stopID].ignoreMinDeliverySize = nil
-      global.LogisticTrainStops[stopID].minRequested = global.LogisticTrainStops[stopID].minRequested or 0
-      global.LogisticTrainStops[stopID].minProvided = global.LogisticTrainStops[stopID].minProvided or 0
+        -- update to 1.3.0
+        global.LogisticTrainStops[stopID].minDelivery = nil
+        global.LogisticTrainStops[stopID].ignoreMinDeliverySize = nil
+        global.LogisticTrainStops[stopID].minRequested = global.LogisticTrainStops[stopID].minRequested or 0
+        global.LogisticTrainStops[stopID].minProvided = global.LogisticTrainStops[stopID].minProvided or 0
 
-      -- update to 1.5.0
-      global.LogisticTrainStops[stopID].reqestPriority = global.LogisticTrainStops[stopID].reqestPriority or 0
-      global.LogisticTrainStops[stopID].providePriority = global.LogisticTrainStops[stopID].providePriority or 0
+        -- update to 1.5.0
+        global.LogisticTrainStops[stopID].reqestPriority = global.LogisticTrainStops[stopID].reqestPriority or 0
+        global.LogisticTrainStops[stopID].providePriority = global.LogisticTrainStops[stopID].providePriority or 0
 
-      -- update to 1.7.0
-      global.LogisticTrainStops[stopID].network_id = global.LogisticTrainStops[stopID].network_id or -1 --all bits set = any network
+        -- update to 1.7.0
+        global.LogisticTrainStops[stopID].network_id = global.LogisticTrainStops[stopID].network_id or -1 --all bits set = any network
 
-      -- update to 1.8.0
-      global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().send_to_train = true
-      global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().read_from_train = true
+        -- update to 1.8.0
+        global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().send_to_train = true
+        global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().read_from_train = true
+      else
+        -- corrupted stop entities remove stop
+        removeStop(stop.entity)
+        global.LogisticTrainStops[stopID] = nil        
+      end
     end
   end
 
