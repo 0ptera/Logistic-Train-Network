@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.9.3
+Date: 23.10.2018
+  Bugfixes:
+    - fix corrupted stops in on_configuration_changed
+    - remove corrupt stops if fixing fails
+---------------------------------------------------------------------------------------------------
 Version: 1.9.2
 Date: 15.10.2018
   Bugfixes:
@@ -13,7 +19,7 @@ Date: 14.10.2018
     - added creative mode blacklisting to on_load
   Changes:
     - turned remote interface callbacks into events
-    - added interface demo to /Interface_Demo/control.lua    
+    - added interface demo to /Interface_Demo/control.lua
 ---------------------------------------------------------------------------------------------------
 Version: 1.9.0
 Date: 11.10.2018
