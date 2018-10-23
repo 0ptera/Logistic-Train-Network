@@ -140,51 +140,81 @@ local function initialize(oldVersion, newVersion)
 
   if next(global.LogisticTrainStops) then
     for stopID, stop in pairs (global.LogisticTrainStops) do
-      if stop and stop.entity and stop.entity.valid and stop.input and stop.input.valid and stop.output and stop.output.valid and stop.lampControl and stop.lampControl.valid then
-        global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or -1
+      global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or -1
 
-        -- update to 1.3.0
-        global.LogisticTrainStops[stopID].minDelivery = nil
-        global.LogisticTrainStops[stopID].ignoreMinDeliverySize = nil
-        global.LogisticTrainStops[stopID].minRequested = global.LogisticTrainStops[stopID].minRequested or 0
-        global.LogisticTrainStops[stopID].minProvided = global.LogisticTrainStops[stopID].minProvided or 0
+      -- update to 1.3.0
+      global.LogisticTrainStops[stopID].minDelivery = nil
+      global.LogisticTrainStops[stopID].ignoreMinDeliverySize = nil
+      global.LogisticTrainStops[stopID].minRequested = global.LogisticTrainStops[stopID].minRequested or 0
+      global.LogisticTrainStops[stopID].minProvided = global.LogisticTrainStops[stopID].minProvided or 0
 
-        -- update to 1.5.0
-        global.LogisticTrainStops[stopID].reqestPriority = global.LogisticTrainStops[stopID].reqestPriority or 0
-        global.LogisticTrainStops[stopID].providePriority = global.LogisticTrainStops[stopID].providePriority or 0
+      -- update to 1.5.0
+      global.LogisticTrainStops[stopID].reqestPriority = global.LogisticTrainStops[stopID].reqestPriority or 0
+      global.LogisticTrainStops[stopID].providePriority = global.LogisticTrainStops[stopID].providePriority or 0
 
-        -- update to 1.7.0
-        global.LogisticTrainStops[stopID].network_id = global.LogisticTrainStops[stopID].network_id or -1 --all bits set = any network
+      -- update to 1.7.0
+      global.LogisticTrainStops[stopID].network_id = global.LogisticTrainStops[stopID].network_id or -1 --all bits set = any network
 
-        -- update to 1.8.0
-        global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().send_to_train = true
-        global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().read_from_train = true
-      else
-        -- corrupted stop entities remove stop
-        removeStop(stop.entity)
-        global.LogisticTrainStops[stopID] = nil        
-      end
+      -- update to 1.8.0
+      global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().send_to_train = true
+      global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().read_from_train = true
     end
   end
 
 end
 
 -- run every time the mod configuration is changed to catch stops from other mods
-local function buildStopNameList()
+-- ensures global.LogisticTrainStops contains valid entities
+local function initializeTrainStops()
+  global.LogisticTrainStops = global.LogisticTrainStops or {}
   global.TrainStopNames = global.TrainStopNames or {} -- dictionary of all train stops by all mods
 
+  -- remove invalidated stops
+  for stopID, stop in pairs (global.LogisticTrainStops) do
+    if not stop then
+      log("[LTN] removing empty stop entry "..tostring(stopID) )
+      global.LogisticTrainStops[stopID] = nil
+    elseif not(stop.entity and stop.entity.valid) then
+      -- stop entity is corrupt/missing remove I/O entities
+      log("[LTN] removing corrupt stop "..tostring(stopID) )
+      if stop.input and stop.input.valid then
+        stop.input.destroy()
+      end
+      if stop.output and stop.output.valid then
+        stop.output.destroy()
+      end
+      if stop.lampControl and stop.lampControl.valid then
+        stop.lampControl.destroy()
+      end
+      global.LogisticTrainStops[stopID] = nil
+    end
+  end
+
+  -- add missing ltn stops and build stop name list
   for _, surface in pairs(game.surfaces) do
     local foundStops = surface.find_entities_filtered{type="train-stop"}
     if foundStops then
-      local missing_stop_count = 0
       for k, stop in pairs(foundStops) do
-        if stop.name == "logistic-train-stop" and not global.LogisticTrainStops[stop.unit_number] then
-          CreateStop(stop) -- recreate LTN stops missing from global.LogisticTrainStops, savegame corruption?
-          missing_stop_count = missing_stop_count +1
+
+        -- validate global.LogisticTrainStops
+        if stop.name == "logistic-train-stop" then
+          local ltn_stop = global.LogisticTrainStops[stop.unit_number]
+          if ltn_stop then
+            if not(ltn_stop.output and ltn_stop.output.valid and ltn_stop.input and ltn_stop.input.valid and ltn_stop.lampControl and ltn_stop.lampControl.valid) then
+              -- I/O entities are corrupted
+              log("[LTN] recreating corrupt stop "..tostring(stop.backer_name) )
+              global.LogisticTrainStops[stop.unit_number] = nil
+              CreateStop(stop) -- recreate to spawn missing I/O entities
+
+            end
+          else
+            log("[LTN] recreating stop missing from global.LogisticTrainStops "..tostring(stop.backer_name) )
+            CreateStop(stop) -- recreate LTN stops missing from global.LogisticTrainStops
+          end
         end
+
         AddStopName(stop.unit_number, stop.backer_name)
       end
-      log("[LTN] recreated "..tostring(missing_stop_count).." LTN stops missing from global.LogisticTrainStops")
     end
   end
 end
@@ -261,7 +291,7 @@ script.on_init(function()
     newVersion = string.format("%02d.%02d.%02d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
   end
 
-  buildStopNameList()
+  initializeTrainStops()
   initialize(oldVersion, newVersion)
   updateAllTrains()
   registerEvents()
@@ -270,7 +300,7 @@ script.on_init(function()
 end)
 
 script.on_configuration_changed(function(data)
-  buildStopNameList()
+  initializeTrainStops()
   if data and data.mod_changes[MOD_NAME] then
     -- format version string to "00.00.00"
     local oldVersion, newVersion = nil
@@ -592,8 +622,8 @@ function CreateStop(entity)
     --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y+1},{entity.position.x+3, entity.position.y+3}} }
     rot = 6
   else --invalid orientation
-    if message_level >= 1 then printmsg({"ltn-message.error-stop-orientation", entity.direction}, entity.force) end
-    if debug_log then log("(CreateStop) invalid train stop orientation "..entity.direction) end
+    if message_level >= 1 then printmsg({"ltn-message.error-stop-orientation", tostring(entity.direction)}, entity.force) end
+    if debug_log then log("(CreateStop) invalid train stop orientation "..tostring(entity.direction) ) end
     entity.destroy()
     return
   end
@@ -745,7 +775,7 @@ function removeStop(entity)
     local ghosts = entity.surface.find_entities({{entity.position.x-1.1, entity.position.y-1.1},{entity.position.x+1.1, entity.position.y+1.1}} )
     for _,ghost in pairs (ghosts) do
       if ghost.name == "logistic-train-stop-input" or ghost.name == "logistic-train-stop-output" or ghost.name == "logistic-train-stop-lamp-control" then
-        --printmsg("removing broken "..ghost.name.." at "..ghost.position.x..", "..ghost.position.y)
+        -- printmsg("removing broken "..ghost.name.." at "..ghost.position.x..", "..ghost.position.y)
         ghost.destroy()
       end
     end
