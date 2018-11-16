@@ -158,6 +158,13 @@ local function initialize(oldVersion, newVersion)
       -- update to 1.8.0
       global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().send_to_train = true
       global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().read_from_train = true
+      
+      -- update to 1.9.4       
+      stop.lampControl.teleport({stop.input.position.x, stop.input.position.y}) -- move control under lamp            
+      stop.input.disconnect_neighbour({target_entity=stop.lampControl, wire=defines.wire_type.green}) -- reconnect wires
+      stop.input.disconnect_neighbour({target_entity=stop.lampControl, wire=defines.wire_type.red})
+      stop.input.connect_neighbour({target_entity=stop.lampControl, wire=defines.wire_type.green})
+      stop.input.connect_neighbour({target_entity=stop.lampControl, wire=defines.wire_type.red})
     end
   end
 
@@ -657,19 +664,6 @@ function CreateStop(entity)
     end
   end
 
-  if lampctrl == nil then
-    lampctrl = entity.surface.create_entity
-    {
-      name = "logistic-train-stop-lamp-control",
-      position = posIn,
-      force = entity.force
-    }
-  end
-  lampctrl.operable = false -- disable gui
-  lampctrl.minable = false
-  lampctrl.destructible = false -- don't bother checking if alive
-  lampctrl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}}
-
   if input == nil then -- create new
     input = entity.surface.create_entity
     {
@@ -682,10 +676,26 @@ function CreateStop(entity)
   input.operable = false -- disable gui
   input.minable = false
   input.destructible = false -- don't bother checking if alive
+
+  if lampctrl == nil then
+    lampctrl = entity.surface.create_entity
+    {
+      name = "logistic-train-stop-lamp-control",
+      position = input.position, -- use the rounded values of actual input position
+      force = entity.force
+    }
+  end
+  lampctrl.operable = false -- disable gui
+  lampctrl.minable = false
+  lampctrl.destructible = false -- don't bother checking if alive
+  
+  -- connect lamp and control
+  lampctrl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}}    
   input.connect_neighbour({target_entity=lampctrl, wire=defines.wire_type.green})
+  input.connect_neighbour({target_entity=lampctrl, wire=defines.wire_type.red})
   input.get_or_create_control_behavior().use_colors = true
   input.get_or_create_control_behavior().circuit_condition = {condition = {comparator=">",first_signal={type="virtual",name="signal-anything"}}}
-
+  
   if output == nil then -- create new
     output = entity.surface.create_entity
     {
@@ -697,8 +707,8 @@ function CreateStop(entity)
   end
   output.operable = false -- disable gui
   output.minable = false
-  output.destructible = false -- don't bother checking if alive
-
+  output.destructible = false -- don't bother checking if alive  
+  
   -- enable reading contents and sending signals to trains
   entity.get_or_create_control_behavior().send_to_train = true
   entity.get_or_create_control_behavior().read_from_train = true
