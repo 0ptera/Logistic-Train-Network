@@ -64,7 +64,7 @@ local control_connection_points = {
   red = util.by_pixel(-3, -7),
   green = util.by_pixel(-1, 0)
 }
-  
+
 local ltn_lamp_control = copyPrototype("constant-combinator","constant-combinator","logistic-train-stop-lamp-control")
 ltn_lamp_control.icon = "__LogisticTrainNetwork__/graphics/icons/empty.png"
 ltn_lamp_control.icon_size = 32
@@ -157,7 +157,7 @@ ltn_lamp_control.activity_led_light =
   intensity = 0.0,
   size = 0,
 }
-ltn_lamp_control.circuit_wire_connection_points = 
+ltn_lamp_control.circuit_wire_connection_points =
 {
   {
     shadow = control_connection_points,
@@ -174,7 +174,7 @@ ltn_lamp_control.circuit_wire_connection_points =
   {
     shadow = control_connection_points,
     wire = control_connection_points
-  },  
+  },
 }
 
 
