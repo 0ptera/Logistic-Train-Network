@@ -60,6 +60,11 @@ ltn_stop_out.sprites = make_4way_animation_from_spritesheet(
     },
   })
 
+local control_connection_points = {
+  red = util.by_pixel(-3, -7),
+  green = util.by_pixel(-1, 0)
+}
+
 local ltn_lamp_control = copyPrototype("constant-combinator","constant-combinator","logistic-train-stop-lamp-control")
 ltn_lamp_control.icon = "__LogisticTrainNetwork__/graphics/icons/empty.png"
 ltn_lamp_control.icon_size = 32
@@ -155,53 +160,21 @@ ltn_lamp_control.activity_led_light =
 ltn_lamp_control.circuit_wire_connection_points =
 {
   {
-    shadow =
-    {
-      red = {0.734375, 0.578125},
-      green = {0.609375, 0.640625},
-    },
-    wire =
-    {
-      red = {0.40625, 0.34375},
-      green = {0.40625, 0.5},
-    }
+    shadow = control_connection_points,
+    wire = control_connection_points
   },
   {
-    shadow =
-    {
-      red = {0.734375, 0.578125},
-      green = {0.609375, 0.640625},
-    },
-    wire =
-    {
-      red = {0.40625, 0.34375},
-      green = {0.40625, 0.5},
-    }
+    shadow = control_connection_points,
+    wire = control_connection_points
   },
   {
-    shadow =
-    {
-      red = {0.734375, 0.578125},
-      green = {0.609375, 0.640625},
-    },
-    wire =
-    {
-      red = {0.40625, 0.34375},
-      green = {0.40625, 0.5},
-    }
+    shadow = control_connection_points,
+    wire = control_connection_points
   },
   {
-    shadow =
-    {
-      red = {0.734375, 0.578125},
-      green = {0.609375, 0.640625},
-    },
-    wire =
-    {
-      red = {0.40625, 0.34375},
-      green = {0.40625, 0.5},
-    }
-  }
+    shadow = control_connection_points,
+    wire = control_connection_points
+  },
 }
 
 

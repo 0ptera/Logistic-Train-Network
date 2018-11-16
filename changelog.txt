@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.9.4
+Date: 16.11.2018
+  Features:
+    - lamp colors can also be read through red wire
+    - cables from hidden combinator to lamp no longer originate in the middle of the lamp sprite
+---------------------------------------------------------------------------------------------------
 Version: 1.9.3
 Date: 23.10.2018
   Bugfixes:
