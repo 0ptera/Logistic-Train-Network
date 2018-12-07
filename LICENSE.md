@@ -14,3 +14,5 @@ Exceptions to the no modification rule include:
 
 Any further modifications, such as changing values of entities/recipes in my mods should be done externally in another mod.
 If you would like to use any extracts from this mod in your own, please talk to me about it first.
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
