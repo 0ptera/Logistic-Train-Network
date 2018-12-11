@@ -39,6 +39,7 @@ local StopIDList = {} -- stopIDs list for on_tick updates
 local stopsPerTick = 1 -- step width of StopIDList
 
 local match = string.match
+local match_string = "([^,]+),([^,]+)"
 local ceil = math.ceil
 local sort = table.sort
 
@@ -477,7 +478,7 @@ function TrainLeaves(trainID)
       if delivery.from == stop.entity.backer_name then
         -- update delivery counts to train inventory
         for item, count in pairs (delivery.shipment) do
-          local itype, iname = match(item, "([^,]+),([^,]+)")
+          local itype, iname = match(item, match_string)
           if itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname]) then
             if itype == "fluid" then
               local traincount = stoppedTrain.train.get_fluid_count(iname)
@@ -493,7 +494,7 @@ function TrainLeaves(trainID)
           end
         end
         delivery.pickupDone = true -- remove reservations from this delivery
-      elseif global.Dispatcher.Deliveries[trainID].to == stop.entity.backer_name then
+      elseif delivery.to == stop.entity.backer_name then
         -- remove completed delivery
         global.Dispatcher.Deliveries[trainID] = nil
         -- reset schedule when ltn-dispatcher-early-schedule-reset is active
@@ -1219,7 +1220,7 @@ function ProcessRequest(reqIndex, request)
   end
 
   -- find providers for requested item
-  local itype, iname = match(item, "([^,]+),([^,]+)")
+  local itype, iname = match(item, match_string)
   if not (itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname])) then
     if message_level >= 1 then printmsg({"ltn-message.error-parse-item", item}, requestForce) end
     if debug_log then log("(ProcessRequests) could not parse "..item) end
@@ -1296,7 +1297,7 @@ function ProcessRequest(reqIndex, request)
   -- find possible mergable items, fluids can't be merged in a sane way
   if itype ~= "fluid" then
     for merge_item, merge_count_req in pairs(global.Dispatcher.Requests_by_Stop[toID]) do
-      local merge_type, merge_name = match(merge_item, "([^,]+),([^,]+)")
+      local merge_type, merge_name = match(merge_item, match_string)
       if merge_type and merge_name and game.item_prototypes[merge_name] then --type=="item"?
         local merge_localname = game.item_prototypes[merge_name].localised_name
         -- get current provider for requested item
