@@ -29,6 +29,10 @@ local ControlSignals = {
 }
 
 local dispatcher_update_interval = 60
+local ltn_stop_entity_names = { -- ltn stop entity.name with I/O entity offset away from tracks in tiles
+  ["logistic-train-stop"] = 0,
+  ["ltn-port"] = 1,
+}
 
 local ErrorCodes = {
   [-1] = "white", -- not initialized
@@ -209,7 +213,8 @@ local function initializeTrainStops()
       for k, stop in pairs(foundStops) do
 
         -- validate global.LogisticTrainStops
-        if stop.name == "logistic-train-stop" then
+        -- if stop.name == "logistic-train-stop" then
+        if ltn_stop_entity_names[stop.name] then
           local ltn_stop = global.LogisticTrainStops[stop.unit_number]
           if ltn_stop then
             if not(ltn_stop.output and ltn_stop.output.valid and ltn_stop.input and ltn_stop.input.valid and ltn_stop.lampControl and ltn_stop.lampControl.valid) then
@@ -249,7 +254,8 @@ local function updateAllTrains()
     local trains = force.get_trains()
     if trains then
       for _, train in pairs(trains) do
-        if train.station and train.station.name == "logistic-train-stop" then
+        -- if train.station and train.station.name == "logistic-train-stop" then
+        if train.station and ltn_stop_entity_names[train.station.name] then
           TrainArrives(train)
         end
       end
@@ -533,7 +539,8 @@ end
 
 function OnTrainStateChanged(event)
   local train = event.train
-  if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
+  -- if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
+  if train.state == defines.train_state.wait_station and train.station ~= nil and ltn_stop_entity_names[train.station.name] then  
     TrainArrives(train)
   elseif event.old_state == defines.train_state.wait_station then -- update to 0.16
     TrainLeaves(train.id)
@@ -610,27 +617,27 @@ function CreateStop(entity)
     if debug_log then log("(CreateStop) duplicate stop unit number "..entity.unit_number) end
     return
   end
-
+  local stop_offset = ltn_stop_entity_names[entity.name]
   local posIn, posOut, rot
   --log("Stop created at "..entity.position.x.."/"..entity.position.y..", orientation "..entity.direction)
   if entity.direction == 0 then --SN
-    posIn = {entity.position.x, entity.position.y-1}
-    posOut = {entity.position.x-1, entity.position.y-1}
+    posIn = {entity.position.x + stop_offset, entity.position.y - 1}
+    posOut = {entity.position.x - 1 + stop_offset, entity.position.y - 1}
     --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y-3},{entity.position.x-1, entity.position.y+3}} }
     rot = 0
   elseif entity.direction == 2 then --WE
-    posIn = {entity.position.x, entity.position.y}
-    posOut = {entity.position.x, entity.position.y-1}
+    posIn = {entity.position.x, entity.position.y + stop_offset}
+    posOut = {entity.position.x, entity.position.y - 1 + stop_offset}
     --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y-3},{entity.position.x+3, entity.position.y-1}} }
     rot = 2
   elseif entity.direction == 4 then --NS
-    posIn = {entity.position.x-1, entity.position.y}
-    posOut = {entity.position.x, entity.position.y}
+    posIn = {entity.position.x - 1 - stop_offset, entity.position.y}
+    posOut = {entity.position.x - stop_offset, entity.position.y}
     --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x+1, entity.position.y-3},{entity.position.x+3, entity.position.y+3}} }
     rot = 4
   elseif entity.direction == 6 then --EW
-    posIn = {entity.position.x-1, entity.position.y-1}
-    posOut = {entity.position.x-1, entity.position.y}
+    posIn = {entity.position.x - 1, entity.position.y - 1 - stop_offset}
+    posOut = {entity.position.x - 1, entity.position.y - stop_offset}
     --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y+1},{entity.position.x+3, entity.position.y+3}} }
     rot = 6
   else --invalid orientation
@@ -739,7 +746,8 @@ function OnEntityCreated(event)
   local entity = event.created_entity
   if entity.type == "train-stop" then
      AddStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
-    if entity.name == "logistic-train-stop" then
+    -- if entity.name == "logistic-train-stop" then
+    if ltn_stop_entity_names[entity.name] then
       CreateStop(entity)
       if #StopIDList == 1 then
         --initialize OnTick indexes
@@ -807,7 +815,8 @@ function OnEntityRemoved(event)
     RemoveDelivery(entity.train.id)
   elseif entity.type == "train-stop" then
     RemoveStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
-    if entity.name == "logistic-train-stop" then
+    -- if entity.name == "logistic-train-stop" then
+    if ltn_stop_entity_names[entity.name] then
       removeStop(entity)
       if StopIDList == nil or #StopIDList == 0 then
         -- unregister events
@@ -830,7 +839,8 @@ function OnSurfaceRemoved(event)
     local train_stops = surface.find_entities_filtered{type = "train-stop"}
     for _, entity in pairs(train_stops) do
       RemoveStopName(entity.unit_number, entity.backer_name)
-      if entity.name == "logistic-train-stop" then
+      -- if entity.name == "logistic-train-stop" then
+      if ltn_stop_entity_names[entity.name] then
         removeStop(entity)
       end
     end
@@ -876,7 +886,8 @@ script.on_event(defines.events.on_entity_renamed, function(event)
   -- log("stoplist: "..serpent.block(global.TrainStopNames))
 
 
-  if event.entity.name == "logistic-train-stop" then
+  -- if event.entity.name == "logistic-train-stop" then
+  if ltn_stop_entity_names[event.entity.name] then
     --log("(on_entity_renamed) uid:"..uid..", old name: "..oldName..", new name: "..newName)
     renamedStop(uid, oldName, newName)
   end
