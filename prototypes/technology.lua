@@ -25,3 +25,12 @@ data:extend({
     order = "c-g-c"
   }
 })
+
+-- support for cargo ship ports
+if mods["cargo-ships"] then
+  table.insert( data.raw["technology"]["logistic-train-network"].effects,
+    {
+        type = "unlock-recipe",
+        recipe = "ltn-port"
+    } )
+end

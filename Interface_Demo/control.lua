@@ -1,4 +1,3 @@
-
 -- LTN interface event functions
 function OnStopsUpdated(event)
   if event.data then
