@@ -29,6 +29,10 @@ local ControlSignals = {
 }
 
 local dispatcher_update_interval = 60
+local ltn_stop_entity_names = { -- ltn stop entity.name with I/O entity offset away from tracks in tiles
+  ["logistic-train-stop"] = 0,
+  ["ltn-port"] = 1,
+}
 
 local ErrorCodes = {
   [-1] = "white", -- not initialized
@@ -38,9 +42,14 @@ local ErrorCodes = {
 local StopIDList = {} -- stopIDs list for on_tick updates
 local stopsPerTick = 1 -- step width of StopIDList
 
+-- cache often used strings and functions
 local match = string.match
+local match_string = "([^,]+),([^,]+)"
+local btest = bit32.btest
+local band = bit32.band
 local ceil = math.ceil
 local sort = table.sort
+
 
 ---- INITIALIZATION ----
 local on_stops_updated_event = script.generate_event_name()
@@ -204,7 +213,8 @@ local function initializeTrainStops()
       for k, stop in pairs(foundStops) do
 
         -- validate global.LogisticTrainStops
-        if stop.name == "logistic-train-stop" then
+        -- if stop.name == "logistic-train-stop" then
+        if ltn_stop_entity_names[stop.name] then
           local ltn_stop = global.LogisticTrainStops[stop.unit_number]
           if ltn_stop then
             if not(ltn_stop.output and ltn_stop.output.valid and ltn_stop.input and ltn_stop.input.valid and ltn_stop.lampControl and ltn_stop.lampControl.valid) then
@@ -244,7 +254,8 @@ local function updateAllTrains()
     local trains = force.get_trains()
     if trains then
       for _, train in pairs(trains) do
-        if train.station and train.station.name == "logistic-train-stop" then
+        -- if train.station and train.station.name == "logistic-train-stop" then
+        if train.station and ltn_stop_entity_names[train.station.name] then
           TrainArrives(train)
         end
       end
@@ -477,7 +488,7 @@ function TrainLeaves(trainID)
       if delivery.from == stop.entity.backer_name then
         -- update delivery counts to train inventory
         for item, count in pairs (delivery.shipment) do
-          local itype, iname = match(item, "([^,]+),([^,]+)")
+          local itype, iname = match(item, match_string)
           if itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname]) then
             if itype == "fluid" then
               local traincount = stoppedTrain.train.get_fluid_count(iname)
@@ -493,7 +504,7 @@ function TrainLeaves(trainID)
           end
         end
         delivery.pickupDone = true -- remove reservations from this delivery
-      elseif global.Dispatcher.Deliveries[trainID].to == stop.entity.backer_name then
+      elseif delivery.to == stop.entity.backer_name then
         -- remove completed delivery
         global.Dispatcher.Deliveries[trainID] = nil
         -- reset schedule when ltn-dispatcher-early-schedule-reset is active
@@ -528,7 +539,8 @@ end
 
 function OnTrainStateChanged(event)
   local train = event.train
-  if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
+  -- if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
+  if train.state == defines.train_state.wait_station and train.station ~= nil and ltn_stop_entity_names[train.station.name] then  
     TrainArrives(train)
   elseif event.old_state == defines.train_state.wait_station then -- update to 0.16
     TrainLeaves(train.id)
@@ -605,27 +617,27 @@ function CreateStop(entity)
     if debug_log then log("(CreateStop) duplicate stop unit number "..entity.unit_number) end
     return
   end
-
+  local stop_offset = ltn_stop_entity_names[entity.name]
   local posIn, posOut, rot
   --log("Stop created at "..entity.position.x.."/"..entity.position.y..", orientation "..entity.direction)
   if entity.direction == 0 then --SN
-    posIn = {entity.position.x, entity.position.y-1}
-    posOut = {entity.position.x-1, entity.position.y-1}
+    posIn = {entity.position.x + stop_offset, entity.position.y - 1}
+    posOut = {entity.position.x - 1 + stop_offset, entity.position.y - 1}
     --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y-3},{entity.position.x-1, entity.position.y+3}} }
     rot = 0
   elseif entity.direction == 2 then --WE
-    posIn = {entity.position.x, entity.position.y}
-    posOut = {entity.position.x, entity.position.y-1}
+    posIn = {entity.position.x, entity.position.y + stop_offset}
+    posOut = {entity.position.x, entity.position.y - 1 + stop_offset}
     --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y-3},{entity.position.x+3, entity.position.y-1}} }
     rot = 2
   elseif entity.direction == 4 then --NS
-    posIn = {entity.position.x-1, entity.position.y}
-    posOut = {entity.position.x, entity.position.y}
+    posIn = {entity.position.x - 1 - stop_offset, entity.position.y}
+    posOut = {entity.position.x - stop_offset, entity.position.y}
     --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x+1, entity.position.y-3},{entity.position.x+3, entity.position.y+3}} }
     rot = 4
   elseif entity.direction == 6 then --EW
-    posIn = {entity.position.x-1, entity.position.y-1}
-    posOut = {entity.position.x-1, entity.position.y}
+    posIn = {entity.position.x - 1, entity.position.y - 1 - stop_offset}
+    posOut = {entity.position.x - 1, entity.position.y - stop_offset}
     --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y+1},{entity.position.x+3, entity.position.y+3}} }
     rot = 6
   else --invalid orientation
@@ -734,7 +746,8 @@ function OnEntityCreated(event)
   local entity = event.created_entity
   if entity.type == "train-stop" then
      AddStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
-    if entity.name == "logistic-train-stop" then
+    -- if entity.name == "logistic-train-stop" then
+    if ltn_stop_entity_names[entity.name] then
       CreateStop(entity)
       if #StopIDList == 1 then
         --initialize OnTick indexes
@@ -802,7 +815,8 @@ function OnEntityRemoved(event)
     RemoveDelivery(entity.train.id)
   elseif entity.type == "train-stop" then
     RemoveStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
-    if entity.name == "logistic-train-stop" then
+    -- if entity.name == "logistic-train-stop" then
+    if ltn_stop_entity_names[entity.name] then
       removeStop(entity)
       if StopIDList == nil or #StopIDList == 0 then
         -- unregister events
@@ -825,7 +839,8 @@ function OnSurfaceRemoved(event)
     local train_stops = surface.find_entities_filtered{type = "train-stop"}
     for _, entity in pairs(train_stops) do
       RemoveStopName(entity.unit_number, entity.backer_name)
-      if entity.name == "logistic-train-stop" then
+      -- if entity.name == "logistic-train-stop" then
+      if ltn_stop_entity_names[entity.name] then
         removeStop(entity)
       end
     end
@@ -871,7 +886,8 @@ script.on_event(defines.events.on_entity_renamed, function(event)
   -- log("stoplist: "..serpent.block(global.TrainStopNames))
 
 
-  if event.entity.name == "logistic-train-stop" then
+  -- if event.entity.name == "logistic-train-stop" then
+  if ltn_stop_entity_names[event.entity.name] then
     --log("(on_entity_renamed) uid:"..uid..", old name: "..oldName..", new name: "..newName)
     renamedStop(uid, oldName, newName)
   end
@@ -1009,12 +1025,16 @@ function RemoveDelivery(trainID)
   global.Dispatcher.Deliveries[trainID] = nil
 end
 
--- return new schedule_record
--- itemlist = {first_signal.type, first_signal.name, constant}
+
+do -- NewScheduleRecord: returns new schedule_record
+local condition_circuit_red = {type = "circuit", compare_type = "and", condition = {comparator = "=", first_signal = {type = "virtual", name = "signal-red"}, constant = 0} }
+local condition_circuit_green = {type = "circuit", compare_type = "or", condition = {comparator = "≥", first_signal = {type = "virtual", name = "signal-green"}, constant = 1} }
+local condition_wait_empty = {type = "empty", compare_type = "and" }
+local condition_finish_loading = {type = "inactivity", compare_type = "and", ticks = 120 }
+local condition_stop_timeout = {type = "time", compare_type = "or", ticks = stop_timeout }
+
 function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverride)
   local record = {station = stationName, wait_conditions = {}}
-  local cc_stop = {comparator = "=", first_signal = {type = "virtual", name = "signal-red"}, constant = 0}
-  local cc_go = {comparator = "≥", first_signal = {type = "virtual", name = "signal-green"}, constant = 1}
 
   if condType == "item_count" then
     local waitEmpty = false
@@ -1034,38 +1054,40 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
         countOverride = itemlist[i].count - 1
       end
 
+      -- itemlist = {first_signal.type, first_signal.name, constant}
       local cond = {comparator = condComp, first_signal = {type = itemlist[i].type, name = itemlist[i].name}, constant = countOverride or itemlist[i].count}
       record.wait_conditions[#record.wait_conditions+1] = {type = condFluid or condType, compare_type = "and", condition = cond }
     end
 
     if waitEmpty then
-      record.wait_conditions[#record.wait_conditions+1] = {type = "empty", compare_type = "and" }
+      record.wait_conditions[#record.wait_conditions+1] = condition_wait_empty
     elseif finish_loading then -- let inserter/pumps finish
-      record.wait_conditions[#record.wait_conditions+1] = {type = "inactivity", compare_type = "and", ticks = 120 }
+      record.wait_conditions[#record.wait_conditions+1] = condition_finish_loading
     end
 
     -- with circuit control enabled keep trains waiting until red = 0 and force them out with green ≥ 1
     if schedule_cc then
-      record.wait_conditions[#record.wait_conditions+1] = {type = "circuit", compare_type = "and", condition = cc_stop }
-      record.wait_conditions[#record.wait_conditions+1] = {type = "circuit", compare_type = "or", condition = cc_go }
+      record.wait_conditions[#record.wait_conditions+1] = condition_circuit_red
+      record.wait_conditions[#record.wait_conditions+1] = condition_circuit_green
     end
 
     if stop_timeout > 0 then -- send stuck trains away when stop_timeout is set
-      record.wait_conditions[#record.wait_conditions+1] = {type = "time", compare_type = "or", ticks = stop_timeout }
+      record.wait_conditions[#record.wait_conditions+1] = condition_stop_timeout
       -- should it also wait for red = 0?
       if schedule_cc then
-        record.wait_conditions[#record.wait_conditions+1] = {type = "circuit", compare_type = "and", condition = cc_stop }
+        record.wait_conditions[#record.wait_conditions+1] = condition_circuit_red
       end
     end
   elseif condType == "inactivity" then
     record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp }
     -- with circuit control enabled keep trains waiting until red = 0 and force them out with green ≥ 1
     if schedule_cc then
-      record.wait_conditions[#record.wait_conditions+1] = {type = "circuit", compare_type = "and", condition = cc_stop }
-      record.wait_conditions[#record.wait_conditions+1] = {type = "circuit", compare_type = "or", condition = cc_go }
+      record.wait_conditions[#record.wait_conditions+1] = condition_circuit_red
+      record.wait_conditions[#record.wait_conditions+1] = condition_circuit_green
     end
   end
   return record
+end
 end
 
 
@@ -1084,8 +1106,8 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
   for stopID, count in pairs (providers) do
     local stop = global.LogisticTrainStops[stopID]
     if stop then
-      local matched_networks = bit32.band(requestStation.network_id, stop.network_id)
-      -- log("DEBUG: comparing 0x"..string.format("%x", bit32.band(requestStation.network_id)).." & 0x"..string.format("%x", bit32.band(stop.network_id)).." = 0x"..string.format("%x", bit32.band(matched_networks)) )
+      local matched_networks = band(requestStation.network_id, stop.network_id)
+      -- log("DEBUG: comparing 0x"..string.format("%x", band(requestStation.network_id)).." & 0x"..string.format("%x", band(stop.network_id)).." = 0x"..string.format("%x", band(matched_networks)) )
 
       if stop.entity.force.name == force.name
       and matched_networks ~= 0
@@ -1093,7 +1115,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
       and (stop.minTraincars == 0 or max_length == 0 or stop.minTraincars <= max_length)
       and (stop.maxTraincars == 0 or min_length == 0 or stop.maxTraincars >= min_length) then --check if provider can actually service trains from requester
         local activeDeliveryCount = #stop.activeDeliveries
-        local from_network_id_string = "0x"..string.format("%x", bit32.band(stop.network_id))
+        local from_network_id_string = string.format("0x%x", band(stop.network_id))
         if activeDeliveryCount and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
           if debug_log then log("found "..count.."("..tostring(stop.minProvided)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.providePriority..", active Deliveries: "..activeDeliveryCount.." minTraincars: "..stop.minTraincars..", maxTraincars: "..stop.maxTraincars..", locked Slots: "..stop.lockedSlots) end
           stations[#stations +1] = {entity = stop.entity, network_id = matched_networks, priority = stop.providePriority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
@@ -1139,17 +1161,21 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size)
   local minDistance = 0
   for trainID, trainData in pairs (global.Dispatcher.availableTrains) do
     if trainData.train.valid and trainData.train.station then
-      local depot_network_id_string = "0x"..string.format("%x", bit32.band(trainData.network_id))
-      local dest_network_id_string = "0x"..string.format("%x", bit32.band(nextStop.network_id))
+      local depot_network_id_string -- filled only when debug_log is enabled
+      local dest_network_id_string  -- filled only when debug_log is enabled
       local inventorySize = trainData.capacity - (nextStop.lockedSlots * #trainData.train.cargo_wagons) -- subtract locked slots from every cargo wagon
       if type == "fluid" then
         inventorySize = trainData.fluid_capacity
       end
 
-      if debug_log then log("checking train "..tostring(GetTrainName(trainData.train)).." ,force "..trainData.force.."/"..nextStop.entity.force.name..", network "..depot_network_id_string.."/"..dest_network_id_string..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..getStationDistance(trainData.train.station, nextStop.entity)) end
+      if debug_log then
+        depot_network_id_string = string.format("0x%x", band(trainData.network_id) )
+        dest_network_id_string = string.format("0x%x", band(nextStop.network_id) )
+        log("checking train "..tostring(GetTrainName(trainData.train)).." ,force "..trainData.force.."/"..nextStop.entity.force.name..", network "..depot_network_id_string.."/"..dest_network_id_string..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..getStationDistance(trainData.train.station, nextStop.entity))
+      end
 
       if trainData.force == nextStop.entity.force.name -- forces match
-      and bit32.btest(trainData.network_id, nextStop.network_id)
+      and btest(trainData.network_id, nextStop.network_id)
       and (minTraincars == 0 or #trainData.train.carriages >= minTraincars) and (maxTraincars == 0 or #trainData.train.carriages <= maxTraincars) then -- train length fits
         local distance = getStationDistance(trainData.train.station, nextStop.entity)
         if inventorySize >= size then
@@ -1195,7 +1221,7 @@ function ProcessRequest(reqIndex, request)
   end
 
   local to = requestStation.entity.backer_name
-  local to_network_id_string = "0x"..string.format("%x", bit32.band(requestStation.network_id))
+  local to_network_id_string = string.format("0x%x", band(requestStation.network_id))
   local item = request.item
   local count = request.count
 
@@ -1219,7 +1245,7 @@ function ProcessRequest(reqIndex, request)
   end
 
   -- find providers for requested item
-  local itype, iname = match(item, "([^,]+),([^,]+)")
+  local itype, iname = match(item, match_string)
   if not (itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname])) then
     if message_level >= 1 then printmsg({"ltn-message.error-parse-item", item}, requestForce) end
     if debug_log then log("(ProcessRequests) could not parse "..item) end
@@ -1258,7 +1284,7 @@ function ProcessRequest(reqIndex, request)
   local providerStation = providers[1] -- only one delivery/request is created so use only the best provider
   local fromID = providerStation.entity.unit_number
   local from = providerStation.entity.backer_name
-  local matched_network_id_string = "0x"..string.format("%x", bit32.band(providerStation.network_id))
+  local matched_network_id_string = string.format("0x%x", band(providerStation.network_id))
 
   if message_level >= 3 then printmsg({"ltn-message.provider-found", from, tostring(providerStation.priority), tostring(providerStation.activeDeliveryCount), providerStation.count, localname}, requestForce, true) end
   -- if debug_log then
@@ -1296,7 +1322,7 @@ function ProcessRequest(reqIndex, request)
   -- find possible mergable items, fluids can't be merged in a sane way
   if itype ~= "fluid" then
     for merge_item, merge_count_req in pairs(global.Dispatcher.Requests_by_Stop[toID]) do
-      local merge_type, merge_name = match(merge_item, "([^,]+),([^,]+)")
+      local merge_type, merge_name = match(merge_item, match_string)
       if merge_type and merge_name and game.item_prototypes[merge_name] then --type=="item"?
         local merge_localname = game.item_prototypes[merge_name].localised_name
         -- get current provider for requested item
@@ -1597,7 +1623,7 @@ function UpdateStop(stopID)
         end
       end
   end
-  local network_id_string = "0x"..string.format("%x", bit32.band(network_id))
+  local network_id_string = string.format("0x%x", band(network_id))
 
   -- log(stop.entity.backer_name.." filtered signals: "..serpent.block(signals_filtered))
   -- log("Control Signals: isDepot:"..tostring(isDepot).." network_id:"..network_id.." network_id_string:"..network_id_string

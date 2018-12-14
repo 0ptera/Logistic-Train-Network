@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.9.6
+Date: 12.12.2018
+  Features:
+    - added logistic port if cargo ships is active
+  Changes:
+    - performance tweaks
+  Bugfixes:
+    - handle layered icons of different sizes
+---------------------------------------------------------------------------------------------------
 Version: 1.9.5
 Date: 7.12.2018
   Changes:

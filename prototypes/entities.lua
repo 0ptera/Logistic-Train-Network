@@ -2,7 +2,7 @@ local ltn_stop = copyPrototype("train-stop", "train-stop", "logistic-train-stop"
 ltn_stop.icon = "__LogisticTrainNetwork__/graphics/icons/train-stop.png"
 ltn_stop.icon_size = 32
 ltn_stop.selection_box = {{-0.6, -0.6}, {0.6, 0.6}}
-ltn_stop.collision_box = {{-0.5, -0.1}, {0.5, 0.5}}
+ltn_stop.collision_box = {{-0.5, -0.1}, {0.5, 0.4}}
 
 local ltn_stop_in = copyPrototype("lamp", "small-lamp","logistic-train-stop-input")
 ltn_stop_in.icon = "__LogisticTrainNetwork__/graphics/icons/train-stop.png"
@@ -184,3 +184,13 @@ data:extend({
   ltn_stop_out,
   ltn_lamp_control
 })
+
+-- support for cargo ship ports
+if mods["cargo-ships"] then
+  ltn_port = copyPrototype("train-stop", "port", "ltn-port")
+  ltn_port.selection_box = {{-0.01, -0.6}, {1.9, 0.6}}
+  ltn_port.collision_box = {{-0.01, -0.1}, {1.9, 0.4}}
+  data:extend({
+    ltn_port
+  })
+end
