@@ -2,7 +2,7 @@
 Version: 1.9.6
 Date: 12.12.2018
   Features:
-    - added logistic port if cargo ship is active
+    - added logistic port if cargo ships is active
   Changes:
     - performance tweaks
   Bugfixes:
