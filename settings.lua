@@ -2,14 +2,23 @@ data:extend({
   {
     type = "bool-setting",
     name = "ltn-dispatcher-enabled",
-    order = "a",
+    order = "aa",
     setting_type = "runtime-global",
 		default_value = true
   },
   {
+    type = "int-setting",
+    name = "ltn-dispatcher-stops-per-tick",
+    order = "ab",
+    setting_type = "runtime-global",
+		default_value = 2,
+    minimum_value = 1,
+    maximum_value = 4294967295, -- prevent 32bit signed overflow
+  },
+  {
     type = "string-setting",
     name = "ltn-interface-console-level",
-    order = "aa",
+    order = "ac",
     setting_type = "runtime-global",
     default_value = "2: Notifications",
     allowed_values =  {"0: Off", "1: Errors & Warnings", "2: Notifications", "3: Detailed Messages"}
@@ -17,7 +26,7 @@ data:extend({
   {
     type = "int-setting",
     name = "ltn-interface-message-filter-age",
-    order = "ab",
+    order = "ad",
     setting_type = "runtime-global",
     default_value = 18000,
     minimum_value = 0,
@@ -26,7 +35,7 @@ data:extend({
 	{
     type = "bool-setting",
     name = "ltn-interface-debug-logfile",
-    order = "ac",
+    order = "ae",
     setting_type = "runtime-global",
 		default_value = false
   },

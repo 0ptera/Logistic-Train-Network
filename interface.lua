@@ -10,6 +10,7 @@ delivery_timeout = settings.global["ltn-dispatcher-delivery-timeout"].value
 finish_loading = settings.global["ltn-dispatcher-finish-loading"].value
 requester_delivery_reset = settings.global["ltn-dispatcher-requester-delivery-reset"].value
 dispatcher_enabled = settings.global["ltn-dispatcher-enabled"].value
+dispatcher_max_stops_per_tick = settings.global["ltn-dispatcher-stops-per-tick"].value
 reset_filters = settings.global["ltn-depot-reset-filters"].value
 
 
@@ -27,8 +28,14 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if event.setting == "ltn-dispatcher-finish-loading" then finish_loading = settings.global["ltn-dispatcher-finish-loading"].value end
   if event.setting == "ltn-dispatcher-requester-delivery-reset" then requester_delivery_reset = settings.global["ltn-dispatcher-requester-delivery-reset"].value end
   if event.setting == "ltn-dispatcher-enabled" then dispatcher_enabled = settings.global["ltn-dispatcher-enabled"].value end
+  if event.setting == "ltn-dispatcher-stops-per-tick" then
+    dispatcher_max_stops_per_tick = settings.global["ltn-dispatcher-stops-per-tick"].value
+    ResetUpdateInterval()
+  end
   if event.setting == "ltn-depot-reset-filters" then reset_filters = settings.global["ltn-depot-reset-filters"].value end
 end)
+
+
 
 -- write msg to console for all member of force
 -- skips over any duplicate messages (clearing filter is done in on_tick)

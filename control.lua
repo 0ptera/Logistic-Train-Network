@@ -28,7 +28,7 @@ local ControlSignals = {
   [LOCKEDSLOTS] = true,
 }
 
-local dispatcher_update_interval = 60
+-- local dispatcher_update_interval = 60
 local ltn_stop_entity_names = { -- ltn stop entity.name with I/O entity offset away from tracks in tiles
   ["logistic-train-stop"] = 0,
   ["ltn-port"] = 1,
@@ -295,7 +295,8 @@ script.on_load(function()
       end
     end
     -- log("onload StopIDList:\n"..serpent.dump(StopIDList))
-    stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1))
+    -- stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
+    ResetUpdateInterval()
   end
   registerEvents()
   log("[LTN] on_load: complete")
@@ -540,7 +541,7 @@ end
 function OnTrainStateChanged(event)
   local train = event.train
   -- if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
-  if train.state == defines.train_state.wait_station and train.station ~= nil and ltn_stop_entity_names[train.station.name] then  
+  if train.state == defines.train_state.wait_station and train.station ~= nil and ltn_stop_entity_names[train.station.name] then
     TrainArrives(train)
   elseif event.old_state == defines.train_state.wait_station then -- update to 0.16
     TrainLeaves(train.id)
@@ -740,6 +741,8 @@ function CreateStop(entity)
   }
   StopIDList[#StopIDList+1] = entity.unit_number
   UpdateStopOutput(global.LogisticTrainStops[entity.unit_number])
+  
+  ResetUpdateInterval()
 end
 
 function OnEntityCreated(event)
@@ -805,6 +808,8 @@ function removeStop(entity)
   end
 
   global.LogisticTrainStops[stopID] = nil
+  
+  ResetUpdateInterval()
 end
 
 function OnEntityRemoved(event)
@@ -905,15 +910,29 @@ script.on_event(defines.events.on_forces_merging, function(event)
 end)
 
 
+-- recalculate update interval based on stops-per-tick setting
+function ResetUpdateInterval()
+  local new_update_interval = ceil(#StopIDList/dispatcher_max_stops_per_tick) + 3 -- n-3 ticks for stop Updates, 3 ticks for dispatcher
+  if new_update_interval < 60 then  -- limit fastest possible update interval to 60 ticks
+    dispatcher_update_interval = 60
+    stopsPerTick = ceil(#StopIDList/57)
+  else
+    dispatcher_update_interval = new_update_interval
+    stopsPerTick = dispatcher_max_stops_per_tick
+  end
+  if debug_log then log("(ResetUpdateInterval) dispatcher_update_interval = "..dispatcher_update_interval..", stopsPerTick = "..stopsPerTick..", #StopIDList = "..#StopIDList) end
+end
 
 
 function OnTick(event)
   -- exit when there are no logistic train stops
-  local tick = game.tick
+  local tick = event.tick
   global.tickCount = global.tickCount or 1
 
   if global.tickCount == 1 then
-    stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-3)) -- 57 ticks for stop Updates, 3 ticks for dispatcher
+    
+    -- stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
+    -- ResetUpdateInterval()
     global.stopIdStartIndex = 1
 
     -- clear Dispatcher.Storage
@@ -986,14 +1005,14 @@ function OnTick(event)
   elseif global.tickCount == dispatcher_update_interval - 1 then
     if dispatcher_enabled then
       if debug_log then log("(OnTick) Available train capacity: "..global.Dispatcher.availableTrains_total_capacity.." item stacks, "..global.Dispatcher.availableTrains_total_fluid_capacity.. " fluid capacity.") end
-      local created_deliveries = {}
+      local created_deliveries = 0
       for reqIndex, request in pairs (global.Dispatcher.Requests) do
         local delivery = ProcessRequest(reqIndex, request)
         if delivery then
-          created_deliveries[#created_deliveries+1] = delivery
+          created_deliveries = created_deliveries + 1
         end
       end
-      if debug_log then log("(OnTick) Created "..#created_deliveries.." deliveries this cycle.") end
+      if debug_log then log("(OnTick) Created "..created_deliveries.." deliveries this interval.") end
     else
       if message_level >= 1 then printmsg({"ltn-message.warning-dispatcher-disabled"}, nil, true) end
       if debug_log then log("(OnTick) Dispatcher disabled.") end
