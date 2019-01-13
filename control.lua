@@ -619,28 +619,28 @@ function CreateStop(entity)
     return
   end
   local stop_offset = ltn_stop_entity_names[entity.name]
-  local posIn, posOut, rot
+  local posIn, posOut, rotOut, search_area
   --log("Stop created at "..entity.position.x.."/"..entity.position.y..", orientation "..entity.direction)
   if entity.direction == 0 then --SN
     posIn = {entity.position.x + stop_offset, entity.position.y - 1}
     posOut = {entity.position.x - 1 + stop_offset, entity.position.y - 1}
-    --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y-3},{entity.position.x-1, entity.position.y+3}} }
-    rot = 0
+    rotOut = 0
+    search_area = {{entity.position.x - 1 + stop_offset, entity.position.y - 1}, {entity.position.x + 1 + stop_offset, entity.position.y}}
   elseif entity.direction == 2 then --WE
     posIn = {entity.position.x, entity.position.y + stop_offset}
     posOut = {entity.position.x, entity.position.y - 1 + stop_offset}
-    --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y-3},{entity.position.x+3, entity.position.y-1}} }
-    rot = 2
+    rotOut = 2
+    search_area = {{entity.position.x, entity.position.y - 1 + stop_offset}, {entity.position.x + 1, entity.position.y + 1 + stop_offset}}
   elseif entity.direction == 4 then --NS
     posIn = {entity.position.x - 1 - stop_offset, entity.position.y}
     posOut = {entity.position.x - stop_offset, entity.position.y}
-    --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x+1, entity.position.y-3},{entity.position.x+3, entity.position.y+3}} }
-    rot = 4
+    rotOut = 4
+    search_area = {{entity.position.x - 1 - stop_offset, entity.position.y}, {entity.position.x + 1 - stop_offset, entity.position.y + 1}}
   elseif entity.direction == 6 then --EW
     posIn = {entity.position.x - 1, entity.position.y - 1 - stop_offset}
     posOut = {entity.position.x - 1, entity.position.y - stop_offset}
-    --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y+1},{entity.position.x+3, entity.position.y+3}} }
-    rot = 6
+    rotOut = 6
+   search_area = {{entity.position.x - 1, entity.position.y - 1 - stop_offset}, {entity.position.x, entity.position.y + 1 - stop_offset}}
   else --invalid orientation
     if message_level >= 1 then printmsg({"ltn-message.error-stop-orientation", tostring(entity.direction)}, entity.force) end
     if debug_log then log("(CreateStop) invalid train stop orientation "..tostring(entity.direction) ) end
@@ -649,20 +649,21 @@ function CreateStop(entity)
   end
 
   local input, output, lampctrl
-  -- revive ghosts (should preserve connections)
-  --local ghosts = entity.surface.find_entities_filtered{area={{entity.position.x-2, entity.position.y-2},{entity.position.x+2, entity.position.y+2}} , name="entity-ghost"}
-  local ghosts = entity.surface.find_entities({{entity.position.x-1.1, entity.position.y-1.1},{entity.position.x+1.1, entity.position.y+1.1}} )
+  -- handle blueprint ghosts and existing IO entities preserving circuit connections
+  local ghosts = entity.surface.find_entities(search_area)
   for _,ghost in pairs (ghosts) do
     if ghost.valid then
-      if ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-input" then
-        --printmsg("reviving ghost input at "..ghost.position.x..", "..ghost.position.y)
-        _, input = ghost.revive()
-      elseif ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-output" then
-        --printmsg("reviving ghost output at "..ghost.position.x..", "..ghost.position.y)
-        _, output = ghost.revive()
-      elseif ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-lamp-control" then
-        --printmsg("reviving ghost lamp-control at "..ghost.position.x..", "..ghost.position.y)
-        _, lampctrl = ghost.revive()
+      if ghost.name == "entity-ghost" then
+        if ghost.ghost_name == "logistic-train-stop-input" then
+          -- printmsg("reviving ghost input at "..ghost.position.x..", "..ghost.position.y)
+          _, input = ghost.revive()
+        elseif ghost.ghost_name == "logistic-train-stop-output" then
+          -- printmsg("reviving ghost output at "..ghost.position.x..", "..ghost.position.y)
+          _, output = ghost.revive()
+        elseif ghost.ghost_name == "logistic-train-stop-lamp-control" then
+          -- printmsg("reviving ghost lamp-control at "..ghost.position.x..", "..ghost.position.y)
+          _, lampctrl = ghost.revive()
+        end
       -- something has built I/O already (e.g.) Creative Mode Instant Blueprint
       elseif ghost.name == "logistic-train-stop-input" then
         input = ghost
@@ -714,7 +715,7 @@ function CreateStop(entity)
     {
       name = "logistic-train-stop-output",
       position = posOut,
-      direction = rot,
+      direction = rotOut,
       force = entity.force
     }
   end
@@ -741,7 +742,7 @@ function CreateStop(entity)
   }
   StopIDList[#StopIDList+1] = entity.unit_number
   UpdateStopOutput(global.LogisticTrainStops[entity.unit_number])
-  
+
   ResetUpdateInterval()
 end
 
@@ -813,9 +814,9 @@ function RemoveStop(stopID)
     if stop.output and stop.output.valid then stop.output.destroy() end
     if stop.lampControl and stop.lampControl.valid then stop.lampControl.destroy() end
   end
-  
+
   global.LogisticTrainStops[stopID] = nil
-  
+
   ResetUpdateInterval()
 end
 
@@ -937,7 +938,7 @@ function OnTick(event)
   global.tickCount = global.tickCount or 1
 
   if global.tickCount == 1 then
-    
+
     -- stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
     -- ResetUpdateInterval()
     global.stopIdStartIndex = 1
@@ -1851,10 +1852,10 @@ function UpdateStopOutput(trainStop)
   if not trainStop.output.valid then
     return
   end
-  
+
   local signals = {}
   local index = 0
-  
+
   if trainStop.parkedTrain and trainStop.parkedTrain.valid then
     -- get train composition
     local carriages = trainStop.parkedTrain.carriages

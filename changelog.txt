@@ -3,7 +3,11 @@ Version: 1.9.7
 Date: 13.1.2019
   Features:
     - added limit stops per tick setting
-    - remove IO entities and references when finding invalid stops at runtime
+    - invalid stops have IO entities and references removed when encountered during runtime
+    - trying to write or read from invalid stop IO entities no longer crashes
+  Bugfixes:
+    - blueprints of ltn ports preserve circuit connections
+    - placing stops next to each other no longer links the wrong IO entities
 ---------------------------------------------------------------------------------------------------
 Version: 1.9.6
 Date: 12.12.2018
