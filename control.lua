@@ -28,7 +28,7 @@ local ControlSignals = {
   [LOCKEDSLOTS] = true,
 }
 
-local dispatcher_update_interval = 60
+-- local dispatcher_update_interval = 60
 local ltn_stop_entity_names = { -- ltn stop entity.name with I/O entity offset away from tracks in tiles
   ["logistic-train-stop"] = 0,
   ["ltn-port"] = 1,
@@ -295,7 +295,8 @@ script.on_load(function()
       end
     end
     -- log("onload StopIDList:\n"..serpent.dump(StopIDList))
-    stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-1))
+    -- stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
+    ResetUpdateInterval()
   end
   registerEvents()
   log("[LTN] on_load: complete")
@@ -540,7 +541,7 @@ end
 function OnTrainStateChanged(event)
   local train = event.train
   -- if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
-  if train.state == defines.train_state.wait_station and train.station ~= nil and ltn_stop_entity_names[train.station.name] then  
+  if train.state == defines.train_state.wait_station and train.station ~= nil and ltn_stop_entity_names[train.station.name] then
     TrainArrives(train)
   elseif event.old_state == defines.train_state.wait_station then -- update to 0.16
     TrainLeaves(train.id)
@@ -618,28 +619,28 @@ function CreateStop(entity)
     return
   end
   local stop_offset = ltn_stop_entity_names[entity.name]
-  local posIn, posOut, rot
+  local posIn, posOut, rotOut, search_area
   --log("Stop created at "..entity.position.x.."/"..entity.position.y..", orientation "..entity.direction)
   if entity.direction == 0 then --SN
     posIn = {entity.position.x + stop_offset, entity.position.y - 1}
     posOut = {entity.position.x - 1 + stop_offset, entity.position.y - 1}
-    --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y-3},{entity.position.x-1, entity.position.y+3}} }
-    rot = 0
+    rotOut = 0
+    search_area = {{entity.position.x - 1 + stop_offset, entity.position.y - 1}, {entity.position.x + 1 + stop_offset, entity.position.y}}
   elseif entity.direction == 2 then --WE
     posIn = {entity.position.x, entity.position.y + stop_offset}
     posOut = {entity.position.x, entity.position.y - 1 + stop_offset}
-    --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y-3},{entity.position.x+3, entity.position.y-1}} }
-    rot = 2
+    rotOut = 2
+    search_area = {{entity.position.x, entity.position.y - 1 + stop_offset}, {entity.position.x + 1, entity.position.y + 1 + stop_offset}}
   elseif entity.direction == 4 then --NS
     posIn = {entity.position.x - 1 - stop_offset, entity.position.y}
     posOut = {entity.position.x - stop_offset, entity.position.y}
-    --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x+1, entity.position.y-3},{entity.position.x+3, entity.position.y+3}} }
-    rot = 4
+    rotOut = 4
+    search_area = {{entity.position.x - 1 - stop_offset, entity.position.y}, {entity.position.x + 1 - stop_offset, entity.position.y + 1}}
   elseif entity.direction == 6 then --EW
     posIn = {entity.position.x - 1, entity.position.y - 1 - stop_offset}
     posOut = {entity.position.x - 1, entity.position.y - stop_offset}
-    --tracks = entity.surface.find_entities_filtered{type="straight-rail", area={{entity.position.x-3, entity.position.y+1},{entity.position.x+3, entity.position.y+3}} }
-    rot = 6
+    rotOut = 6
+   search_area = {{entity.position.x - 1, entity.position.y - 1 - stop_offset}, {entity.position.x, entity.position.y + 1 - stop_offset}}
   else --invalid orientation
     if message_level >= 1 then printmsg({"ltn-message.error-stop-orientation", tostring(entity.direction)}, entity.force) end
     if debug_log then log("(CreateStop) invalid train stop orientation "..tostring(entity.direction) ) end
@@ -648,20 +649,21 @@ function CreateStop(entity)
   end
 
   local input, output, lampctrl
-  -- revive ghosts (should preserve connections)
-  --local ghosts = entity.surface.find_entities_filtered{area={{entity.position.x-2, entity.position.y-2},{entity.position.x+2, entity.position.y+2}} , name="entity-ghost"}
-  local ghosts = entity.surface.find_entities({{entity.position.x-1.1, entity.position.y-1.1},{entity.position.x+1.1, entity.position.y+1.1}} )
+  -- handle blueprint ghosts and existing IO entities preserving circuit connections
+  local ghosts = entity.surface.find_entities(search_area)
   for _,ghost in pairs (ghosts) do
     if ghost.valid then
-      if ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-input" then
-        --printmsg("reviving ghost input at "..ghost.position.x..", "..ghost.position.y)
-        _, input = ghost.revive()
-      elseif ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-output" then
-        --printmsg("reviving ghost output at "..ghost.position.x..", "..ghost.position.y)
-        _, output = ghost.revive()
-      elseif ghost.name == "entity-ghost" and ghost.ghost_name == "logistic-train-stop-lamp-control" then
-        --printmsg("reviving ghost lamp-control at "..ghost.position.x..", "..ghost.position.y)
-        _, lampctrl = ghost.revive()
+      if ghost.name == "entity-ghost" then
+        if ghost.ghost_name == "logistic-train-stop-input" then
+          -- printmsg("reviving ghost input at "..ghost.position.x..", "..ghost.position.y)
+          _, input = ghost.revive()
+        elseif ghost.ghost_name == "logistic-train-stop-output" then
+          -- printmsg("reviving ghost output at "..ghost.position.x..", "..ghost.position.y)
+          _, output = ghost.revive()
+        elseif ghost.ghost_name == "logistic-train-stop-lamp-control" then
+          -- printmsg("reviving ghost lamp-control at "..ghost.position.x..", "..ghost.position.y)
+          _, lampctrl = ghost.revive()
+        end
       -- something has built I/O already (e.g.) Creative Mode Instant Blueprint
       elseif ghost.name == "logistic-train-stop-input" then
         input = ghost
@@ -713,7 +715,7 @@ function CreateStop(entity)
     {
       name = "logistic-train-stop-output",
       position = posOut,
-      direction = rot,
+      direction = rotOut,
       force = entity.force
     }
   end
@@ -740,6 +742,8 @@ function CreateStop(entity)
   }
   StopIDList[#StopIDList+1] = entity.unit_number
   UpdateStopOutput(global.LogisticTrainStops[entity.unit_number])
+
+  ResetUpdateInterval()
 end
 
 function OnEntityCreated(event)
@@ -765,8 +769,8 @@ end
 end
 
 do -- stop removed
-function removeStop(entity)
-  local stopID = entity.unit_number
+function RemoveStop(stopID)
+  -- local stopID = entity.unit_number
   local stop = global.LogisticTrainStops[stopID]
 
   -- clean lookup tables
@@ -788,23 +792,32 @@ function removeStop(entity)
     global.Dispatcher.availableTrains[stop.parkedTrainID] = nil
   end
 
-  -- destroy IO entities
-  if stop and stop.input and stop.input.valid and stop.output and stop.output.valid and stop.lampControl and stop.lampControl.valid then
-    stop.input.destroy()
-    stop.output.destroy()
-    stop.lampControl.destroy()
-  else
-    -- destroy broken IO entities
-    local ghosts = entity.surface.find_entities({{entity.position.x-1.1, entity.position.y-1.1},{entity.position.x+1.1, entity.position.y+1.1}} )
-    for _,ghost in pairs (ghosts) do
-      if ghost.name == "logistic-train-stop-input" or ghost.name == "logistic-train-stop-output" or ghost.name == "logistic-train-stop-lamp-control" then
-        -- printmsg("removing broken "..ghost.name.." at "..ghost.position.x..", "..ghost.position.y)
-        ghost.destroy()
-      end
-    end
+  -- -- destroy IO entities
+  -- if stop and stop.input and stop.input.valid and stop.output and stop.output.valid and stop.lampControl and stop.lampControl.valid then
+    -- stop.input.destroy()
+    -- stop.output.destroy()
+    -- stop.lampControl.destroy()
+  -- else
+    -- -- destroy broken IO entities
+    -- local ghosts = entity.surface.find_entities({{entity.position.x-1.1, entity.position.y-1.1},{entity.position.x+1.1, entity.position.y+1.1}} )
+    -- for _,ghost in pairs (ghosts) do
+      -- if ghost.name == "logistic-train-stop-input" or ghost.name == "logistic-train-stop-output" or ghost.name == "logistic-train-stop-lamp-control" then
+        -- -- printmsg("removing broken "..ghost.name.." at "..ghost.position.x..", "..ghost.position.y)
+        -- ghost.destroy()
+      -- end
+    -- end
+  -- end
+
+  -- destroy IO entities, broken IO entities should be sufficiently handled in initializeTrainStops()
+  if stop then
+    if stop.input and stop.input.valid then stop.input.destroy() end
+    if stop.output and stop.output.valid then stop.output.destroy() end
+    if stop.lampControl and stop.lampControl.valid then stop.lampControl.destroy() end
   end
 
   global.LogisticTrainStops[stopID] = nil
+
+  ResetUpdateInterval()
 end
 
 function OnEntityRemoved(event)
@@ -817,7 +830,7 @@ function OnEntityRemoved(event)
     RemoveStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
     -- if entity.name == "logistic-train-stop" then
     if ltn_stop_entity_names[entity.name] then
-      removeStop(entity)
+      RemoveStop(entity.unit_number)
       if StopIDList == nil or #StopIDList == 0 then
         -- unregister events
         script.on_event(defines.events.on_tick, nil)
@@ -841,7 +854,7 @@ function OnSurfaceRemoved(event)
       RemoveStopName(entity.unit_number, entity.backer_name)
       -- if entity.name == "logistic-train-stop" then
       if ltn_stop_entity_names[entity.name] then
-        removeStop(entity)
+        RemoveStop(entity.unit_number)
       end
     end
   end
@@ -905,15 +918,29 @@ script.on_event(defines.events.on_forces_merging, function(event)
 end)
 
 
+-- recalculate update interval based on stops-per-tick setting
+function ResetUpdateInterval()
+  local new_update_interval = ceil(#StopIDList/dispatcher_max_stops_per_tick) + 3 -- n-3 ticks for stop Updates, 3 ticks for dispatcher
+  if new_update_interval < 60 then  -- limit fastest possible update interval to 60 ticks
+    dispatcher_update_interval = 60
+    stopsPerTick = ceil(#StopIDList/57)
+  else
+    dispatcher_update_interval = new_update_interval
+    stopsPerTick = dispatcher_max_stops_per_tick
+  end
+  if debug_log then log("(ResetUpdateInterval) dispatcher_update_interval = "..dispatcher_update_interval..", stopsPerTick = "..stopsPerTick..", #StopIDList = "..#StopIDList) end
+end
 
 
 function OnTick(event)
   -- exit when there are no logistic train stops
-  local tick = game.tick
+  local tick = event.tick
   global.tickCount = global.tickCount or 1
 
   if global.tickCount == 1 then
-    stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval-3)) -- 57 ticks for stop Updates, 3 ticks for dispatcher
+
+    -- stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
+    -- ResetUpdateInterval()
     global.stopIdStartIndex = 1
 
     -- clear Dispatcher.Storage
@@ -986,14 +1013,14 @@ function OnTick(event)
   elseif global.tickCount == dispatcher_update_interval - 1 then
     if dispatcher_enabled then
       if debug_log then log("(OnTick) Available train capacity: "..global.Dispatcher.availableTrains_total_capacity.." item stacks, "..global.Dispatcher.availableTrains_total_fluid_capacity.. " fluid capacity.") end
-      local created_deliveries = {}
+      local created_deliveries = 0
       for reqIndex, request in pairs (global.Dispatcher.Requests) do
         local delivery = ProcessRequest(reqIndex, request)
         if delivery then
-          created_deliveries[#created_deliveries+1] = delivery
+          created_deliveries = created_deliveries + 1
         end
       end
-      if debug_log then log("(OnTick) Created "..#created_deliveries.." deliveries this cycle.") end
+      if debug_log then log("(OnTick) Created "..created_deliveries.." deliveries this interval.") end
     else
       if message_level >= 1 then printmsg({"ltn-message.warning-dispatcher-disabled"}, nil, true) end
       if debug_log then log("(OnTick) Dispatcher disabled.") end
@@ -1492,15 +1519,10 @@ function UpdateStop(stopID)
   global.Dispatcher.Requests_by_Stop[stopID] = nil
 
   -- remove invalid stops
-  -- if not stop or not (stop.entity and stop.entity.valid) or not (stop.input and stop.input.valid) or not (stop.output and stop.output.valid) or not (stop.lampControl and stop.lampControl.valid) then
-  if not(stop and stop.entity and stop.entity.valid and stop.input and stop.input.valid and stop.output and stop.output.valid and stop.lampControl and stop.lampControl.valid) then
+  if not stop or not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
     if message_level >= 1 then printmsg({"ltn-message.error-invalid-stop", stopID}) end
-    if debug_log then log("(UpdateStop) Invalid stop: "..stopID) end
-    for i=#StopIDList, 1, -1 do
-      if StopIDList[i] == stopID then
-        table.remove(StopIDList, i)
-      end
-    end
+    if debug_log then log("(UpdateStop) Removing invalid stop: "..stopID) end
+    RemoveStop(stopID)
     return
   end
 
@@ -1817,7 +1839,7 @@ function setLamp(stopID, color, count)
   local stop = global.LogisticTrainStops[stopID]
 
   -- skip invalid stops and colors
-  if stop and ColorLookup[color] then
+  if stop and stop.lampControl.valid and ColorLookup[color] then
     stop.lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name=ColorLookup[color]}, count = count }}}
     return true
   end
@@ -1826,6 +1848,11 @@ end
 end
 
 function UpdateStopOutput(trainStop)
+  -- skip invalid stop outputs
+  if not trainStop.output.valid then
+    return
+  end
+
   local signals = {}
   local index = 0
 
