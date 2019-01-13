@@ -768,8 +768,8 @@ end
 end
 
 do -- stop removed
-function removeStop(entity)
-  local stopID = entity.unit_number
+function RemoveStop(stopID)
+  -- local stopID = entity.unit_number
   local stop = global.LogisticTrainStops[stopID]
 
   -- clean lookup tables
@@ -791,22 +791,29 @@ function removeStop(entity)
     global.Dispatcher.availableTrains[stop.parkedTrainID] = nil
   end
 
-  -- destroy IO entities
-  if stop and stop.input and stop.input.valid and stop.output and stop.output.valid and stop.lampControl and stop.lampControl.valid then
-    stop.input.destroy()
-    stop.output.destroy()
-    stop.lampControl.destroy()
-  else
-    -- destroy broken IO entities
-    local ghosts = entity.surface.find_entities({{entity.position.x-1.1, entity.position.y-1.1},{entity.position.x+1.1, entity.position.y+1.1}} )
-    for _,ghost in pairs (ghosts) do
-      if ghost.name == "logistic-train-stop-input" or ghost.name == "logistic-train-stop-output" or ghost.name == "logistic-train-stop-lamp-control" then
-        -- printmsg("removing broken "..ghost.name.." at "..ghost.position.x..", "..ghost.position.y)
-        ghost.destroy()
-      end
-    end
-  end
+  -- -- destroy IO entities
+  -- if stop and stop.input and stop.input.valid and stop.output and stop.output.valid and stop.lampControl and stop.lampControl.valid then
+    -- stop.input.destroy()
+    -- stop.output.destroy()
+    -- stop.lampControl.destroy()
+  -- else
+    -- -- destroy broken IO entities
+    -- local ghosts = entity.surface.find_entities({{entity.position.x-1.1, entity.position.y-1.1},{entity.position.x+1.1, entity.position.y+1.1}} )
+    -- for _,ghost in pairs (ghosts) do
+      -- if ghost.name == "logistic-train-stop-input" or ghost.name == "logistic-train-stop-output" or ghost.name == "logistic-train-stop-lamp-control" then
+        -- -- printmsg("removing broken "..ghost.name.." at "..ghost.position.x..", "..ghost.position.y)
+        -- ghost.destroy()
+      -- end
+    -- end
+  -- end
 
+  -- destroy IO entities, broken IO entities should be sufficiently handled in initializeTrainStops()
+  if stop then
+    if stop.input and stop.input.valid then stop.input.destroy() end
+    if stop.output and stop.output.valid then stop.output.destroy() end
+    if stop.lampControl and stop.lampControl.valid then stop.lampControl.destroy() end
+  end
+  
   global.LogisticTrainStops[stopID] = nil
   
   ResetUpdateInterval()
@@ -822,7 +829,7 @@ function OnEntityRemoved(event)
     RemoveStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
     -- if entity.name == "logistic-train-stop" then
     if ltn_stop_entity_names[entity.name] then
-      removeStop(entity)
+      RemoveStop(entity.unit_number)
       if StopIDList == nil or #StopIDList == 0 then
         -- unregister events
         script.on_event(defines.events.on_tick, nil)
@@ -846,7 +853,7 @@ function OnSurfaceRemoved(event)
       RemoveStopName(entity.unit_number, entity.backer_name)
       -- if entity.name == "logistic-train-stop" then
       if ltn_stop_entity_names[entity.name] then
-        removeStop(entity)
+        RemoveStop(entity.unit_number)
       end
     end
   end
@@ -1511,15 +1518,10 @@ function UpdateStop(stopID)
   global.Dispatcher.Requests_by_Stop[stopID] = nil
 
   -- remove invalid stops
-  -- if not stop or not (stop.entity and stop.entity.valid) or not (stop.input and stop.input.valid) or not (stop.output and stop.output.valid) or not (stop.lampControl and stop.lampControl.valid) then
-  if not(stop and stop.entity and stop.entity.valid and stop.input and stop.input.valid and stop.output and stop.output.valid and stop.lampControl and stop.lampControl.valid) then
+  if not stop or not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
     if message_level >= 1 then printmsg({"ltn-message.error-invalid-stop", stopID}) end
-    if debug_log then log("(UpdateStop) Invalid stop: "..stopID) end
-    for i=#StopIDList, 1, -1 do
-      if StopIDList[i] == stopID then
-        table.remove(StopIDList, i)
-      end
-    end
+    if debug_log then log("(UpdateStop) Removing invalid stop: "..stopID) end
+    RemoveStop(stopID)
     return
   end
 
@@ -1836,7 +1838,7 @@ function setLamp(stopID, color, count)
   local stop = global.LogisticTrainStops[stopID]
 
   -- skip invalid stops and colors
-  if stop and ColorLookup[color] then
+  if stop and stop.lampControl.valid and ColorLookup[color] then
     stop.lampControl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name=ColorLookup[color]}, count = count }}}
     return true
   end
@@ -1845,9 +1847,14 @@ end
 end
 
 function UpdateStopOutput(trainStop)
+  -- skip invalid stop outputs
+  if not trainStop.output.valid then
+    return
+  end
+  
   local signals = {}
   local index = 0
-
+  
   if trainStop.parkedTrain and trainStop.parkedTrain.valid then
     -- get train composition
     local carriages = trainStop.parkedTrain.carriages
