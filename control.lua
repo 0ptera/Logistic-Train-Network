@@ -36,7 +36,7 @@ local ltn_stop_entity_names = { -- ltn stop entity.name with I/O entity offset a
 
 local ErrorCodes = {
   [-1] = "white", -- not initialized
-  [1] = "red",    -- circuit/signal error
+  [1] = "red",    -- short circuit / disabled
   [2] = "pink",   -- duplicate stop name
 }
 local StopIDList = {} -- stopIDs list for on_tick updates
@@ -554,6 +554,13 @@ function OnTrainCreated(event)
 
   -- old train ids "leave" stops and deliveries are removed
   if event.old_train_id_1 then
+    -- copy delivery from old_1 to new, should make LTN play nice with Noxys Multidirectional Trains, probably not with Automatic Couplers
+    local delivery = global.Dispatcher.Deliveries[event.old_train_id_1]
+    if delivery then
+      delivery.train = train
+      global.Dispatcher.Deliveries[train.id] = delivery
+    end
+
     TrainLeaves(event.old_train_id_1)
     RemoveDelivery(event.old_train_id_1)
   end
@@ -561,7 +568,6 @@ function OnTrainCreated(event)
     TrainLeaves(event.old_train_id_2)
     RemoveDelivery(event.old_train_id_2)
   end
-  -- trains are always created in manual_control, they will be added in on_train_state_changed
 end
 
 end
@@ -1428,12 +1434,12 @@ function ProcessRequest(reqIndex, request)
   selectedTrain.schedule = schedule
 
 
-  local delivery = {}
+  local shipment = {}
   if debug_log then log("Creating Delivery: "..totalStacks.." stacks, "..from.." >> "..to) end
   for i=1, #loadingList do
     local loadingListItem = loadingList[i].type..","..loadingList[i].name
     -- store Delivery
-    delivery[loadingListItem] = loadingList[i].count
+    shipment[loadingListItem] = loadingList[i].count
 
     -- remove Delivery from Provided items
     global.Dispatcher.Provided[loadingListItem][fromID] = global.Dispatcher.Provided[loadingListItem][fromID] - loadingList[i].count
@@ -1444,7 +1450,7 @@ function ProcessRequest(reqIndex, request)
 
     if debug_log then log("  "..loadingListItem..", "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks ") end
   end
-  global.Dispatcher.Deliveries[train.id] = {force=requestForce, train=selectedTrain, started=game.tick, from=from, to=to, shipment=delivery}
+  global.Dispatcher.Deliveries[train.id] = {force=requestForce, train=selectedTrain, started=game.tick, from=from, to=to, shipment=shipment}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[train.id].capacity
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[train.id].fluid_capacity
   global.Dispatcher.availableTrains[train.id] = nil
