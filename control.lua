@@ -540,27 +540,24 @@ end
 
 function OnTrainStateChanged(event)
   local train = event.train
-  -- if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
   if train.state == defines.train_state.wait_station and train.station ~= nil and ltn_stop_entity_names[train.station.name] then
     TrainArrives(train)
-  elseif event.old_state == defines.train_state.wait_station then -- update to 0.16
+  elseif event.old_state == defines.train_state.wait_station then -- update to 0.16    
     TrainLeaves(train.id)
   end
 end
 
 function OnTrainCreated(event)
   -- log("(on_train_created) Train name: "..tostring(GetTrainName(event.train))..", train.id:"..tostring(event.train.id)..", .old_train_id_1:"..tostring(event.old_train_id_1)..", .old_train_id_2:"..tostring(event.old_train_id_2)..", state: "..tostring(event.train.state))
+  -- on_train_created always sets train.state to 9 manual, scripts have to set the train back to its former state.
   local train = event.train
-
-  -- old train ids "leave" stops and deliveries are removed
+  --[[ TODO:
+  make LTN play nice with Noxys Multidirectional Trains and Automatic Couplers
+    copy old_global.Dispatcher.Deliveries[old_train_id_1] to train.id and change attached train in delivery
+    update all global.LogisticTrainStops containing old_train_id_1 to train.id
+    ensure TrainLeaves is followed by TrainArrives if the train was parked at a stop
+  ]]--
   if event.old_train_id_1 then
-    -- copy delivery from old_1 to new, should make LTN play nice with Noxys Multidirectional Trains, probably not with Automatic Couplers
-    local delivery = global.Dispatcher.Deliveries[event.old_train_id_1]
-    if delivery then
-      delivery.train = train
-      global.Dispatcher.Deliveries[train.id] = delivery
-    end
-
     TrainLeaves(event.old_train_id_1)
     RemoveDelivery(event.old_train_id_1)
   end
