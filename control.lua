@@ -1546,8 +1546,8 @@ function UpdateStop(stopID)
   -- end
 
   -- reset stop parameters in case something goes wrong
-  stop.minProvided = nil
-  stop.minRequested = nil
+  stop.minProvided = min_provided
+  stop.minRequested = min_requested
   stop.minTraincars = 0
   stop.maxTraincars = 0
   stop.trainLimit = 0
