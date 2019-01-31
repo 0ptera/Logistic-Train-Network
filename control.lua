@@ -443,7 +443,7 @@ function TrainArrives(train)
 end
 
 -- update stop output when train leaves stop
--- when called from on_train_changed stoppedTrain.train will be invalid
+-- when called from on_train_created stoppedTrain.train will be invalid
 function TrainLeaves(trainID)
   local stoppedTrain = global.StoppedTrains[trainID]
   if not stoppedTrain then
@@ -539,6 +539,7 @@ end
 
 
 function OnTrainStateChanged(event)
+  -- log("(OnTrainStateChanged) Train name: "..tostring(GetTrainName(event.train))..", train.id:"..tostring(event.train.id).." stop: "..tostring(event.train.station and event.train.station.backer_name)..", state: "..tostring(event.old_state).." > "..tostring(event.train.state))
   local train = event.train
   if train.state == defines.train_state.wait_station and train.station ~= nil and ltn_stop_entity_names[train.station.name] then
     TrainArrives(train)
@@ -547,47 +548,43 @@ function OnTrainStateChanged(event)
   end
 end
 
+-- updates or removes delivery references
+local function update_delivery(old_train_id, new_train)
+  local delivery = global.Dispatcher.Deliveries[old_train_id]
+
+  -- RemoveDelivery(old_train_id)
+  for stopID, stop in pairs(global.LogisticTrainStops) do
+    for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
+      if stop.activeDeliveries[i] == old_train_id then
+        if delivery then
+          stop.activeDeliveries[i] = new_train.id -- update train id if delivery exists
+        else
+          table.remove(stop.activeDeliveries, i) -- otherwise remove entry
+        end
+      end
+    end
+  end
+
+  -- copy global.Dispatcher.Deliveries[old_train_id] to new_train.id and change attached train in delivery
+  if delivery then
+    delivery.train = new_train
+    global.Dispatcher.Deliveries[new_train.id] = delivery
+  end
+
+  TrainLeaves(old_train_id) -- removal only, new train is added when on_train_state_changed fires with wait_station afterwards
+  global.Dispatcher.Deliveries[old_train_id] = nil
+end
+
 function OnTrainCreated(event)
   -- log("(on_train_created) Train name: "..tostring(GetTrainName(event.train))..", train.id:"..tostring(event.train.id)..", .old_train_id_1:"..tostring(event.old_train_id_1)..", .old_train_id_2:"..tostring(event.old_train_id_2)..", state: "..tostring(event.train.state))
   -- on_train_created always sets train.state to 9 manual, scripts have to set the train back to its former state.
 
-  local train = event.train
   if event.old_train_id_1 then
-    TrainLeaves(event.old_train_id_1)
-    RemoveDelivery(event.old_train_id_1)
-
-    --[[ replace above 2 lines  with block for experimental support for Noxys Multidirectional Trains.
-    -- NMT uses on_tick causing arriving train status go from parked to manual and few ticks later back to parked resulting in noticable lamp flicker between blue and yellow
-    -- no way to monitor if NMT fails coupling or couples different trains
-
-    local delivery = global.Dispatcher.Deliveries[event.old_train_id_1]
-
-    -- RemoveDelivery(event.old_train_id_1)
-    for stopID, stop in pairs(global.LogisticTrainStops) do
-      for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
-        if stop.activeDeliveries[i] == event.old_train_id_1 then
-          if delivery then
-            stop.activeDeliveries[i] = train.id -- update train id if delivery exists
-          else
-            table.remove(stop.activeDeliveries, i) -- otherwise remove entry
-          end
-        end
-      end
-    end
-
-    -- copy global.Dispatcher.Deliveries[old_train_id_1] to train.id and change attached train in delivery
-    if delivery then
-      delivery.train = train
-      global.Dispatcher.Deliveries[train.id] = delivery
-    end
-
-    TrainLeaves(event.old_train_id_1)
-    global.Dispatcher.Deliveries[event.old_train_id_1] = nil
-    ]]--
+    update_delivery(event.old_train_id_1, event.train)
   end
+
   if event.old_train_id_2 then
-    TrainLeaves(event.old_train_id_2)
-    RemoveDelivery(event.old_train_id_2)
+    update_delivery(event.old_train_id_2, event.train)
   end
 end
 
@@ -1986,7 +1983,7 @@ end
 do --GetTrainCapacity(train)
 local function getCargoWagonCapacity(entity)
   local capacity = entity.prototype.get_inventory_size(defines.inventory.cargo_wagon)
-  log("(getCargoWagonCapacity) capacity for "..entity.name.." = "..capacity)
+  -- log("(getCargoWagonCapacity) capacity for "..entity.name.." = "..capacity)
   global.WagonCapacity[entity.name] = capacity
   return capacity
 end
@@ -1996,7 +1993,7 @@ local function getFluidWagonCapacity(entity)
   for n=1, #entity.fluidbox do
     capacity = capacity + entity.fluidbox.get_capacity(n)
   end
-  log("(getFluidWagonCapacity) capacity for "..entity.name.." = "..capacity)
+  -- log("(getFluidWagonCapacity) capacity for "..entity.name.." = "..capacity)
   global.WagonCapacity[entity.name] = capacity
   return capacity
 end

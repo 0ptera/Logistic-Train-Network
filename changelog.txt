@@ -1,6 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.9.8
-Date: 29.1.2019
+Date: 31.1.2019
+  Features:
+    - support for rewritten Noxys Multidirectional Trains #8
   Bugfixes:
     - thresholds of  error state stops default to global setting instead of nil
 ---------------------------------------------------------------------------------------------------

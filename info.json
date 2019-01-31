@@ -7,5 +7,5 @@
   "homepage": "https://forums.factorio.com/viewforum.php?f=214",
   "description": "Adds new train stops forming a highly configurable, fully automated logistic network.",
   "factorio_version": "0.16",
-	"dependencies": ["base >= 0.16.51", "?cargo-ships >= 0.0.22", "?creative-mode-fix >= 0.0.30"]
+	"dependencies": ["base >= 0.16.51", "?cargo-ships >= 0.0.22", "?Noxys_Multidirectional_Trains >= 0.1.0", "?creative-mode-fix >= 0.0.30"]
 }
