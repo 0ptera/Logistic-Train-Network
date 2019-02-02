@@ -82,7 +82,7 @@ local function initialize(oldVersion, newVersion)
   ---- initialize Dispatcher
   global.Dispatcher = global.Dispatcher or {}
   global.Dispatcher.UpdateInterval = global.Dispatcher.UpdateInterval or 60
-  
+
   -- set in UpdateAllTrains
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity or 0
@@ -295,9 +295,6 @@ script.on_load(function()
         StopIDList[#StopIDList+1] = stopID
       end
     end
-    -- log("onload StopIDList:\n"..serpent.dump(StopIDList))
-    -- stopsPerTick = ceil(#StopIDList/(global.Dispatcher.UpdateInterval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
-    -- ResetUpdateInterval()
   end
   registerEvents()
   log("[LTN] on_load: complete")
@@ -336,7 +333,7 @@ script.on_configuration_changed(function(data)
 
     if oldVersion and oldVersion < "01.01.01" then
       log("[LTN] Migration failed. Migrating from "..tostring(oldVersionString).." to "..tostring(newVersionString).."not supported.")
-      printmsg("[LTN] Error: Direct migration from "..tostring(oldVersionString).." to "..tostring(newVersionString).." is not supported. Oldest supported version: 1.1.1.")
+      printmsg("[LTN] Error: Direct migration from "..tostring(oldVersionString).." to "..tostring(newVersionString).." is not supported. Oldest supported version: 1.1.1")
       return
     else
       initialize(oldVersion, newVersion)
@@ -346,7 +343,7 @@ script.on_configuration_changed(function(data)
   end
   updateAllTrains()
   ResetUpdateInterval()
-  registerEvents()  
+  registerEvents()
   log("[LTN] ".. MOD_NAME.." "..tostring(game.active_mods[MOD_NAME]).." configuration updated.")
 end)
 
