@@ -3,6 +3,7 @@ Version: 1.9.8
 Date: 31.1.2019
   Features:
     - support for rewritten Noxys Multidirectional Trains #8
+    - added Dispatcher.UpdateInterval to Interval
   Bugfixes:
     - Interface reported nil thresholds for error state stops
 ---------------------------------------------------------------------------------------------------

@@ -28,7 +28,6 @@ local ControlSignals = {
   [LOCKEDSLOTS] = true,
 }
 
--- local dispatcher_update_interval = 60
 local ltn_stop_entity_names = { -- ltn stop entity.name with I/O entity offset away from tracks in tiles
   ["logistic-train-stop"] = 0,
   ["ltn-port"] = 1,
@@ -82,6 +81,8 @@ local function initialize(oldVersion, newVersion)
 
   ---- initialize Dispatcher
   global.Dispatcher = global.Dispatcher or {}
+  global.Dispatcher.UpdateInterval = global.Dispatcher.UpdateInterval or 60
+  
   -- set in UpdateAllTrains
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity or 0
@@ -295,8 +296,8 @@ script.on_load(function()
       end
     end
     -- log("onload StopIDList:\n"..serpent.dump(StopIDList))
-    -- stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
-    ResetUpdateInterval()
+    -- stopsPerTick = ceil(#StopIDList/(global.Dispatcher.UpdateInterval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
+    -- ResetUpdateInterval()
   end
   registerEvents()
   log("[LTN] on_load: complete")
@@ -313,6 +314,7 @@ script.on_init(function()
   initializeTrainStops()
   initialize(oldVersion, newVersion)
   updateAllTrains()
+  ResetUpdateInterval()
   registerEvents()
 
   log("[LTN] ".. MOD_NAME.." "..tostring(newVersionString).." initialized.")
@@ -343,7 +345,8 @@ script.on_configuration_changed(function(data)
     end
   end
   updateAllTrains()
-  registerEvents()
+  ResetUpdateInterval()
+  registerEvents()  
   log("[LTN] ".. MOD_NAME.." "..tostring(game.active_mods[MOD_NAME]).." configuration updated.")
 end)
 
@@ -946,13 +949,13 @@ end)
 function ResetUpdateInterval()
   local new_update_interval = ceil(#StopIDList/dispatcher_max_stops_per_tick) + 3 -- n-3 ticks for stop Updates, 3 ticks for dispatcher
   if new_update_interval < 60 then  -- limit fastest possible update interval to 60 ticks
-    dispatcher_update_interval = 60
+    global.Dispatcher.UpdateInterval = 60
     stopsPerTick = ceil(#StopIDList/57)
   else
-    dispatcher_update_interval = new_update_interval
+    global.Dispatcher.UpdateInterval = new_update_interval
     stopsPerTick = dispatcher_max_stops_per_tick
   end
-  if debug_log then log("(ResetUpdateInterval) dispatcher_update_interval = "..dispatcher_update_interval..", stopsPerTick = "..stopsPerTick..", #StopIDList = "..#StopIDList) end
+  if debug_log then log("(ResetUpdateInterval) global.Dispatcher.UpdateInterval = "..global.Dispatcher.UpdateInterval..", stopsPerTick = "..stopsPerTick..", #StopIDList = "..#StopIDList) end
 end
 
 
@@ -963,7 +966,7 @@ function OnTick(event)
 
   if global.tickCount == 1 then
 
-    -- stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
+    -- stopsPerTick = ceil(#StopIDList/(global.Dispatcher.UpdateInterval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
     -- ResetUpdateInterval()
     global.stopIdStartIndex = 1
 
@@ -974,7 +977,7 @@ function OnTick(event)
   end
 
   -- ticks 1 - 57: update stops
-  if global.tickCount < dispatcher_update_interval - 2 then
+  if global.tickCount < global.Dispatcher.UpdateInterval - 2 then
     local stopIdLastIndex = global.stopIdStartIndex + stopsPerTick - 1
     if stopIdLastIndex > #StopIDList then
       stopIdLastIndex = #StopIDList
@@ -987,7 +990,7 @@ function OnTick(event)
     global.stopIdStartIndex = stopIdLastIndex + 1
 
   -- tick 58: clean up and sort lists
-  elseif global.tickCount == dispatcher_update_interval - 2 then
+  elseif global.tickCount == global.Dispatcher.UpdateInterval - 2 then
     -- remove messages older than message_filter_age from messageBuffer
     for bufferedMsg, v in pairs(global.messageBuffer) do
       if (tick - v.tick) > message_filter_age then
@@ -1034,7 +1037,7 @@ function OnTick(event)
       end)
 
   -- tick 59: parse requests and dispatch trains
-  elseif global.tickCount == dispatcher_update_interval - 1 then
+  elseif global.tickCount == global.Dispatcher.UpdateInterval - 1 then
     if dispatcher_enabled then
       if debug_log then log("(OnTick) Available train capacity: "..global.Dispatcher.availableTrains_total_capacity.." item stacks, "..global.Dispatcher.availableTrains_total_fluid_capacity.. " fluid capacity.") end
       local created_deliveries = 0
