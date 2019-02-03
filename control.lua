@@ -80,8 +80,8 @@ local function initialize(oldVersion, newVersion)
 
   ---- initialize Dispatcher
   global.Dispatcher = global.Dispatcher or {}  
-  global.Dispatcher.UpdateInterval      -- set in ResetUpdateInterval()
-  global.Dispatcher.UpdateStopsPerTick  -- set in ResetUpdateInterval()
+  -- global.Dispatcher.UpdateInterval      -- set in ResetUpdateInterval()
+  -- global.Dispatcher.UpdateStopsPerTick  -- set in ResetUpdateInterval()
 
   -- set in UpdateAllTrains
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
@@ -297,8 +297,6 @@ script.on_load(function()
     end
   end
   registerEvents()
-  log("(on_load) global.Dispatcher.UpdateInterval = "..tostring(global.Dispatcher.UpdateInterval)..", global.Dispatcher.UpdateStopsPerTick = "..tostring(global.Dispatcher.UpdateStopsPerTick) )
-  log("[LTN] on_load: complete")
 end)
 
 script.on_init(function()
