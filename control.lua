@@ -39,7 +39,6 @@ local ErrorCodes = {
   [2] = "pink",   -- duplicate stop name
 }
 local StopIDList = {} -- stopIDs list for on_tick updates
-local stopsPerTick = 1 -- step width of StopIDList
 
 -- cache often used strings and functions
 local match = string.match
@@ -80,8 +79,9 @@ local function initialize(oldVersion, newVersion)
   global.StoppedTrains = global.StoppedTrains or {} -- trains stopped at LTN stops
 
   ---- initialize Dispatcher
-  global.Dispatcher = global.Dispatcher or {}
-  global.Dispatcher.UpdateInterval = global.Dispatcher.UpdateInterval or 60
+  global.Dispatcher = global.Dispatcher or {}  
+  global.Dispatcher.UpdateInterval      -- set in ResetUpdateInterval()
+  global.Dispatcher.UpdateStopsPerTick  -- set in ResetUpdateInterval()
 
   -- set in UpdateAllTrains
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
@@ -297,6 +297,7 @@ script.on_load(function()
     end
   end
   registerEvents()
+  log("(on_load) global.Dispatcher.UpdateInterval = "..tostring(global.Dispatcher.UpdateInterval)..", global.Dispatcher.UpdateStopsPerTick = "..tostring(global.Dispatcher.UpdateStopsPerTick) )
   log("[LTN] on_load: complete")
 end)
 
@@ -310,8 +311,8 @@ script.on_init(function()
 
   initializeTrainStops()
   initialize(oldVersion, newVersion)
-  updateAllTrains()
   ResetUpdateInterval()
+  updateAllTrains()
   registerEvents()
 
   log("[LTN] ".. MOD_NAME.." "..tostring(newVersionString).." initialized.")
@@ -341,8 +342,8 @@ script.on_configuration_changed(function(data)
       printmsg("[LTN] Migration from "..tostring(oldVersionString).." to "..tostring(newVersionString).." complete.")
     end
   end
-  updateAllTrains()
   ResetUpdateInterval()
+  updateAllTrains()
   registerEvents()
   log("[LTN] ".. MOD_NAME.." "..tostring(game.active_mods[MOD_NAME]).." configuration updated.")
 end)
@@ -779,7 +780,7 @@ function OnEntityCreated(event)
       CreateStop(entity)
       if #StopIDList == 1 then
         --initialize OnTick indexes
-        stopsPerTick = 1
+        -- stopsPerTick = 1
         global.stopIdStartIndex = 1
         -- register events
         script.on_event(defines.events.on_tick, OnTick)
@@ -947,12 +948,12 @@ function ResetUpdateInterval()
   local new_update_interval = ceil(#StopIDList/dispatcher_max_stops_per_tick) + 3 -- n-3 ticks for stop Updates, 3 ticks for dispatcher
   if new_update_interval < 60 then  -- limit fastest possible update interval to 60 ticks
     global.Dispatcher.UpdateInterval = 60
-    stopsPerTick = ceil(#StopIDList/57)
+    global.Dispatcher.UpdateStopsPerTick = ceil(#StopIDList/57)
   else
     global.Dispatcher.UpdateInterval = new_update_interval
-    stopsPerTick = dispatcher_max_stops_per_tick
+    global.Dispatcher.UpdateStopsPerTick = dispatcher_max_stops_per_tick
   end
-  if debug_log then log("(ResetUpdateInterval) global.Dispatcher.UpdateInterval = "..global.Dispatcher.UpdateInterval..", stopsPerTick = "..stopsPerTick..", #StopIDList = "..#StopIDList) end
+  if debug_log then log("(ResetUpdateInterval) UpdateInterval = "..global.Dispatcher.UpdateInterval..", UpdateStopsPerTick = "..global.Dispatcher.UpdateStopsPerTick..", #StopIDList = "..#StopIDList) end
 end
 
 
@@ -975,7 +976,7 @@ function OnTick(event)
 
   -- ticks 1 - 57: update stops
   if global.tickCount < global.Dispatcher.UpdateInterval - 2 then
-    local stopIdLastIndex = global.stopIdStartIndex + stopsPerTick - 1
+    local stopIdLastIndex = global.stopIdStartIndex + global.Dispatcher.UpdateStopsPerTick - 1
     if stopIdLastIndex > #StopIDList then
       stopIdLastIndex = #StopIDList
     end

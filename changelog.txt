@@ -1,8 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.9.9
+Date: 3.2.2019
+  Bugfixes:
+    - Desync from 1.9.8 changes to update interval and stop index
+---------------------------------------------------------------------------------------------------
 Version: 1.9.8
-Date: 31.1.2019
+Date: 3.2.2019
   Features:
-    - support for rewritten Noxys Multidirectional Trains #8
+    - support for rewritten Noxys Multidirectional Trains https://github.com/CyaNox/Noxys_Multidirectional_Trains/pull/8
     - added Dispatcher.UpdateInterval to Interval
   Bugfixes:
     - Interface reported nil thresholds for error state stops
