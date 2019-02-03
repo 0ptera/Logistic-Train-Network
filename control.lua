@@ -52,6 +52,7 @@ local sort = table.sort
 ---- INITIALIZATION ----
 local on_stops_updated_event = script.generate_event_name()
 local on_dispatcher_updated_event = script.generate_event_name()
+local on_delivery_complete_event = script.generate_event_name()
 
 do
 -- ltn_interface allows mods to register for update events
@@ -60,7 +61,10 @@ remote.add_interface("logistic-train-network", {
   get_on_stops_updated_event = function() return on_stops_updated_event end,
 
   -- updates for whole dispatcher
-  get_on_dispatcher_updated_event = function() return on_dispatcher_updated_event end
+  get_on_dispatcher_updated_event = function() return on_dispatcher_updated_event end,
+
+  -- update for completing deliveries
+  get_on_delivery_complete_event = function() return on_delivery_complete_event end,
 })
 
 local function initialize(oldVersion, newVersion)
@@ -79,7 +83,7 @@ local function initialize(oldVersion, newVersion)
   global.StoppedTrains = global.StoppedTrains or {} -- trains stopped at LTN stops
 
   ---- initialize Dispatcher
-  global.Dispatcher = global.Dispatcher or {}  
+  global.Dispatcher = global.Dispatcher or {}
   -- global.Dispatcher.UpdateInterval      -- set in ResetUpdateInterval()
   -- global.Dispatcher.UpdateStopsPerTick  -- set in ResetUpdateInterval()
 
@@ -505,6 +509,8 @@ function TrainLeaves(trainID)
         end
         delivery.pickupDone = true -- remove reservations from this delivery
       elseif delivery.to == stop.entity.backer_name then
+        -- fire delivery complete event with delivery
+        script.raise_event(on_delivery_complete_event, {data = delivery})
         -- remove completed delivery
         global.Dispatcher.Deliveries[trainID] = nil
         -- reset schedule when ltn-dispatcher-early-schedule-reset is active
