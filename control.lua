@@ -28,7 +28,6 @@ local ControlSignals = {
   [LOCKEDSLOTS] = true,
 }
 
--- local dispatcher_update_interval = 60
 local ltn_stop_entity_names = { -- ltn stop entity.name with I/O entity offset away from tracks in tiles
   ["logistic-train-stop"] = 0,
   ["ltn-port"] = 1,
@@ -36,7 +35,7 @@ local ltn_stop_entity_names = { -- ltn stop entity.name with I/O entity offset a
 
 local ErrorCodes = {
   [-1] = "white", -- not initialized
-  [1] = "red",    -- circuit/signal error
+  [1] = "red",    -- short circuit / disabled
   [2] = "pink",   -- duplicate stop name
 }
 local StopIDList = {} -- stopIDs list for on_tick updates
@@ -82,6 +81,8 @@ local function initialize(oldVersion, newVersion)
 
   ---- initialize Dispatcher
   global.Dispatcher = global.Dispatcher or {}
+  global.Dispatcher.UpdateInterval = global.Dispatcher.UpdateInterval or 60
+
   -- set in UpdateAllTrains
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity or 0
@@ -294,9 +295,6 @@ script.on_load(function()
         StopIDList[#StopIDList+1] = stopID
       end
     end
-    -- log("onload StopIDList:\n"..serpent.dump(StopIDList))
-    -- stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
-    ResetUpdateInterval()
   end
   registerEvents()
   log("[LTN] on_load: complete")
@@ -313,6 +311,7 @@ script.on_init(function()
   initializeTrainStops()
   initialize(oldVersion, newVersion)
   updateAllTrains()
+  ResetUpdateInterval()
   registerEvents()
 
   log("[LTN] ".. MOD_NAME.." "..tostring(newVersionString).." initialized.")
@@ -334,7 +333,7 @@ script.on_configuration_changed(function(data)
 
     if oldVersion and oldVersion < "01.01.01" then
       log("[LTN] Migration failed. Migrating from "..tostring(oldVersionString).." to "..tostring(newVersionString).."not supported.")
-      printmsg("[LTN] Error: Direct migration from "..tostring(oldVersionString).." to "..tostring(newVersionString).." is not supported. Oldest supported version: 1.1.1.")
+      printmsg("[LTN] Error: Direct migration from "..tostring(oldVersionString).." to "..tostring(newVersionString).." is not supported. Oldest supported version: 1.1.1")
       return
     else
       initialize(oldVersion, newVersion)
@@ -343,6 +342,7 @@ script.on_configuration_changed(function(data)
     end
   end
   updateAllTrains()
+  ResetUpdateInterval()
   registerEvents()
   log("[LTN] ".. MOD_NAME.." "..tostring(game.active_mods[MOD_NAME]).." configuration updated.")
 end)
@@ -443,7 +443,7 @@ function TrainArrives(train)
 end
 
 -- update stop output when train leaves stop
--- when called from on_train_changed stoppedTrain.train will be invalid
+-- when called from on_train_created stoppedTrain.train will be invalid
 function TrainLeaves(trainID)
   local stoppedTrain = global.StoppedTrains[trainID]
   if not stoppedTrain then
@@ -539,8 +539,8 @@ end
 
 
 function OnTrainStateChanged(event)
+  -- log("(OnTrainStateChanged) Train name: "..tostring(GetTrainName(event.train))..", train.id:"..tostring(event.train.id).." stop: "..tostring(event.train.station and event.train.station.backer_name)..", state: "..tostring(event.old_state).." > "..tostring(event.train.state))
   local train = event.train
-  -- if train.state == defines.train_state.wait_station and train.station ~= nil and train.station.name == "logistic-train-stop" then
   if train.state == defines.train_state.wait_station and train.station ~= nil and ltn_stop_entity_names[train.station.name] then
     TrainArrives(train)
   elseif event.old_state == defines.train_state.wait_station then -- update to 0.16
@@ -548,20 +548,44 @@ function OnTrainStateChanged(event)
   end
 end
 
+-- updates or removes delivery references
+local function update_delivery(old_train_id, new_train)
+  local delivery = global.Dispatcher.Deliveries[old_train_id]
+
+  -- RemoveDelivery(old_train_id)
+  for stopID, stop in pairs(global.LogisticTrainStops) do
+    for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
+      if stop.activeDeliveries[i] == old_train_id then
+        if delivery then
+          stop.activeDeliveries[i] = new_train.id -- update train id if delivery exists
+        else
+          table.remove(stop.activeDeliveries, i) -- otherwise remove entry
+        end
+      end
+    end
+  end
+
+  -- copy global.Dispatcher.Deliveries[old_train_id] to new_train.id and change attached train in delivery
+  if delivery then
+    delivery.train = new_train
+    global.Dispatcher.Deliveries[new_train.id] = delivery
+  end
+
+  TrainLeaves(old_train_id) -- removal only, new train is added when on_train_state_changed fires with wait_station afterwards
+  global.Dispatcher.Deliveries[old_train_id] = nil
+end
+
 function OnTrainCreated(event)
   -- log("(on_train_created) Train name: "..tostring(GetTrainName(event.train))..", train.id:"..tostring(event.train.id)..", .old_train_id_1:"..tostring(event.old_train_id_1)..", .old_train_id_2:"..tostring(event.old_train_id_2)..", state: "..tostring(event.train.state))
-  local train = event.train
+  -- on_train_created always sets train.state to 9 manual, scripts have to set the train back to its former state.
 
-  -- old train ids "leave" stops and deliveries are removed
   if event.old_train_id_1 then
-    TrainLeaves(event.old_train_id_1)
-    RemoveDelivery(event.old_train_id_1)
+    update_delivery(event.old_train_id_1, event.train)
   end
+
   if event.old_train_id_2 then
-    TrainLeaves(event.old_train_id_2)
-    RemoveDelivery(event.old_train_id_2)
+    update_delivery(event.old_train_id_2, event.train)
   end
-  -- trains are always created in manual_control, they will be added in on_train_state_changed
 end
 
 end
@@ -922,13 +946,13 @@ end)
 function ResetUpdateInterval()
   local new_update_interval = ceil(#StopIDList/dispatcher_max_stops_per_tick) + 3 -- n-3 ticks for stop Updates, 3 ticks for dispatcher
   if new_update_interval < 60 then  -- limit fastest possible update interval to 60 ticks
-    dispatcher_update_interval = 60
+    global.Dispatcher.UpdateInterval = 60
     stopsPerTick = ceil(#StopIDList/57)
   else
-    dispatcher_update_interval = new_update_interval
+    global.Dispatcher.UpdateInterval = new_update_interval
     stopsPerTick = dispatcher_max_stops_per_tick
   end
-  if debug_log then log("(ResetUpdateInterval) dispatcher_update_interval = "..dispatcher_update_interval..", stopsPerTick = "..stopsPerTick..", #StopIDList = "..#StopIDList) end
+  if debug_log then log("(ResetUpdateInterval) global.Dispatcher.UpdateInterval = "..global.Dispatcher.UpdateInterval..", stopsPerTick = "..stopsPerTick..", #StopIDList = "..#StopIDList) end
 end
 
 
@@ -939,7 +963,7 @@ function OnTick(event)
 
   if global.tickCount == 1 then
 
-    -- stopsPerTick = ceil(#StopIDList/(dispatcher_update_interval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
+    -- stopsPerTick = ceil(#StopIDList/(global.Dispatcher.UpdateInterval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
     -- ResetUpdateInterval()
     global.stopIdStartIndex = 1
 
@@ -950,7 +974,7 @@ function OnTick(event)
   end
 
   -- ticks 1 - 57: update stops
-  if global.tickCount < dispatcher_update_interval - 2 then
+  if global.tickCount < global.Dispatcher.UpdateInterval - 2 then
     local stopIdLastIndex = global.stopIdStartIndex + stopsPerTick - 1
     if stopIdLastIndex > #StopIDList then
       stopIdLastIndex = #StopIDList
@@ -963,7 +987,7 @@ function OnTick(event)
     global.stopIdStartIndex = stopIdLastIndex + 1
 
   -- tick 58: clean up and sort lists
-  elseif global.tickCount == dispatcher_update_interval - 2 then
+  elseif global.tickCount == global.Dispatcher.UpdateInterval - 2 then
     -- remove messages older than message_filter_age from messageBuffer
     for bufferedMsg, v in pairs(global.messageBuffer) do
       if (tick - v.tick) > message_filter_age then
@@ -1010,7 +1034,7 @@ function OnTick(event)
       end)
 
   -- tick 59: parse requests and dispatch trains
-  elseif global.tickCount == dispatcher_update_interval - 1 then
+  elseif global.tickCount == global.Dispatcher.UpdateInterval - 1 then
     if dispatcher_enabled then
       if debug_log then log("(OnTick) Available train capacity: "..global.Dispatcher.availableTrains_total_capacity.." item stacks, "..global.Dispatcher.availableTrains_total_fluid_capacity.. " fluid capacity.") end
       local created_deliveries = 0
@@ -1428,12 +1452,12 @@ function ProcessRequest(reqIndex, request)
   selectedTrain.schedule = schedule
 
 
-  local delivery = {}
+  local shipment = {}
   if debug_log then log("Creating Delivery: "..totalStacks.." stacks, "..from.." >> "..to) end
   for i=1, #loadingList do
     local loadingListItem = loadingList[i].type..","..loadingList[i].name
     -- store Delivery
-    delivery[loadingListItem] = loadingList[i].count
+    shipment[loadingListItem] = loadingList[i].count
 
     -- remove Delivery from Provided items
     global.Dispatcher.Provided[loadingListItem][fromID] = global.Dispatcher.Provided[loadingListItem][fromID] - loadingList[i].count
@@ -1444,7 +1468,7 @@ function ProcessRequest(reqIndex, request)
 
     if debug_log then log("  "..loadingListItem..", "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks ") end
   end
-  global.Dispatcher.Deliveries[train.id] = {force=requestForce, train=selectedTrain, started=game.tick, from=from, to=to, shipment=delivery}
+  global.Dispatcher.Deliveries[train.id] = {force=requestForce, train=selectedTrain, started=game.tick, from=from, to=to, shipment=shipment}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[train.id].capacity
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[train.id].fluid_capacity
   global.Dispatcher.availableTrains[train.id] = nil
@@ -1540,8 +1564,8 @@ function UpdateStop(stopID)
   -- end
 
   -- reset stop parameters in case something goes wrong
-  stop.minProvided = nil
-  stop.minRequested = nil
+  stop.minProvided = min_provided
+  stop.minRequested = min_requested
   stop.minTraincars = 0
   stop.maxTraincars = 0
   stop.trainLimit = 0
@@ -1959,7 +1983,7 @@ end
 do --GetTrainCapacity(train)
 local function getCargoWagonCapacity(entity)
   local capacity = entity.prototype.get_inventory_size(defines.inventory.cargo_wagon)
-  log("(getCargoWagonCapacity) capacity for "..entity.name.." = "..capacity)
+  -- log("(getCargoWagonCapacity) capacity for "..entity.name.." = "..capacity)
   global.WagonCapacity[entity.name] = capacity
   return capacity
 end
@@ -1969,7 +1993,7 @@ local function getFluidWagonCapacity(entity)
   for n=1, #entity.fluidbox do
     capacity = capacity + entity.fluidbox.get_capacity(n)
   end
-  log("(getFluidWagonCapacity) capacity for "..entity.name.." = "..capacity)
+  -- log("(getFluidWagonCapacity) capacity for "..entity.name.." = "..capacity)
   global.WagonCapacity[entity.name] = capacity
   return capacity
 end
