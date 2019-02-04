@@ -1010,7 +1010,8 @@ function OnTick(event)
       elseif tick-delivery.started > delivery_timeout then
         if message_level >= 1 then printmsg({"ltn-message.delivery-removed-timeout", delivery.from, delivery.to, tick-delivery.started}, delivery.force, false) end
         if debug_log then log("(OnTick) Delivery from "..delivery.from.." to "..delivery.to.." removed. Timed out after "..tick-delivery.started.."/"..delivery_timeout.." ticks.") end
-        RemoveDelivery(trainID)
+        RemoveDelivery(trainID)        
+        script.raise_event(on_delivery_complete_event, {data = delivery})
       else
         activeDeliveryTrains = activeDeliveryTrains.." "..trainID
       end
