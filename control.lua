@@ -41,7 +41,6 @@ local ErrorCodes = {
 local StopIDList = {} -- stopIDs list for on_tick updates
 
 -- cache often used strings and functions
-local delimiter = ","
 local match = string.match
 local match_string = "([^,]+),([^,]+)"
 local btest = bit32.btest
@@ -1024,7 +1023,7 @@ function OnTick(event)
     -- remove no longer active requests from global.Dispatcher.RequestAge[stopID]
     local newRequestAge = {}
     for _,request in pairs (global.Dispatcher.Requests) do
-      local ageIndex = request.item..delimiter..request.stopID
+      local ageIndex = request.item..","..request.stopID
       local age = global.Dispatcher.RequestAge[ageIndex]
       if age then
         newRequestAge[ageIndex] = age
@@ -1196,7 +1195,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
 end
 
 local function getStationDistance(stationA, stationB)
-  local stationPair = stationA.unit_number..delimiter..stationB.unit_number
+  local stationPair = stationA.unit_number..","..stationB.unit_number
   if global.StopDistances[stationPair] then
     --log(stationPair.." found, distance: "..global.StopDistances[stationPair])
     return global.StopDistances[stationPair]
@@ -1463,7 +1462,7 @@ function ProcessRequest(reqIndex, request)
   local shipment = {}
   if debug_log then log("Creating Delivery: "..totalStacks.." stacks, "..from.." >> "..to) end
   for i=1, #loadingList do
-    local loadingListItem = loadingList[i].type..delimiter..loadingList[i].name
+    local loadingListItem = loadingList[i].type..","..loadingList[i].name
     -- store Delivery
     shipment[loadingListItem] = loadingList[i].count
 
@@ -1472,7 +1471,7 @@ function ProcessRequest(reqIndex, request)
 
     -- remove Request and reset age
     global.Dispatcher.Requests_by_Stop[toID][loadingListItem] = nil
-    global.Dispatcher.RequestAge[loadingListItem..delimiter..toID] = nil
+    global.Dispatcher.RequestAge[loadingListItem..","..toID] = nil
 
     if debug_log then log("  "..loadingListItem..", "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks ") end
   end
@@ -1751,7 +1750,7 @@ function UpdateStop(stopID)
 
     global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
     for _,v in pairs (signals_filtered) do
-      local item = v.signal.type..delimiter..v.signal.name
+      local item = v.signal.type..","..v.signal.name
       local count = v.count
       for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
         local deliverycount = delivery.shipment[item]
@@ -1817,7 +1816,7 @@ function UpdateStop(stopID)
         end
       elseif count*-1 >= minRequested then
         count = count * -1
-        local ageIndex = item..delimiter..stopID
+        local ageIndex = item..","..stopID
         global.Dispatcher.RequestAge[ageIndex] = global.Dispatcher.RequestAge[ageIndex] or game.tick
         global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[ageIndex], stopID = stopID, priority = requestPriority, item = item, count = count}
         global.Dispatcher.Requests_by_Stop[stopID][item] = count
