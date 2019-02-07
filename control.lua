@@ -15,17 +15,17 @@ local PROVPRIORITY = "ltn-provider-priority"
 local LOCKEDSLOTS = "ltn-locked-slots"
 
 local ControlSignals = {
-  [ISDEPOT] = true,
-  [NETWORKID] = true,
-  [MINTRAINLENGTH] = true,
-  [MAXTRAINLENGTH] = true,
-  [MAXTRAINS] = true,
-  [MINREQUESTED] = true,
-  [REQPRIORITY] = true,
-  [NOWARN] = true,
-  [MINPROVIDED] = true,
-  [PROVPRIORITY] = true,
-  [LOCKEDSLOTS] = true,
+  [ISDEPOT] = {type="virtual", name=ISDEPOT},
+  [NETWORKID] = {type="virtual", name=NETWORKID},
+  [MINTRAINLENGTH] = {type="virtual", name=MINTRAINLENGTH},
+  [MAXTRAINLENGTH] = {type="virtual", name=MAXTRAINLENGTH},
+  [MAXTRAINS] = {type="virtual", name=MAXTRAINS},
+  [MINREQUESTED] = {type="virtual", name=MINREQUESTED},
+  [REQPRIORITY] = {type="virtual", name=REQPRIORITY},
+  [NOWARN] = {type="virtual", name=NOWARN},
+  [MINPROVIDED] = {type="virtual", name=MINPROVIDED},
+  [PROVPRIORITY] = {type="virtual", name=PROVPRIORITY},
+  [LOCKEDSLOTS] = {type="virtual", name=LOCKEDSLOTS},
 }
 
 local ltn_stop_entity_names = { -- ltn stop entity.name with I/O entity offset away from tracks in tiles
@@ -41,6 +41,7 @@ local ErrorCodes = {
 local StopIDList = {} -- stopIDs list for on_tick updates
 
 -- cache often used strings and functions
+local delimiter = ","
 local match = string.match
 local match_string = "([^,]+),([^,]+)"
 local btest = bit32.btest
@@ -1010,8 +1011,9 @@ function OnTick(event)
       elseif tick-delivery.started > delivery_timeout then
         if message_level >= 1 then printmsg({"ltn-message.delivery-removed-timeout", delivery.from, delivery.to, tick-delivery.started}, delivery.force, false) end
         if debug_log then log("(OnTick) Delivery from "..delivery.from.." to "..delivery.to.." removed. Timed out after "..tick-delivery.started.."/"..delivery_timeout.." ticks.") end
-        RemoveDelivery(trainID)        
+        -- fire delivery complete event with delivery
         script.raise_event(on_delivery_complete_event, {data = delivery})
+        RemoveDelivery(trainID)
       else
         activeDeliveryTrains = activeDeliveryTrains.." "..trainID
       end
@@ -1022,7 +1024,7 @@ function OnTick(event)
     -- remove no longer active requests from global.Dispatcher.RequestAge[stopID]
     local newRequestAge = {}
     for _,request in pairs (global.Dispatcher.Requests) do
-      local ageIndex = request.item..","..request.stopID
+      local ageIndex = request.item..delimiter..request.stopID
       local age = global.Dispatcher.RequestAge[ageIndex]
       if age then
         newRequestAge[ageIndex] = age
@@ -1194,7 +1196,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
 end
 
 local function getStationDistance(stationA, stationB)
-  local stationPair = stationA.unit_number..","..stationB.unit_number
+  local stationPair = stationA.unit_number..delimiter..stationB.unit_number
   if global.StopDistances[stationPair] then
     --log(stationPair.." found, distance: "..global.StopDistances[stationPair])
     return global.StopDistances[stationPair]
@@ -1461,7 +1463,7 @@ function ProcessRequest(reqIndex, request)
   local shipment = {}
   if debug_log then log("Creating Delivery: "..totalStacks.." stacks, "..from.." >> "..to) end
   for i=1, #loadingList do
-    local loadingListItem = loadingList[i].type..","..loadingList[i].name
+    local loadingListItem = loadingList[i].type..delimiter..loadingList[i].name
     -- store Delivery
     shipment[loadingListItem] = loadingList[i].count
 
@@ -1470,7 +1472,7 @@ function ProcessRequest(reqIndex, request)
 
     -- remove Request and reset age
     global.Dispatcher.Requests_by_Stop[toID][loadingListItem] = nil
-    global.Dispatcher.RequestAge[loadingListItem..","..toID] = nil
+    global.Dispatcher.RequestAge[loadingListItem..delimiter..toID] = nil
 
     if debug_log then log("  "..loadingListItem..", "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks ") end
   end
@@ -1616,20 +1618,7 @@ function UpdateStop(stopID)
     return
   end
 
-
-  -- get circuit values 0.16.24
-  local signals = stop.input.get_merged_signals()
-  local signal_dict = {}
-  -- log(stop.entity.backer_name.." signals: "..serpent.block(signals))
-
-  if not signals then
-    return
-  end
-
-  local signals_filtered = {}
-  local vr_type = "virtual"
-
-  -- initialize control signal values to defaults
+    -- initialize control signal values to defaults
   local isDepot = false
   local network_id = -1
   local minTraincars = 0
@@ -1642,10 +1631,16 @@ function UpdateStop(stopID)
   local providePriority = 0
   local lockedSlots = 0
 
+  -- get circuit values 0.16.24
+  local signals = stop.input.get_merged_signals() or {}
+  -- log(stop.entity.backer_name.." signals: "..serpent.block(signals))
+
+  local signals_filtered = {}
+  local signal_type_virtual = "virtual"
   local abs = math.abs
 
   for _,v in pairs(signals) do
-      if v.signal.type ~= vr_type then
+      if v.signal.type ~= signal_type_virtual then
         -- add item and fluid signals to new array
         signals_filtered[#signals_filtered+1] = v
       elseif ControlSignals[v.signal.name] then
@@ -1682,7 +1677,6 @@ function UpdateStop(stopID)
   -- .." minTraincars:"..minTraincars.." maxTraincars:"..maxTraincars.." trainLimit:"..trainLimit
   -- .." minRequested:"..minRequested.." requestPriority:"..requestPriority.." noWarnings:"..tostring(noWarnings)
   -- .." minProvided:"..minProvided.." providePriority:"..providePriority.." lockedSlots:"..lockedSlots)
-
 
   -- skip duplicated names on non depots
   if #global.TrainStopNames[stop.entity.backer_name] ~= 1 and not isDepot then
@@ -1756,19 +1750,19 @@ function UpdateStop(stopID)
     end
 
     global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
-    for _,sig in pairs (signals_filtered) do
-      local item = sig.signal.type..","..sig.signal.name
-      local count = sig.count
+    for _,v in pairs (signals_filtered) do
+      local item = v.signal.type..delimiter..v.signal.name
+      local count = v.count
       for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
         local deliverycount = delivery.shipment[item]
         if deliverycount then
           if stop.parkedTrain and stop.parkedTrainID == trainID then
             -- calculate items +- train inventory
             local traincount = 0
-            if sig.signal.type == "fluid" then
-              traincount = stop.parkedTrain.get_fluid_count(sig.signal.name)
+            if v.signal.type == "fluid" then
+              traincount = stop.parkedTrain.get_fluid_count(v.signal.name)
             else
-              traincount = stop.parkedTrain.get_item_count(sig.signal.name)
+              traincount = stop.parkedTrain.get_item_count(v.signal.name)
             end
 
             if delivery.to == stop.entity.backer_name then
@@ -1823,7 +1817,7 @@ function UpdateStop(stopID)
         end
       elseif count*-1 >= minRequested then
         count = count * -1
-        local ageIndex = item..","..stopID
+        local ageIndex = item..delimiter..stopID
         global.Dispatcher.RequestAge[ageIndex] = global.Dispatcher.RequestAge[ageIndex] or game.tick
         global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[ageIndex], stopID = stopID, priority = requestPriority, item = item, count = count}
         global.Dispatcher.Requests_by_Stop[stopID][item] = count
