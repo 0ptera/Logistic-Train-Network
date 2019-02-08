@@ -28,6 +28,13 @@ local ControlSignals = {
   [LOCKEDSLOTS] = {type="virtual", name=LOCKEDSLOTS},
 }
 
+local carriage_types = {
+  ["locomotive"] = true,
+  ["cargo-wagon"] = true,
+  ["fluid-wagon"] = true,
+  ["artillery-wagon"] = true,
+}
+
 local ltn_stop_entity_names = { -- ltn stop entity.name with I/O entity offset away from tracks in tiles
   ["logistic-train-stop"] = 0,
   ["ltn-port"] = 1,
@@ -855,8 +862,9 @@ end
 function OnEntityRemoved(event)
 -- script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, function(event)
   local entity = event.entity
-  if  entity.type == "locomotive" then -- single locomotives are not handled by on_train_created
+  if carriage_types[entity.type] then -- single carriages are not handled by on_train_created
     TrainLeaves(entity.train.id) -- possible overhead from using shared function
+    script.raise_event(on_delivery_failed_event, {delivery = delivery, trainID = trainID})
     RemoveDelivery(entity.train.id)
   elseif entity.type == "train-stop" then
     RemoveStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
