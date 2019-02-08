@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.9.10
+Date: 8.2.2019
+  Features:
+    - added interface on_delivery_completed_event, {delivery = delivery, trainID = trainID}
+    - added interface on_delivery_failed_event, {delivery = delivery, trainID = trainID}
+    - added Provided_by_Stop to on_dispatcher_updated_event
+  Bugfixes:
+    - mining or destroying a train carriage will once again fail attached delivery
+---------------------------------------------------------------------------------------------------
 Version: 1.9.9
 Date: 3.2.2019
   Bugfixes:
