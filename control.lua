@@ -28,13 +28,6 @@ local ControlSignals = {
   [LOCKEDSLOTS] = {type="virtual", name=LOCKEDSLOTS},
 }
 
-local carriage_types = {
-  ["locomotive"] = true,
-  ["cargo-wagon"] = true,
-  ["fluid-wagon"] = true,
-  ["artillery-wagon"] = true,
-}
-
 local ltn_stop_entity_names = { -- ltn stop entity.name with I/O entity offset away from tracks in tiles
   ["logistic-train-stop"] = 0,
   ["ltn-port"] = 1,
@@ -102,8 +95,8 @@ local function initialize(oldVersion, newVersion)
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity or 0
   global.Dispatcher.Provided = global.Dispatcher.Provided or {}                 -- dictionary [type,name] used to quickly find avaialble items
   global.Dispatcher.Provided_by_Stop = global.Dispatcher.Provided_by_Stop or {} -- dictionary [stopID]; used only by interface
-  global.Dispatcher.Requests = global.Dispatcher.Requests or {}                 -- array of requests sorted by priority and age; used to loop over all requests 
-  global.Dispatcher.Requests_by_Stop = global.Dispatcher.Requests_by_Stop or {} -- dictionary [stopID]; used to keep track of already handled requests 
+  global.Dispatcher.Requests = global.Dispatcher.Requests or {}                 -- array of requests sorted by priority and age; used to loop over all requests
+  global.Dispatcher.Requests_by_Stop = global.Dispatcher.Requests_by_Stop or {} -- dictionary [stopID]; used to keep track of already handled requests
   global.Dispatcher.RequestAge = global.Dispatcher.RequestAge or {}
   global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
 
@@ -458,14 +451,7 @@ end
 -- update stop output when train leaves stop
 -- when called from on_train_created stoppedTrain.train will be invalid
 function TrainLeaves(trainID)
-  local stoppedTrain = global.StoppedTrains[trainID]
-  if not stoppedTrain then
-    -- train wasn't stopped at ltn stop
-    if debug_log then log("(TrainLeaves) train.id:"..tostring(trainID).." wasn't found in global.StoppedTrains") end
-    -- log(serpent.block(global.StoppedTrains) )
-    return
-  end
-
+  local stoppedTrain = global.StoppedTrains[trainID] -- checked before every call of TrainLeaves
   local stopID = stoppedTrain.stopID
   local stop = global.LogisticTrainStops[stopID]
   if not stop then
@@ -522,7 +508,7 @@ function TrainLeaves(trainID)
         -- signal completed delivery and remove it
         script.raise_event(on_delivery_completed_event, {delivery = delivery, trainID = trainID})
         global.Dispatcher.Deliveries[trainID] = nil
-        
+
         -- reset schedule when ltn-dispatcher-early-schedule-reset is active
         if requester_delivery_reset then
           -- RemoveDelivery(trainID) -- make sure stop counters are reset
@@ -558,7 +544,7 @@ function OnTrainStateChanged(event)
   local train = event.train
   if train.state == defines.train_state.wait_station and train.station ~= nil and ltn_stop_entity_names[train.station.name] then
     TrainArrives(train)
-  elseif event.old_state == defines.train_state.wait_station then -- update to 0.16
+  elseif event.old_state == defines.train_state.wait_station and global.StoppedTrains[train.id] then -- update to 0.16
     TrainLeaves(train.id)
   end
 end
@@ -586,7 +572,9 @@ local function update_delivery(old_train_id, new_train)
     global.Dispatcher.Deliveries[new_train.id] = delivery
   end
 
-  TrainLeaves(old_train_id) -- removal only, new train is added when on_train_state_changed fires with wait_station afterwards
+  if global.StoppedTrains[old_train_id] then
+    TrainLeaves(old_train_id) -- removal only, new train is added when on_train_state_changed fires with wait_station afterwards
+  end
   global.Dispatcher.Deliveries[old_train_id] = nil
 end
 
@@ -862,10 +850,20 @@ end
 function OnEntityRemoved(event)
 -- script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, function(event)
   local entity = event.entity
-  if carriage_types[entity.type] then -- single carriages are not handled by on_train_created
-    TrainLeaves(entity.train.id) -- possible overhead from using shared function
-    script.raise_event(on_delivery_failed_event, {delivery = delivery, trainID = trainID})
-    RemoveDelivery(entity.train.id)
+  if entity.train then
+    local trainID = entity.train.id
+    -- remove from stop if parked
+    if global.StoppedTrains[trainID] then
+      TrainLeaves(trainID)
+    end
+    -- removing any carriage fails a delivery
+    -- otherwise I'd have to handle splitting and merging a delivery across train parts
+    local delivery = global.Dispatcher.Deliveries[trainID]
+    if delivery then
+      script.raise_event(on_delivery_failed_event, {delivery = global.Dispatcher.Deliveries[trainID], trainID = trainID})
+      RemoveDelivery(trainID)
+    end
+
   elseif entity.type == "train-stop" then
     RemoveStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
     -- if entity.name == "logistic-train-stop" then
@@ -987,7 +985,7 @@ function OnTick(event)
     global.Dispatcher.Provided = {}
     global.Dispatcher.Requests = {}
     global.Dispatcher.Provided_by_Stop = {}
-    global.Dispatcher.Requests_by_Stop = {}    
+    global.Dispatcher.Requests_by_Stop = {}
   end
 
   -- ticks 1 - 57: update stops
@@ -1018,13 +1016,13 @@ function OnTick(event)
       if not(delivery.train and delivery.train.valid) then
         if message_level >= 1 then printmsg({"ltn-message.delivery-removed-train-invalid", delivery.from, delivery.to}, delivery.force, false) end
         if debug_log then log("(OnTick) Delivery from "..delivery.from.." to "..delivery.to.." removed. Train no longer valid.") end
-        
+
         script.raise_event(on_delivery_failed_event, {delivery = delivery, trainID = trainID})
         RemoveDelivery(trainID)
       elseif tick-delivery.started > delivery_timeout then
         if message_level >= 1 then printmsg({"ltn-message.delivery-removed-timeout", delivery.from, delivery.to, tick-delivery.started}, delivery.force, false) end
         if debug_log then log("(OnTick) Delivery from "..delivery.from.." to "..delivery.to.." removed. Timed out after "..tick-delivery.started.."/"..delivery_timeout.." ticks.") end
-        
+
         script.raise_event(on_delivery_failed_event, {delivery = delivery, trainID = trainID})
         RemoveDelivery(trainID)
       else
@@ -1091,6 +1089,11 @@ function RemoveDelivery(trainID)
     for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
       if stop.activeDeliveries[i] == trainID then
         table.remove(stop.activeDeliveries, i)
+        if #stop.activeDeliveries > 0 then
+          setLamp(stopID, "yellow", #stop.activeDeliveries)
+        else
+          setLamp(stopID, "green", 1)
+        end
       end
     end
   end
@@ -1764,7 +1767,7 @@ function UpdateStop(stopID)
 
     global.Dispatcher.Provided_by_Stop[stopID] = {} -- Provided_by_Stop = {[stopID], {[item], count} }
     global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
-    
+
     for _,v in pairs (signals_filtered) do
       local item = v.signal.type..","..v.signal.name
       local count = v.count
