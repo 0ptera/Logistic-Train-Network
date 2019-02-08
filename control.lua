@@ -1648,7 +1648,9 @@ function UpdateStop(stopID)
   local lockedSlots = 0
 
   -- get circuit values 0.16.24
-  local signals = stop.input.get_merged_signals() or {}
+  local signals = stop.input.get_merged_signals()
+  if not signals then return end -- either lamp and lampctrl are not connected or lampctrl has no output signal
+  
   -- log(stop.entity.backer_name.." signals: "..serpent.block(signals))
 
   local signals_filtered = {}
