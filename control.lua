@@ -93,9 +93,10 @@ local function initialize(oldVersion, newVersion)
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity or 0
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity or 0
-  global.Dispatcher.Provided = global.Dispatcher.Provided or {}
-  global.Dispatcher.Requests = global.Dispatcher.Requests or {}
-  global.Dispatcher.Requests_by_Stop = global.Dispatcher.Requests_by_Stop or {}
+  global.Dispatcher.Provided = global.Dispatcher.Provided or {}                 -- dictionary [type,name] used to quickly find avaialble items
+  global.Dispatcher.Provided_by_Stop = global.Dispatcher.Provided_by_Stop or {} -- dictionary [stopID]; used only by interface
+  global.Dispatcher.Requests = global.Dispatcher.Requests or {}                 -- array of requests sorted by priority and age; used to loop over all requests 
+  global.Dispatcher.Requests_by_Stop = global.Dispatcher.Requests_by_Stop or {} -- dictionary [stopID]; used to keep track of already handled requests 
   global.Dispatcher.RequestAge = global.Dispatcher.RequestAge or {}
   global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
 
@@ -977,7 +978,8 @@ function OnTick(event)
     -- clear Dispatcher.Storage
     global.Dispatcher.Provided = {}
     global.Dispatcher.Requests = {}
-    global.Dispatcher.Requests_by_Stop = {}
+    global.Dispatcher.Provided_by_Stop = {}
+    global.Dispatcher.Requests_by_Stop = {}    
   end
 
   -- ticks 1 - 57: update stops
@@ -1752,7 +1754,9 @@ function UpdateStop(stopID)
       remove_available_train(stop.parkedTrainID)
     end
 
+    global.Dispatcher.Provided_by_Stop[stopID] = {} -- Provided_by_Stop = {[stopID], {[item], count} }
     global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
+    
     for _,v in pairs (signals_filtered) do
       local item = v.signal.type..","..v.signal.name
       local count = v.count
@@ -1811,6 +1815,7 @@ function UpdateStop(stopID)
         local provided = global.Dispatcher.Provided[item] or {}
         provided[stopID] = count
         global.Dispatcher.Provided[item] = provided
+        global.Dispatcher.Provided_by_Stop[stopID][item] = count
         if debug_log then
           local trainsEnRoute = "";
           for k,v in pairs(stop.activeDeliveries) do
