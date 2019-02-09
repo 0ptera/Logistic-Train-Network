@@ -553,7 +553,7 @@ end
 local function update_delivery(old_train_id, new_train)
   local delivery = global.Dispatcher.Deliveries[old_train_id]
 
-  -- RemoveDelivery(old_train_id)
+  -- expanded RemoveDelivery(old_train_id) to also update
   for stopID, stop in pairs(global.LogisticTrainStops) do
     for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
       if stop.activeDeliveries[i] == old_train_id then
@@ -561,6 +561,11 @@ local function update_delivery(old_train_id, new_train)
           stop.activeDeliveries[i] = new_train.id -- update train id if delivery exists
         else
           table.remove(stop.activeDeliveries, i) -- otherwise remove entry
+          if #stop.activeDeliveries > 0 then
+            setLamp(stopID, "yellow", #stop.activeDeliveries)
+          else
+            setLamp(stopID, "green", 1)
+          end
         end
       end
     end
@@ -1650,7 +1655,7 @@ function UpdateStop(stopID)
   -- get circuit values 0.16.24
   local signals = stop.input.get_merged_signals()
   if not signals then return end -- either lamp and lampctrl are not connected or lampctrl has no output signal
-  
+
   -- log(stop.entity.backer_name.." signals: "..serpent.block(signals))
 
   local signals_filtered = {}
