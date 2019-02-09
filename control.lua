@@ -764,13 +764,21 @@ function CreateStop(entity)
     input = input,
     output = output,
     lampControl = lampctrl,
-    isDepot = false,
-    network_id = -1,         --any network
-    trainLimit = 0,
+    parkedTrain = nil,
+    parkedTrainID = nil,
     activeDeliveries = {},   --delivery IDs to/from stop
     errorCode = -1,          --key to errorCodes table
-    parkedTrain = nil,
-    parkedTrainID = nil
+    isDepot = false,
+    network_id = -1,
+    minTraincars = 0,
+    maxTraincars = 0,
+    trainLimit = 0,
+    minRequested = min_requested,
+    requestPriority = 0,
+    noWarnings = false,
+    minProvided = min_provided,
+    providePriority = 0,
+    lockedSlots = 0,
   }
   StopIDList[#StopIDList+1] = entity.unit_number
   UpdateStopOutput(global.LogisticTrainStops[entity.unit_number])
@@ -1593,14 +1601,15 @@ function UpdateStop(stopID)
   -- end
 
   -- reset stop parameters in case something goes wrong
-  stop.minProvided = min_provided
-  stop.minRequested = min_requested
   stop.minTraincars = 0
   stop.maxTraincars = 0
   stop.trainLimit = 0
+  stop.minRequested = min_requested
+  stop.requestPriority = 0
+  stop.noWarnings = false
+  stop.minProvided = min_provided
   stop.providePriority = 0
   stop.lockedSlots = 0
-  stop.noWarnings = 0
 
   -- reject any stop not in name list
   if not global.TrainStopNames[stop.entity.backer_name] then
