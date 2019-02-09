@@ -1772,8 +1772,8 @@ function UpdateStop(stopID)
       remove_available_train(stop.parkedTrainID)
     end
 
-    global.Dispatcher.Provided_by_Stop[stopID] = {} -- Provided_by_Stop = {[stopID], {[item], count} }
-    global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
+    -- global.Dispatcher.Provided_by_Stop[stopID] = {} -- Provided_by_Stop = {[stopID], {[item], count} }
+    -- global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
 
     for _,v in pairs (signals_filtered) do
       local item = v.signal.type..","..v.signal.name
@@ -1833,6 +1833,7 @@ function UpdateStop(stopID)
         local provided = global.Dispatcher.Provided[item] or {}
         provided[stopID] = count
         global.Dispatcher.Provided[item] = provided
+        global.Dispatcher.Provided_by_Stop[stopID] = global.Dispatcher.Provided_by_Stop[stopID] or {}
         global.Dispatcher.Provided_by_Stop[stopID][item] = count
         if debug_log then
           local trainsEnRoute = "";
@@ -1846,6 +1847,7 @@ function UpdateStop(stopID)
         local ageIndex = item..","..stopID
         global.Dispatcher.RequestAge[ageIndex] = global.Dispatcher.RequestAge[ageIndex] or game.tick
         global.Dispatcher.Requests[#global.Dispatcher.Requests+1] = {age = global.Dispatcher.RequestAge[ageIndex], stopID = stopID, priority = requestPriority, item = item, count = count}
+        global.Dispatcher.Requests_by_Stop[stopID] = global.Dispatcher.Requests_by_Stop[stopID] or {}
         global.Dispatcher.Requests_by_Stop[stopID][item] = count
         if debug_log then
           local trainsEnRoute = "";
