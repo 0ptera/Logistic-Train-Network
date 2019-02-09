@@ -1255,7 +1255,7 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size)
       end
 
       if trainData.force == nextStop.entity.force.name -- forces match
-      and btest(trainData.network_id, nextStop.network_id)
+      and btest(trainData.network_id, nextStop.network_id) -- depot is in the same network as requester and provider
       and (minTraincars == 0 or #trainData.train.carriages >= minTraincars) and (maxTraincars == 0 or #trainData.train.carriages <= maxTraincars) then -- train length fits
         local distance = getStationDistance(trainData.train.station, nextStop.entity)
         if inventorySize >= size then
@@ -1497,7 +1497,7 @@ function ProcessRequest(reqIndex, request)
 
     if debug_log then log("  "..loadingListItem..", "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks ") end
   end
-  global.Dispatcher.Deliveries[train.id] = {force=requestForce, train=selectedTrain, started=game.tick, from=from, to=to, shipment=shipment}
+  global.Dispatcher.Deliveries[train.id] = {force=requestForce, train=selectedTrain, started=game.tick, from=from, to=to, networkID=providerStation.network_id, shipment=shipment}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[train.id].capacity
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[train.id].fluid_capacity
   global.Dispatcher.availableTrains[train.id] = nil
@@ -1830,9 +1830,8 @@ function UpdateStop(stopID)
       -- Providers are used when above Provider Threshold
       -- Requests are handled when above Requester Threshold
       if count >= minProvided then
-        local provided = global.Dispatcher.Provided[item] or {}
-        provided[stopID] = count
-        global.Dispatcher.Provided[item] = provided
+        global.Dispatcher.Provided[item] = global.Dispatcher.Provided[item] or {}
+        global.Dispatcher.Provided[item][stopID] = count
         global.Dispatcher.Provided_by_Stop[stopID] = global.Dispatcher.Provided_by_Stop[stopID] or {}
         global.Dispatcher.Provided_by_Stop[stopID][item] = count
         if debug_log then
