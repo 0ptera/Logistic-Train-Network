@@ -7,6 +7,7 @@ Date: 8.2.2019
     - added Provided_by_Stop to on_dispatcher_updated_event
   Bugfixes:
     - mining or destroying a train carriage will once again fail attached delivery
+    - Interface Stop data requestPriority always returned 0
 ---------------------------------------------------------------------------------------------------
 Version: 1.9.9
 Date: 3.2.2019
