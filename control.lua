@@ -166,7 +166,7 @@ local function initialize(oldVersion, newVersion)
       global.LogisticTrainStops[stopID].minProvided = global.LogisticTrainStops[stopID].minProvided or 0
 
       -- update to 1.5.0
-      global.LogisticTrainStops[stopID].reqestPriority = global.LogisticTrainStops[stopID].reqestPriority or 0
+      global.LogisticTrainStops[stopID].requestPriority = global.LogisticTrainStops[stopID].requestPriority or 0
       global.LogisticTrainStops[stopID].providePriority = global.LogisticTrainStops[stopID].providePriority or 0
 
       -- update to 1.7.0
