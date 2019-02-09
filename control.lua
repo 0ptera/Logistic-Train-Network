@@ -1870,11 +1870,12 @@ function UpdateStop(stopID)
 
     stop.network_id = network_id
     stop.minProvided = minProvided
+    stop.providePriority = providePriority
     stop.minRequested = minRequested
+    stop.requestPriority = requestPriority
     stop.minTraincars = minTraincars
     stop.maxTraincars = maxTraincars
     stop.trainLimit = trainLimit
-    stop.providePriority = providePriority
     stop.lockedSlots = lockedSlots
     stop.noWarnings = noWarnings
   end
