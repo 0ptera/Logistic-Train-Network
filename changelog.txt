@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.9.10
-Date: 8.2.2019
+Date: 10.2.2019
   Features:
     - added interface on_delivery_completed_event, {delivery = delivery, trainID = trainID}
     - added interface on_delivery_failed_event, {delivery = delivery, trainID = trainID}
@@ -8,6 +8,7 @@ Date: 8.2.2019
   Bugfixes:
     - mining or destroying a train carriage will once again fail attached delivery
     - Interface Stop data requestPriority always returned 0
+    - typo reqestPriority in initialization
 ---------------------------------------------------------------------------------------------------
 Version: 1.9.9
 Date: 3.2.2019
