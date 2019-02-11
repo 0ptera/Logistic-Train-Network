@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.9.11
+Date: 11.2.2019
+  Changes:
+    - removed placeholder dependency for Noxys Multidirectional Trains, use old versions at own peril
+---------------------------------------------------------------------------------------------------
 Version: 1.9.10
 Date: 10.2.2019
   Features:
