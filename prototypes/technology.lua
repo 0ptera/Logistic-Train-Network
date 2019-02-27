@@ -3,8 +3,8 @@ data:extend({
   {
     type = "technology",
     name = "logistic-train-network",
-    icon = "__LogisticTrainNetwork__/graphics/tech/logistic-train-network.png",
-    icon_size = 128,
+    icon = "__LogisticTrainNetwork__/thumbnail.png",
+    icon_size = 144,
     prerequisites = {"automated-rail-transportation"},
     effects =
     {
@@ -17,8 +17,8 @@ data:extend({
     {
       count = 300,
       ingredients = {
-        {"science-pack-1", 1},
-        {"science-pack-2", 1}
+        {"automation-science-pack", 1},
+        {"logistic-science-pack", 1}
       },
       time = 30
     },

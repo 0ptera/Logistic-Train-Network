@@ -1,4 +1,4 @@
-require ("prototypes.copyPrototype")
+require ("util.copyPrototype")
 require ("prototypes.technology")
 require ("prototypes.recipes")
 require ("prototypes.items")

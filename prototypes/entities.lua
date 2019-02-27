@@ -12,6 +12,7 @@ ltn_stop_in.selection_box = {{-0.5, -0.5}, {0.5, 0.5}}
 ltn_stop_in.collision_box = {{-0.15, -0.15}, {0.15, 0.15}}
 ltn_stop_in.energy_usage_per_tick = "10W"
 ltn_stop_in.light = { intensity = 1, size = 6 }
+ltn_stop_in.energy_source = {type="void"}
 
 local ltn_stop_out = copyPrototype("constant-combinator","constant-combinator","logistic-train-stop-output")
 ltn_stop_out.icon = "__LogisticTrainNetwork__/graphics/icons/output.png"

@@ -41,6 +41,7 @@ local ErrorCodes = {
 local StopIDList = {} -- stopIDs list for on_tick updates
 
 -- cache often used strings and functions
+local format = string.format
 local match = string.match
 local match_string = "([^,]+),([^,]+)"
 local btest = bit32.btest
@@ -311,7 +312,7 @@ script.on_init(function()
   local oldVersion, newVersion = nil
   local newVersionString = game.active_mods[MOD_NAME]
   if newVersionString then
-    newVersion = string.format("%02d.%02d.%02d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
+    newVersion = format("%02d.%02d.%02d", match(newVersionString, "(%d+).(%d+).(%d+)"))
   end
 
   initializeTrainStops()
@@ -330,11 +331,11 @@ script.on_configuration_changed(function(data)
     local oldVersion, newVersion = nil
     local oldVersionString = data.mod_changes[MOD_NAME].old_version
     if oldVersionString then
-      oldVersion = string.format("%02d.%02d.%02d", string.match(oldVersionString, "(%d+).(%d+).(%d+)"))
+      oldVersion = format("%02d.%02d.%02d", match(oldVersionString, "(%d+).(%d+).(%d+)"))
     end
     local newVersionString = data.mod_changes[MOD_NAME].new_version
     if newVersionString then
-      newVersion = string.format("%02d.%02d.%02d", string.match(newVersionString, "(%d+).(%d+).(%d+)"))
+      newVersion = format("%02d.%02d.%02d", match(newVersionString, "(%d+).(%d+).(%d+)"))
     end
 
     if oldVersion and oldVersion < "01.01.01" then
@@ -1203,7 +1204,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
       and (stop.minTraincars == 0 or max_length == 0 or stop.minTraincars <= max_length)
       and (stop.maxTraincars == 0 or min_length == 0 or stop.maxTraincars >= min_length) then --check if provider can actually service trains from requester
         local activeDeliveryCount = #stop.activeDeliveries
-        local from_network_id_string = string.format("0x%x", band(stop.network_id))
+        local from_network_id_string = format("0x%x", band(stop.network_id))
         if activeDeliveryCount and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
           if debug_log then log("found "..count.."("..tostring(stop.minProvided)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.providePriority..", active Deliveries: "..activeDeliveryCount.." minTraincars: "..stop.minTraincars..", maxTraincars: "..stop.maxTraincars..", locked Slots: "..stop.lockedSlots) end
           stations[#stations +1] = {entity = stop.entity, network_id = matched_networks, priority = stop.providePriority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
@@ -1257,8 +1258,8 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size)
       end
 
       if debug_log then
-        depot_network_id_string = string.format("0x%x", band(trainData.network_id) )
-        dest_network_id_string = string.format("0x%x", band(nextStop.network_id) )
+        depot_network_id_string = format("0x%x", band(trainData.network_id) )
+        dest_network_id_string = format("0x%x", band(nextStop.network_id) )
         log("checking train "..tostring(GetTrainName(trainData.train)).." ,force "..trainData.force.."/"..nextStop.entity.force.name..", network "..depot_network_id_string.."/"..dest_network_id_string..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..getStationDistance(trainData.train.station, nextStop.entity))
       end
 
@@ -1309,7 +1310,7 @@ function ProcessRequest(reqIndex, request)
   end
 
   local to = requestStation.entity.backer_name
-  local to_network_id_string = string.format("0x%x", band(requestStation.network_id))
+  local to_network_id_string = format("0x%x", band(requestStation.network_id))
   local item = request.item
   local count = request.count
 
@@ -1372,7 +1373,7 @@ function ProcessRequest(reqIndex, request)
   local providerStation = providers[1] -- only one delivery/request is created so use only the best provider
   local fromID = providerStation.entity.unit_number
   local from = providerStation.entity.backer_name
-  local matched_network_id_string = string.format("0x%x", band(providerStation.network_id))
+  local matched_network_id_string = format("0x%x", band(providerStation.network_id))
 
   if message_level >= 3 then printmsg({"ltn-message.provider-found", from, tostring(providerStation.priority), tostring(providerStation.activeDeliveryCount), providerStation.count, localname}, requestForce, true) end
   -- if debug_log then
@@ -1702,7 +1703,7 @@ function UpdateStop(stopID)
         end
       end
   end
-  local network_id_string = string.format("0x%x", band(network_id))
+  local network_id_string = format("0x%x", band(network_id))
 
   -- log(stop.entity.backer_name.." filtered signals: "..serpent.block(signals_filtered))
   -- log("Control Signals: isDepot:"..tostring(isDepot).." network_id:"..network_id.." network_id_string:"..network_id_string
