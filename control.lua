@@ -1964,7 +1964,7 @@ function UpdateStopOutput(trainStop)
           if c.condition and c.condition.first_signal then -- loading without mods can make first signal nil?
             if c.type == "item_count" then
               if (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
-                inventory[c.condition.first_signal.name] = nil
+                inventory[c.condition.first_signal.name] = -1
               elseif c.condition.comparator == "≥" then --train expects to be loaded to x of this item
                 inventory[c.condition.first_signal.name] = c.condition.constant
               elseif c.condition.comparator == ">" then --train expects to be loaded to x of this item
@@ -1972,7 +1972,7 @@ function UpdateStopOutput(trainStop)
               end
             elseif c.type == "fluid_count" then
               if (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this fluid
-                fluidInventory[c.condition.first_signal.name] = nil
+                fluidInventory[c.condition.first_signal.name] = -1
               elseif c.condition.comparator == "≥" then --train expects to be loaded to x of this fluid
                 fluidInventory[c.condition.first_signal.name] = c.condition.constant
               elseif c.condition.comparator == ">" then --train expects to be loaded to x of this fluid
