@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.10.1
+Date: 3.3.2019
+  Features:
+    - recipes are more affordable with Bob Electronics
+    - added circuit network as dependency for technology
+    - fluid unloads signal fluids with constant -1 #154
+  Changes:
+    - switched dependency for creative-mode to the 0.17 re-release
+---------------------------------------------------------------------------------------------------
 Version: 1.10.0
 Date: 27.2.2019
   Features:
