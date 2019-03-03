@@ -5,7 +5,7 @@ data:extend({
     name = "logistic-train-network",
     icon = "__LogisticTrainNetwork__/thumbnail.png",
     icon_size = 144,
-    prerequisites = {"automated-rail-transportation"},
+    prerequisites = {"automated-rail-transportation", "circuit-network"},
     effects =
     {
       {
