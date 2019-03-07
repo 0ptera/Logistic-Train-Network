@@ -576,19 +576,25 @@ function ProcessRequest(reqIndex)
     -- store Delivery
     shipment[loadingListItem] = loadingList[i].count
 
-    -- remove Delivery from Provided items and recalculate thresholds
+    -- subtract Delivery from Provided items and check thresholds
     global.Dispatcher.Provided[loadingListItem][fromID] = global.Dispatcher.Provided[loadingListItem][fromID] - loadingList[i].count
     local new_provided = global.Dispatcher.Provided[loadingListItem][fromID] - loadingList[i].count
     local new_provided_stacks = 0
-    if game.item_prototypes[loadingList[i].name] then
-      new_provided_stacks = new_provided / game.item_prototypes[loadingList[i].name].stack_size
+    local useProvideStackThreshold = false
+    if loadingList[i].type == "item" then
+      if game.item_prototypes[loadingList[i].name] then
+        new_provided_stacks = new_provided / game.item_prototypes[loadingList[i].name].stack_size
+      end
+      useProvideStackThreshold = providerData.provideStackThreshold > 0
     end
 
-    if new_provided_stacks > providerData.provideStackThreshold or new_provided > providerData.provideThreshold then
+    if (useProvideStackThreshold and new_provided_stacks >= providerData.provideStackThreshold) or
+      (not useProvideStackThreshold and new_provided >= providerData.provideThreshold) then
       global.Dispatcher.Provided[loadingListItem][fromID] = new_provided
+      global.Dispatcher.Provided_by_Stop[fromID][loadingListItem] = new_provided
     else
-       -- remove stop when it falls below provide thresholds
       global.Dispatcher.Provided[loadingListItem][fromID] = nil
+      global.Dispatcher.Provided_by_Stop[fromID][loadingListItem] = nil
     end
 
     -- remove Request and reset age
