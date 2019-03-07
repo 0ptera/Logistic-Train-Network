@@ -99,8 +99,11 @@ local function initialize(oldVersion, newVersion)
       -- update to 1.3.0
       global.LogisticTrainStops[stopID].minDelivery = nil
       global.LogisticTrainStops[stopID].ignoreMinDeliverySize = nil
-      global.LogisticTrainStops[stopID].minRequested = global.LogisticTrainStops[stopID].minRequested or 0
-      global.LogisticTrainStops[stopID].minProvided = global.LogisticTrainStops[stopID].minProvided or 0
+      global.LogisticTrainStops[stopID].requestThreshold = global.LogisticTrainStops[stopID].requestThreshold or 0
+      global.LogisticTrainStops[stopID].provideThreshold = global.LogisticTrainStops[stopID].provideThreshold or 0
+      --update to 1.10.2
+      global.LogisticTrainStops[stopID].requestStackThreshold = global.LogisticTrainStops[stopID].requestStackThreshold or 0
+      global.LogisticTrainStops[stopID].provideStackThreshold = global.LogisticTrainStops[stopID].provideStackThreshold or 0      
 
       -- update to 1.5.0
       global.LogisticTrainStops[stopID].requestPriority = global.LogisticTrainStops[stopID].requestPriority or 0

@@ -1,6 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.10.2
 Date: 7.3.2019
+  Features:
+    - added Stack Thresholds, only for items of course
   Changes:
     - refactored code into modules
     - interface events return data formated like base events, e.g. event.provided_by_stop, event.requests_by_stop

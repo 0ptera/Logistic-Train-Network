@@ -70,10 +70,10 @@ function UpdateStop(stopID)
   stop.minTraincars = 0
   stop.maxTraincars = 0
   stop.trainLimit = 0
-  stop.minRequested = min_requested
+  stop.requestThreshold = min_requested
   stop.requestPriority = 0
   stop.noWarnings = false
-  stop.minProvided = min_provided
+  stop.provideThreshold = min_provided
   stop.providePriority = 0
   stop.lockedSlots = 0
 
@@ -120,10 +120,12 @@ function UpdateStop(stopID)
   local minTraincars = 0
   local maxTraincars = 0
   local trainLimit = 0
-  local minRequested = min_requested
+  local requestThreshold = min_requested
+  local requestStackThreshold = 0
   local requestPriority = 0
   local noWarnings = false
-  local minProvided = min_provided
+  local provideThreshold = min_provided
+  local provideStackThreshold = 0
   local providePriority = 0
   local lockedSlots = 0
 
@@ -153,15 +155,19 @@ function UpdateStop(stopID)
           maxTraincars = v.count
         elseif v.signal.name == MAXTRAINS and v.count > 0 then
           trainLimit = v.count
-        elseif v.signal.name == MINREQUESTED then
-          minRequested = abs(v.count)
-        elseif v.signal.name == REQPRIORITY then
+        elseif v.signal.name == REQUESTED_THRESHOLD then
+          requestThreshold = abs(v.count)
+        elseif v.signal.name == REQUESTED_STACK_THRESHOLD then
+          requestStackThreshold = abs(v.count)
+        elseif v.signal.name == REQUESTED_PRIORITY then
           requestPriority = v.count
         elseif v.signal.name == NOWARN and v.count > 0 then
           noWarnings = true
-        elseif v.signal.name == MINPROVIDED then
-           minProvided = abs(v.count)
-        elseif v.signal.name == PROVPRIORITY then
+        elseif v.signal.name == PROVIDED_THRESHOLD then
+           provideThreshold = abs(v.count)
+        elseif v.signal.name == PROVIDED_STACK_THRESHOLD then
+           provideStackThreshold = abs(v.count)
+        elseif v.signal.name == PROVIDED_PRIORITY then
           providePriority = v.count
         elseif v.signal.name == LOCKEDSLOTS and v.count > 0 then
           lockedSlots = v.count
@@ -173,8 +179,8 @@ function UpdateStop(stopID)
   -- log(stop.entity.backer_name.." filtered signals: "..serpent.block(signals_filtered))
   -- log("Control Signals: isDepot:"..tostring(isDepot).." network_id:"..network_id.." network_id_string:"..network_id_string
   -- .." minTraincars:"..minTraincars.." maxTraincars:"..maxTraincars.." trainLimit:"..trainLimit
-  -- .." minRequested:"..minRequested.." requestPriority:"..requestPriority.." noWarnings:"..tostring(noWarnings)
-  -- .." minProvided:"..minProvided.." providePriority:"..providePriority.." lockedSlots:"..lockedSlots)
+  -- .." requestThreshold:"..requestThreshold.." requestPriority:"..requestPriority.." noWarnings:"..tostring(noWarnings)
+  -- .." provideThreshold:"..provideThreshold.." providePriority:"..providePriority.." lockedSlots:"..lockedSlots)
 
   -- skip duplicated names on non depots
   if #global.TrainStopNames[stop.entity.backer_name] ~= 1 and not isDepot then
@@ -250,19 +256,22 @@ function UpdateStop(stopID)
     -- global.Dispatcher.Provided_by_Stop[stopID] = {} -- Provided_by_Stop = {[stopID], {[item], count} }
     -- global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
 
-    for _,v in pairs (signals_filtered) do
-      local item = v.signal.type..","..v.signal.name
-      local count = v.count
+    for i = 1, #signals_filtered, 1 do
+      local signal_type = signals_filtered[i].signal.type
+      local signal_name = signals_filtered[i].signal.name
+      local item = signal_type..","..signal_name
+      local count = signals_filtered[i].count
+
       for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
         local deliverycount = delivery.shipment[item]
         if deliverycount then
           if stop.parkedTrain and stop.parkedTrainID == trainID then
             -- calculate items +- train inventory
             local traincount = 0
-            if v.signal.type == "fluid" then
-              traincount = stop.parkedTrain.get_fluid_count(v.signal.name)
+            if signal_type == "fluid" then
+              traincount = stop.parkedTrain.get_fluid_count(signal_name)
             else
-              traincount = stop.parkedTrain.get_item_count(v.signal.name)
+              traincount = stop.parkedTrain.get_item_count(signal_name)
             end
 
             if delivery.to == stop.entity.backer_name then
@@ -301,10 +310,15 @@ function UpdateStop(stopID)
         end
       end -- for delivery
 
+      local stack_count = 0
+      if game.item_prototypes[signal_name] then
+        stack_count = count / game.item_prototypes[signal_name].stack_size
+      end
+
       -- update Dispatcher Storage
       -- Providers are used when above Provider Threshold
       -- Requests are handled when above Requester Threshold
-      if count >= minProvided then
+      if stack_count >= provideStackThreshold or count >= provideThreshold then
         global.Dispatcher.Provided[item] = global.Dispatcher.Provided[item] or {}
         global.Dispatcher.Provided[item][stopID] = count
         global.Dispatcher.Provided_by_Stop[stopID] = global.Dispatcher.Provided_by_Stop[stopID] or {}
@@ -314,9 +328,9 @@ function UpdateStop(stopID)
           for k,v in pairs(stop.activeDeliveries) do
             trainsEnRoute=trainsEnRoute.." "..v
           end
-          log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} provides "..item.." "..count.."("..minProvided..")"..", priority: "..providePriority..", min length: "..minTraincars..", max length: "..maxTraincars..", trains en route: "..trainsEnRoute)
+          log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} provides "..item.." "..count.."("..provideThreshold..")"..", priority: "..providePriority..", min length: "..minTraincars..", max length: "..maxTraincars..", trains en route: "..trainsEnRoute)
         end
-      elseif count*-1 >= minRequested then
+      elseif stack_count*-1 >= requestStackThreshold or count*-1 >= requestThreshold then
         count = count * -1
         local ageIndex = item..","..stopID
         global.Dispatcher.RequestAge[ageIndex] = global.Dispatcher.RequestAge[ageIndex] or game.tick
@@ -328,16 +342,18 @@ function UpdateStop(stopID)
           for k,v in pairs(stop.activeDeliveries) do
             trainsEnRoute=trainsEnRoute.." "..v
           end
-          log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} requests "..item.." "..count.."("..minRequested..")"..", priority: "..requestPriority..", min length: "..minTraincars..", max length: "..maxTraincars..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick..", trains en route: "..trainsEnRoute)
+          log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} requests "..item.." "..count.."("..requestThreshold..")"..", priority: "..requestPriority..", min length: "..minTraincars..", max length: "..maxTraincars..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick..", trains en route: "..trainsEnRoute)
         end
       end
 
     end -- for circuitValues
 
     stop.network_id = network_id
-    stop.minProvided = minProvided
+    stop.provideThreshold = provideThreshold
+    stop.provideStackThreshold = provideStackThreshold
     stop.providePriority = providePriority
-    stop.minRequested = minRequested
+    stop.requestThreshold = requestThreshold
+    stop.requestStackThreshold = requestStackThreshold
     stop.requestPriority = requestPriority
     stop.minTraincars = minTraincars
     stop.maxTraincars = maxTraincars

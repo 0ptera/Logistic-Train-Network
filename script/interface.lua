@@ -37,7 +37,7 @@ get_on_stops_updated_event ->
   called after LTN finished gathering stop data and created deliveries
 
 Contains:
-  logistic_train_stops = { 
+  logistic_train_stops = {
     [stopID], {
       -- stop data
       activeDeliveries,
@@ -53,9 +53,11 @@ Contains:
       maxTraincars,
       minTraincars,
       trainLimit,
-      minProvided,
+      provideThreshold,
+      provideStackThreshold,
       providePriority,
-      minRequested,
+      requestThreshold,
+      requestStackThreshold,
       requestPriority,
       lockedSlots,
       noWarnings,
@@ -67,7 +69,7 @@ Contains:
     }
   }
 
-  
+
 get_on_dispatcher_updated_event ->
   called after LTN finished gathering stop data and created deliveries
 
@@ -75,10 +77,10 @@ Contains:
   update_interval = int -- LTN update interval (depends on existing ltn stops and stops per tick setting
   provided_by_stop = { [stopID], { [item], count } }
   requests_by_stop = { [stopID], { [item], count } }
-  deliveries = { trainID = {force, train, from, to, networkID, started, shipment = { item = count } } }  
+  deliveries = { trainID = {force, train, from, to, networkID, started, shipment = { item = count } } }
   available_trains = { [trainID ], { capacity, fluid_capacity, force, network_id, train } }
-  
-  
+
+
 get_on_delivery_completed_event ->
   Called when train leaves delivery target stop
 
@@ -86,27 +88,12 @@ Contains:
   event.delivery = {force, train, from, to, networkID, started, shipment = { [item], count } }
   event.trainID
 
-  
+
 get_on_delivery_failed_event ->
   Called when rolling stock of a train gets removed or the delivery timed out
 
 Contains:
   event.delivery = {force, train, from, to, networkID, started, shipment = { [item], count } }
-  event.trainID  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  event.trainID
+
+--]]

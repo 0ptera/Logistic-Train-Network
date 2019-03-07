@@ -11,11 +11,13 @@ NETWORKID = "ltn-network-id"
 MINTRAINLENGTH = "ltn-min-train-length"
 MAXTRAINLENGTH = "ltn-max-train-length"
 MAXTRAINS = "ltn-max-trains"
-MINREQUESTED = "ltn-requester-threshold"
-REQPRIORITY = "ltn-requester-priority"
+REQUESTED_THRESHOLD = "ltn-requester-threshold"
+REQUESTED_STACK_THRESHOLD = "ltn-requester-stack-threshold"
+REQUESTED_PRIORITY = "ltn-requester-priority"
 NOWARN = "ltn-disable-warnings"
-MINPROVIDED = "ltn-provider-threshold"
-PROVPRIORITY = "ltn-provider-priority"
+PROVIDED_THRESHOLD = "ltn-provider-threshold"
+PROVIDED_STACK_THRESHOLD = "ltn-provider-stack-threshold"
+PROVIDED_PRIORITY = "ltn-provider-priority"
 LOCKEDSLOTS = "ltn-locked-slots"
 
 ControlSignals = {
@@ -24,11 +26,13 @@ ControlSignals = {
   [MINTRAINLENGTH] = {type="virtual", name=MINTRAINLENGTH},
   [MAXTRAINLENGTH] = {type="virtual", name=MAXTRAINLENGTH},
   [MAXTRAINS] = {type="virtual", name=MAXTRAINS},
-  [MINREQUESTED] = {type="virtual", name=MINREQUESTED},
-  [REQPRIORITY] = {type="virtual", name=REQPRIORITY},
+  [REQUESTED_THRESHOLD] = {type="virtual", name=REQUESTED_THRESHOLD},
+  [REQUESTED_STACK_THRESHOLD] = {type="virtual", name=REQUESTED_STACK_THRESHOLD},
+  [REQUESTED_PRIORITY] = {type="virtual", name=REQUESTED_PRIORITY},
   [NOWARN] = {type="virtual", name=NOWARN},
-  [MINPROVIDED] = {type="virtual", name=MINPROVIDED},
-  [PROVPRIORITY] = {type="virtual", name=PROVPRIORITY},
+  [PROVIDED_THRESHOLD] = {type="virtual", name=PROVIDED_THRESHOLD},
+  [PROVIDED_STACK_THRESHOLD] = {type="virtual", name=PROVIDED_STACK_THRESHOLD},
+  [PROVIDED_PRIORITY] = {type="virtual", name=PROVIDED_PRIORITY},
   [LOCKEDSLOTS] = {type="virtual", name=LOCKEDSLOTS},
 }
 

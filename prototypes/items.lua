@@ -1,3 +1,9 @@
+--[[ Copyright (c) 2017 Optera
+ * Part of Logistics Train Network
+ *
+ * See LICENSE.md in the project directory for license information.
+--]]
+
 local ltn_stop = copyPrototype("item", "train-stop", "logistic-train-stop")
 ltn_stop.icon = "__LogisticTrainNetwork__/graphics/icons/train-stop.png"
 ltn_stop.icon_size = 32

@@ -244,7 +244,7 @@ end
 
 -- ProcessRequest
 
--- return all stations providing item, ordered by priority and item-count
+-- return a list ordered priority > #activeDeliveries > item-count of {entity, network_id, priority, activeDeliveryCount, item, count, provideThreshold, provideStackThreshold, minTraincars, maxTraincars, lockedSlots}
 local function getProviders(requestStation, item, req_count, min_length, max_length)
   local stations = {}
   local providers = global.Dispatcher.Provided[item]
@@ -262,14 +262,26 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
 
       if stop.entity.force.name == force.name
       and matched_networks ~= 0
-      and count >= stop.minProvided
+      -- and count >= stop.provideThreshold
       and (stop.minTraincars == 0 or max_length == 0 or stop.minTraincars <= max_length)
       and (stop.maxTraincars == 0 or min_length == 0 or stop.maxTraincars >= min_length) then --check if provider can actually service trains from requester
         local activeDeliveryCount = #stop.activeDeliveries
         local from_network_id_string = format("0x%x", band(stop.network_id))
         if activeDeliveryCount and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
-          if debug_log then log("found "..count.."("..tostring(stop.minProvided)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.providePriority..", active Deliveries: "..activeDeliveryCount.." minTraincars: "..stop.minTraincars..", maxTraincars: "..stop.maxTraincars..", locked Slots: "..stop.lockedSlots) end
-          stations[#stations +1] = {entity = stop.entity, network_id = matched_networks, priority = stop.providePriority, activeDeliveryCount = activeDeliveryCount, item = item, count = count, minTraincars = stop.minTraincars, maxTraincars = stop.maxTraincars, lockedSlots = stop.lockedSlots}
+          if debug_log then log("found "..count.."("..tostring(stop.provideThreshold)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.providePriority..", active Deliveries: "..activeDeliveryCount.." minTraincars: "..stop.minTraincars..", maxTraincars: "..stop.maxTraincars..", locked Slots: "..stop.lockedSlots) end
+          stations[#stations +1] = {
+            entity = stop.entity,
+            network_id = matched_networks,
+            priority = stop.providePriority,
+            activeDeliveryCount = activeDeliveryCount,
+            item = item,
+            count = count,
+            provideThreshold = stop.provideThreshold,
+            provideStackThreshold = stop.provideStackThreshold,
+            minTraincars = stop.minTraincars,
+            maxTraincars = stop.maxTraincars,
+            lockedSlots = stop.lockedSlots,
+          }
         end
       end
     end
@@ -382,12 +394,11 @@ function ProcessRequest(reqIndex)
   local item = request.item
   local count = request.count
 
-  local minRequested = requestStation.minRequested
   local maxTraincars = requestStation.maxTraincars
   local minTraincars = requestStation.minTraincars
   local requestForce = requestStation.entity.force
 
-  if debug_log then log("request "..reqIndex.."/"..#global.Dispatcher.Requests..": "..count.."("..minRequested..")".." "..item.." to "..requestStation.entity.backer_name.." {"..to_network_id_string.."} priority: "..request.priority.." min length: "..minTraincars.." max length: "..maxTraincars ) end
+  if debug_log then log("request "..reqIndex.."/"..#global.Dispatcher.Requests..": "..count.."("..requestStation.requestThreshold..")".." "..item.." to "..requestStation.entity.backer_name.." {"..to_network_id_string.."} priority: "..request.priority.." min length: "..minTraincars.." max length: "..maxTraincars ) end
 
   if not( global.Dispatcher.Requests_by_Stop[toID] and global.Dispatcher.Requests_by_Stop[toID][item] ) then
     if debug_log then log("Skipping request "..requestStation.entity.backer_name..": "..item..". Item has already been processed.") end
@@ -438,12 +449,12 @@ function ProcessRequest(reqIndex)
     return nil
   end
 
-  local providerStation = providers[1] -- only one delivery/request is created so use only the best provider
-  local fromID = providerStation.entity.unit_number
-  local from = providerStation.entity.backer_name
-  local matched_network_id_string = format("0x%x", band(providerStation.network_id))
+  local providerData = providers[1] -- only one delivery/request is created so use only the best provider
+  local fromID = providerData.entity.unit_number
+  local from = providerData.entity.backer_name
+  local matched_network_id_string = format("0x%x", band(providerData.network_id))
 
-  if message_level >= 3 then printmsg({"ltn-message.provider-found", from, tostring(providerStation.priority), tostring(providerStation.activeDeliveryCount), providerStation.count, localname}, requestForce, true) end
+  if message_level >= 3 then printmsg({"ltn-message.provider-found", from, tostring(providerData.priority), tostring(providerData.activeDeliveryCount), providerData.count, localname}, requestForce, true) end
   -- if debug_log then
     -- for n, provider in pairs (providers) do
       -- log("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(provider.activeDeliveryCount).." deliveries, "..tostring(provider.count).." "..item.." available.")
@@ -452,8 +463,8 @@ function ProcessRequest(reqIndex)
 
   -- limit deliverySize to count at provider
   local deliverySize = count
-  if count > providerStation.count then
-    deliverySize = providerStation.count
+  if count > providerData.count then
+    deliverySize = providerData.count
   end
 
   local stacks = deliverySize -- for fluids stack = tanker capacity
@@ -462,25 +473,25 @@ function ProcessRequest(reqIndex)
   end
 
   -- maxTraincars = shortest set max-train-length
-  if providerStation.maxTraincars > 0 and (providerStation.maxTraincars < requestStation.maxTraincars or requestStation.maxTraincars == 0) then
-    maxTraincars = providerStation.maxTraincars
+  if providerData.maxTraincars > 0 and (providerData.maxTraincars < requestStation.maxTraincars or requestStation.maxTraincars == 0) then
+    maxTraincars = providerData.maxTraincars
   end
   -- minTraincars = longest set min-train-length
-  if providerStation.minTraincars > 0 and (providerStation.minTraincars > requestStation.minTraincars or requestStation.minTraincars == 0) then
-    minTraincars = providerStation.minTraincars
+  if providerData.minTraincars > 0 and (providerData.minTraincars > requestStation.minTraincars or requestStation.minTraincars == 0) then
+    minTraincars = providerData.minTraincars
   end
 
   global.Dispatcher.Requests_by_Stop[toID][item] = nil -- remove before merge so it's not added twice
   local loadingList = { {type=itype, name=iname, localname=localname, count=deliverySize, stacks=stacks} }
   local totalStacks = stacks
-  -- local order = {toID=toID, fromID=fromID, minTraincars=minTraincars, maxTraincars=maxTraincars, totalStacks=stacks, lockedSlots=providerStation.lockedSlots, loadingList={loadingList} } -- orders as intermediate step are no longer required
+  -- local order = {toID=toID, fromID=fromID, minTraincars=minTraincars, maxTraincars=maxTraincars, totalStacks=stacks, lockedSlots=providerData.lockedSlots, loadingList={loadingList} } -- orders as intermediate step are no longer required
   if debug_log then log("created new order "..from.." >> "..to..": "..deliverySize.." "..item.." in "..stacks.."/"..totalStacks.." stacks, min length: "..minTraincars.." max length: "..maxTraincars) end
 
   -- find possible mergable items, fluids can't be merged in a sane way
   if itype ~= "fluid" then
     for merge_item, merge_count_req in pairs(global.Dispatcher.Requests_by_Stop[toID]) do
       local merge_type, merge_name = match(merge_item, match_string)
-      if merge_type and merge_name and game.item_prototypes[merge_name] then --type=="item"?
+      if merge_type and merge_name and game.item_prototypes[merge_name] then
         local merge_localname = game.item_prototypes[merge_name].localised_name
         -- get current provider for requested item
         if global.Dispatcher.Provided[merge_item] and global.Dispatcher.Provided[merge_item][fromID] then
@@ -504,7 +515,7 @@ function ProcessRequest(reqIndex)
   end
 
   -- find train
-  local selectedTrain, trainInventorySize = getFreeTrain(providerStation, minTraincars, maxTraincars, loadingList[1].type, totalStacks)
+  local selectedTrain, trainInventorySize = getFreeTrain(providerData, minTraincars, maxTraincars, loadingList[1].type, totalStacks)
   if not selectedTrain or not trainInventorySize then
     if message_level >= 2 then printmsg({"ltn-message.no-train-found", from, to, matched_network_id_string, tostring(minTraincars), tostring(maxTraincars) }, requestForce, true) end
     if debug_log then log("No train with "..tostring(minTraincars).." <= length <= "..tostring(maxTraincars).." to transport "..tostring(totalStacks).." stacks from "..from.." to "..to.." in network "..matched_network_id_string.." found in Depot.") end
@@ -565,8 +576,20 @@ function ProcessRequest(reqIndex)
     -- store Delivery
     shipment[loadingListItem] = loadingList[i].count
 
-    -- remove Delivery from Provided items
+    -- remove Delivery from Provided items and recalculate thresholds
     global.Dispatcher.Provided[loadingListItem][fromID] = global.Dispatcher.Provided[loadingListItem][fromID] - loadingList[i].count
+    local new_provided = global.Dispatcher.Provided[loadingListItem][fromID] - loadingList[i].count
+    local new_provided_stacks = 0
+    if game.item_prototypes[loadingList[i].name] then
+      new_provided_stacks = new_provided / game.item_prototypes[loadingList[i].name].stack_size
+    end
+
+    if new_provided_stacks > providerData.provideStackThreshold or new_provided > providerData.provideThreshold then
+      global.Dispatcher.Provided[loadingListItem][fromID] = new_provided
+    else
+       -- remove stop when it falls below provide thresholds
+      global.Dispatcher.Provided[loadingListItem][fromID] = nil
+    end
 
     -- remove Request and reset age
     global.Dispatcher.Requests_by_Stop[toID][loadingListItem] = nil
@@ -574,7 +597,7 @@ function ProcessRequest(reqIndex)
 
     if debug_log then log("  "..loadingListItem..", "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks ") end
   end
-  global.Dispatcher.Deliveries[selectedTrain.id] = {force=requestForce, train=selectedTrain, started=game.tick, from=from, to=to, networkID=providerStation.network_id, shipment=shipment}
+  global.Dispatcher.Deliveries[selectedTrain.id] = {force=requestForce, train=selectedTrain, started=game.tick, from=from, to=to, networkID=providerData.network_id, shipment=shipment}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[selectedTrain.id].capacity
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[selectedTrain.id].fluid_capacity
   global.Dispatcher.availableTrains[selectedTrain.id] = nil
