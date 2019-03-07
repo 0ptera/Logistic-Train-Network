@@ -1,13 +1,13 @@
 -- LTN interface event functions
 function OnStopsUpdated(event)
   if event.data then
-    log("Stop Data:"..serpent.block(event.data) )
+    log("Stop Data:"..serpent.block(event) )
   end
 end
 
 function OnDispatcherUpdated(event)
   if event.data then
-    log("Dispatcher Data:"..serpent.block(event.data) )
+    log("Dispatcher Data:"..serpent.block(event) )
   end
 end
 
