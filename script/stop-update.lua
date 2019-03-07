@@ -310,15 +310,23 @@ function UpdateStop(stopID)
         end
       end -- for delivery
 
+      local useProvideStackThreshold = false
+      local useRequestStackThreshold = false
       local stack_count = 0
-      if game.item_prototypes[signal_name] then
-        stack_count = count / game.item_prototypes[signal_name].stack_size
+
+      if signal_type == "item" then
+        useProvideStackThreshold = provideStackThreshold > 0
+        useRequestStackThreshold = requestStackThreshold > 0
+        if game.item_prototypes[signal_name] then
+          stack_count = count / game.item_prototypes[signal_name].stack_size
+        end
       end
 
       -- update Dispatcher Storage
       -- Providers are used when above Provider Threshold
       -- Requests are handled when above Requester Threshold
-      if stack_count >= provideStackThreshold or count >= provideThreshold then
+      if (useProvideStackThreshold and stack_count >= provideStackThreshold) or
+        (not useProvideStackThreshold and count >= provideThreshold) then
         global.Dispatcher.Provided[item] = global.Dispatcher.Provided[item] or {}
         global.Dispatcher.Provided[item][stopID] = count
         global.Dispatcher.Provided_by_Stop[stopID] = global.Dispatcher.Provided_by_Stop[stopID] or {}
@@ -328,9 +336,10 @@ function UpdateStop(stopID)
           for k,v in pairs(stop.activeDeliveries) do
             trainsEnRoute=trainsEnRoute.." "..v
           end
-          log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} provides "..item.." "..count.."("..provideThreshold..")"..", priority: "..providePriority..", min length: "..minTraincars..", max length: "..maxTraincars..", trains en route: "..trainsEnRoute)
+          log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} provides "..item.." "..count.."("..provideThreshold..")".." stacks: "..stack_count.."("..provideStackThreshold..")"..", priority: "..providePriority..", min length: "..minTraincars..", max length: "..maxTraincars..", trains en route: "..trainsEnRoute)
         end
-      elseif stack_count*-1 >= requestStackThreshold or count*-1 >= requestThreshold then
+      elseif (useRequestStackThreshold and stack_count*-1 >= requestStackThreshold) or
+        (not useRequestStackThreshold and count*-1 >= requestThreshold) then
         count = count * -1
         local ageIndex = item..","..stopID
         global.Dispatcher.RequestAge[ageIndex] = global.Dispatcher.RequestAge[ageIndex] or game.tick
@@ -342,7 +351,7 @@ function UpdateStop(stopID)
           for k,v in pairs(stop.activeDeliveries) do
             trainsEnRoute=trainsEnRoute.." "..v
           end
-          log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} requests "..item.." "..count.."("..requestThreshold..")"..", priority: "..requestPriority..", min length: "..minTraincars..", max length: "..maxTraincars..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick..", trains en route: "..trainsEnRoute)
+          log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} requests "..item.." "..count.."("..requestThreshold..")".." stacks: "..tostring(stack_count*-1).."("..requestStackThreshold..")"..", priority: "..requestPriority..", min length: "..minTraincars..", max length: "..maxTraincars..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick..", trains en route: "..trainsEnRoute)
         end
       end
 
