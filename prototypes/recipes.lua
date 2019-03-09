@@ -1,3 +1,9 @@
+--[[ Copyright (c) 2017 Optera
+ * Part of Logistics Train Network
+ *
+ * See LICENSE.md in the project directory for license information.
+--]]
+
 local ltn_stop = copyPrototype("recipe", "train-stop", "logistic-train-stop")
 ltn_stop.ingredients = {
   {"train-stop", 1},

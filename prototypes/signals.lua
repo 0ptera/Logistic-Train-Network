@@ -1,3 +1,9 @@
+--[[ Copyright (c) 2017 Optera
+ * Part of Logistics Train Network
+ *
+ * See LICENSE.md in the project directory for license information.
+--]]
+
 data:extend({
   {
     type = "item-subgroup",
@@ -53,6 +59,14 @@ data:extend({
     icon_size = 32,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-ca[ltn-provider-threshold]"
+  },    
+  {
+    type = "virtual-signal",
+    name = "ltn-provider-stack-threshold",
+    icon = "__LogisticTrainNetwork__/graphics/icons/provider-stack-threshold.png",
+    icon_size = 32,
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-cb[ltn-provider-threshold]"
   },  
   {
     type = "virtual-signal",
@@ -60,7 +74,7 @@ data:extend({
     icon = "__LogisticTrainNetwork__/graphics/icons/provider-priority.png",
     icon_size = 32,
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-cb[ltn-provider-priority]"
+    order = "z[LTN-signal]-cc[ltn-provider-priority]"
   },
   {
     type = "virtual-signal",
@@ -77,6 +91,14 @@ data:extend({
     icon_size = 32,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-da[ltn-requester-threshold]"
+  },  
+  {
+    type = "virtual-signal",
+    name = "ltn-requester-stack-threshold",
+    icon = "__LogisticTrainNetwork__/graphics/icons/requester-stack-threshold.png",
+    icon_size = 32,
+    subgroup = "LTN-signal",
+    order = "z[LTN-signal]-db[ltn-requester-threshold]"
   },
   {
     type = "virtual-signal",
@@ -84,7 +106,7 @@ data:extend({
     icon = "__LogisticTrainNetwork__/graphics/icons/requester-priority.png",
     icon_size = 32,
     subgroup = "LTN-signal",
-    order = "z[LTN-signal]-db[ltn-requester-priority]"
+    order = "z[LTN-signal]-dc[ltn-requester-priority]"
   },  
   {
     type = "virtual-signal",

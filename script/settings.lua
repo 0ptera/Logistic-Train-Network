@@ -1,3 +1,9 @@
+--[[ Copyright (c) 2017 Optera
+ * Part of Logistics Train Network
+ *
+ * See LICENSE.md in the project directory for license information.
+--]]
+
 message_level = tonumber(string.sub(settings.global["ltn-interface-console-level"].value, 1, 1))
 message_filter_age = settings.global["ltn-interface-message-filter-age"].value
 debug_log = settings.global["ltn-interface-debug-logfile"].value
@@ -34,41 +40,3 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   end
   if event.setting == "ltn-depot-reset-filters" then reset_filters = settings.global["ltn-depot-reset-filters"].value end
 end)
-
-
-
--- write msg to console for all member of force
--- skips over any duplicate messages (clearing filter is done in on_tick)
-function printmsg(msg, force, useFilter)
-  local msgKey = ""
-  if force and force.valid then
-    msgKey = force.name..", "
-  else
-    msgKey = "all, "
-  end
-  if type(msg) == "table" then
-    for k, v in pairs(msg) do
-      if type(v) == "table" then
-        msgKey = msgKey..v[1]..", "
-      elseif type(v) == "string" then
-        msgKey = msgKey..v..", "
-      end
-    end
-  else
-    msgKey = msg
-  end
-
-  -- print message
-  if global.messageBuffer[msgKey] == nil or not useFilter then
-    if force and force.valid then
-      force.print(msg)
-    else
-      game.print(msg)
-    end
-  end
-
-  -- add current tick to messageBuffer if msgKey doesn't exist
-  global.messageBuffer[msgKey] = global.messageBuffer[msgKey] or {tick = game.tick}
-end
-
-return printmsg

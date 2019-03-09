@@ -1,3 +1,9 @@
+--[[ Copyright (c) 2017 Optera
+ * Part of Logistics Train Network
+ *
+ * See LICENSE.md in the project directory for license information.
+--]]
+
 function copyPrototype(type, name, newName)
   if not data.raw[type][name] then error("type "..type.." "..name.." doesn't exist") end
   local p = table.deepcopy(data.raw[type][name])
