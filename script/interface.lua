@@ -6,6 +6,7 @@
 
 on_stops_updated_event = script.generate_event_name()
 on_dispatcher_updated_event = script.generate_event_name()
+on_delivery_pickup_complete_event = script.generate_event_name()
 on_delivery_completed_event = script.generate_event_name()
 on_delivery_failed_event = script.generate_event_name()
 
@@ -17,7 +18,10 @@ remote.add_interface("logistic-train-network", {
 
   -- updates for whole dispatcher
   get_on_dispatcher_updated_event = function() return on_dispatcher_updated_event end,
-
+    
+  -- update for updated deliveries after leaving provider
+  get_on_delivery_pickup_complete_event = function() return on_delivery_pickup_complete_event end,  
+  
   -- update for completing deliveries
   get_on_delivery_completed_event = function() return on_delivery_completed_event end,
   get_on_delivery_failed_event = function() return on_delivery_failed_event end,
