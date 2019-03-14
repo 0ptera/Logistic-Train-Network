@@ -14,30 +14,30 @@ on_delivery_failed_event = script.generate_event_name()
 -- ltn_interface allows mods to register for update events
 remote.add_interface("logistic-train-network", {
   -- updates for ltn_stops
-  get_on_stops_updated_event = function() return on_stops_updated_event end,
+  on_stops_updated = function() return on_stops_updated_event end,
 
   -- updates for whole dispatcher
-  get_on_dispatcher_updated_event = function() return on_dispatcher_updated_event end,
+  on_dispatcher_updated = function() return on_dispatcher_updated_event end,
     
   -- update for updated deliveries after leaving provider
-  get_on_delivery_pickup_complete_event = function() return on_delivery_pickup_complete_event end,  
+  on_delivery_pickup_complete = function() return on_delivery_pickup_complete_event end,  
   
   -- update for completing deliveries
-  get_on_delivery_completed_event = function() return on_delivery_completed_event end,
-  get_on_delivery_failed_event = function() return on_delivery_failed_event end,
+  on_delivery_completed = function() return on_delivery_completed_event end,
+  on_delivery_failed = function() return on_delivery_failed_event end,
 })
 
 
 --[[ register events from LTN:
 if remote.interfaces["logistic-train-network"] then
-  script.on_event(remote.call("logistic-train-network", "get_on_stops_updated_event"), on_stops_updated)
-  script.on_event(remote.call("logistic-train-network", "get_on_dispatcher_updated_event"), on_dispatcher_updated)
+  script.on_event(remote.call("logistic-train-network", "on_stops_updated"), on_stops_updated)
+  script.on_event(remote.call("logistic-train-network", "on_dispatcher_updated"), on_dispatcher_updated)
 end
 ]]--
 
 
 --[[ EVENTS
-get_on_stops_updated_event ->
+on_stops_updated ->
   called after LTN finished gathering stop data and created deliveries
 
 Contains:
@@ -74,7 +74,7 @@ Contains:
   }
 
 
-get_on_dispatcher_updated_event ->
+on_dispatcher_updated ->
   called after LTN finished gathering stop data and created deliveries
 
 Contains:
@@ -85,7 +85,7 @@ Contains:
   available_trains = { [trainID ], { capacity, fluid_capacity, force, network_id, train } }
 
 
-get_on_delivery_completed_event ->
+on_delivery_completed ->
   Called when train leaves delivery target stop
 
 Contains:
@@ -93,7 +93,7 @@ Contains:
   event.trainID
 
 
-get_on_delivery_failed_event ->
+on_delivery_failed ->
   Called when rolling stock of a train gets removed or the delivery timed out
 
 Contains:

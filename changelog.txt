@@ -2,7 +2,7 @@
 Version: 1.10.3
 Date: 14.3.2019
   Features:
-    - added get_on_delivery_pickup_complete_event 
+    - added on_delivery_pickup_complete 
   Bugfixes:
     - fixed potential upgrade path errors
 ---------------------------------------------------------------------------------------------------
