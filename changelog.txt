@@ -1,11 +1,20 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.10.3
+Date: 14.3.2019
+  Features:
+    - added on_delivery_pickup_complete
+  Changes:
+    - removed get_ prefix and _event suffix from events
+  Bugfixes:
+    - fixed potential upgrade path errors
+---------------------------------------------------------------------------------------------------
 Version: 1.10.2
 Date: 7.3.2019
   Features:
     - added Stack Thresholds, only for items of course
   Changes:
     - refactored code into modules
-    - interface events return data formated like base events, e.g. event.provided_by_stop, event.requests_by_stop
+    - interface events return data formatted like base events, e.g. event.provided_by_stop, event.requests_by_stop
   Bugfixes:
     - fixed potential nil reference #157
 ---------------------------------------------------------------------------------------------------

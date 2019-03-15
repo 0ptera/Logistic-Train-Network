@@ -148,6 +148,8 @@ function TrainLeaves(trainID)
           end
         end
         delivery.pickupDone = true -- remove reservations from this delivery
+        script.raise_event(on_delivery_pickup_complete_event, {delivery = delivery, trainID = trainID})
+
       elseif delivery.to == stop.entity.backer_name then
         -- signal completed delivery and remove it
         script.raise_event(on_delivery_completed_event, {delivery = delivery, trainID = trainID})
