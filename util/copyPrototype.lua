@@ -1,7 +1,7 @@
 --[[ Copyright (c) 2017 Optera
- * Part of Logistics Train Network
+ * Data phase helper functions
  *
- * See LICENSE.md in the project directory for license information.
+ * This is free and unencumbered software released into the public domain.
 --]]
 
 function copyPrototype(type, name, newName)
