@@ -302,7 +302,9 @@ local function renamedStop(targetID, old_name, new_name)
   local duplicateName = false
   local renameDeliveries = true
   for stopID, stop in pairs(global.LogisticTrainStops) do
-    if stop.entity.backer_name == old_name then
+    if not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
+      RemoveStop(stopID)
+    elseif stop.entity.backer_name == old_name then
       renameDeliveries = false
     end
   end

@@ -199,16 +199,20 @@ local function update_delivery(old_train_id, new_train)
 
   -- expanded RemoveDelivery(old_train_id) to also update
   for stopID, stop in pairs(global.LogisticTrainStops) do
-    for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
-      if stop.activeDeliveries[i] == old_train_id then
-        if delivery then
-          stop.activeDeliveries[i] = new_train.id -- update train id if delivery exists
-        else
-          table.remove(stop.activeDeliveries, i) -- otherwise remove entry
-          if #stop.activeDeliveries > 0 then
-            setLamp(stop, "yellow", #stop.activeDeliveries)
+    if not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
+      RemoveStop(stopID)
+    else
+      for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
+        if stop.activeDeliveries[i] == old_train_id then
+          if delivery then
+            stop.activeDeliveries[i] = new_train.id -- update train id if delivery exists
           else
-            setLamp(stop, "green", 1)
+            table.remove(stop.activeDeliveries, i) -- otherwise remove entry
+            if #stop.activeDeliveries > 0 then
+              setLamp(stop, "yellow", #stop.activeDeliveries)
+            else
+              setLamp(stop, "green", 1)
+            end
           end
         end
       end

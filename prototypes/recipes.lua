@@ -4,7 +4,7 @@
  * See LICENSE.md in the project directory for license information.
 --]]
 
-local ltn_stop = copyPrototype("recipe", "train-stop", "logistic-train-stop")
+local ltn_stop = optera_lib.copy_prototype(data.raw["recipe"]["train-stop"], "logistic-train-stop")
 ltn_stop.ingredients = {
   {"train-stop", 1},
   {"constant-combinator", 1},
@@ -20,7 +20,7 @@ data:extend({
 
 -- support for cargo ship ports
 if mods["cargo-ships"] then
-  ltn_port = copyPrototype("recipe", "port", "ltn-port")
+  ltn_port =optera_lib.copy_prototype(data.raw["recipe"]["port"], "ltn-port")
   ltn_port.ingredients = {
     {"port", 1},
     {"constant-combinator", 1},

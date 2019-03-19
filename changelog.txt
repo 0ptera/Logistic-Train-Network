@@ -1,6 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.10.4
+Date: 2019-03-19
+  Changes:
+    - moved functionality to Opteras Library
+  Bugfixes:
+    - renaming stops in editor can cause errors
+---------------------------------------------------------------------------------------------------
 Version: 1.10.3
-Date: 14.3.2019
+Date: 2019-03-14
   Features:
     - added on_delivery_pickup_complete
   Changes:
@@ -9,7 +16,7 @@ Date: 14.3.2019
     - fixed potential upgrade path errors
 ---------------------------------------------------------------------------------------------------
 Version: 1.10.2
-Date: 7.3.2019
+Date: 2019-03-07
   Features:
     - added Stack Thresholds, only for items of course
   Changes:
@@ -19,7 +26,7 @@ Date: 7.3.2019
     - fixed potential nil reference #157
 ---------------------------------------------------------------------------------------------------
 Version: 1.10.1
-Date: 3.3.2019
+Date: 2019-03-03
   Features:
     - recipes are more affordable with Bob Electronics
     - added circuit network as dependency for technology
@@ -28,7 +35,7 @@ Date: 3.3.2019
     - switched dependency for creative-mode to the 0.17 re-release
 ---------------------------------------------------------------------------------------------------
 Version: 1.10.0
-Date: 27.2.2019
+Date: 2019-02-27
   Features:
     - updated to Factorio 0.17
     - new thumbnail
