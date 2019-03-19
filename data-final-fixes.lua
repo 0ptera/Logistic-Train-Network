@@ -5,6 +5,8 @@
 --]]
 
 local function createIcons(entity)
+
+
   if entity.icons then
     local icons = {}
     for k,v in pairs(entity.icons) do
@@ -28,13 +30,15 @@ local function createIcons(entity)
   end
 end
 
+local icon_encoded_position = { { icon = "__LogisticTrainNetwork__/graphics/icons/encoded-position.png", icon_size = 32, tint = {r=1, g=1, b=1, a=1} } }
+
 local lococount = 0
 for _, loco in pairs(data.raw["locomotive"]) do
   lococount=lococount+1
   local signal = {
     type = "virtual-signal",
     name = "LTN-"..loco.name,
-    icons = createIcons(loco),
+    icons = optera_lib.create_icons(loco, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-u"..string.format("%02d", lococount),
@@ -49,7 +53,7 @@ for _, wagon in pairs(data.raw["cargo-wagon"]) do
   local signal = {
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
-    icons = createIcons(wagon),
+    icons = optera_lib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
@@ -62,7 +66,7 @@ for _, wagon in pairs(data.raw["fluid-wagon"]) do
   local signal = {
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
-    icons = createIcons(wagon),
+    icons = optera_lib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
@@ -75,7 +79,7 @@ for _, wagon in pairs(data.raw["artillery-wagon"]) do
   local signal = {
     type = "virtual-signal",
     name = "LTN-"..wagon.name,
-    icons = createIcons(wagon),
+    icons = optera_lib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),

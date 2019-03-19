@@ -7,5 +7,5 @@
   "homepage": "https://forums.factorio.com/viewforum.php?f=214",
   "description": "Adds new train stops forming a highly configurable, fully automated logistic network.",
   "factorio_version": "0.17",
-	"dependencies": ["base >= 0.17.11", "?cargo-ships >= 0.0.27", "?creative-mod >= 1.0.4"]
+	"dependencies": ["base >= 0.17.15", "OpteraLib >= 0.1.0", "?cargo-ships >= 0.0.27", "?creative-mod >= 1.0.4"]
 }

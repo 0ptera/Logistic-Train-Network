@@ -4,7 +4,8 @@
  * See LICENSE.md in the project directory for license information.
 --]]
 
-require ("util.copyPrototype")
+optera_lib = optera_lib or {}
+
 require ("prototypes.technology")
 require ("prototypes.recipes")
 require ("prototypes.items")

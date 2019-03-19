@@ -4,14 +4,14 @@
  * See LICENSE.md in the project directory for license information.
 --]]
 
-local ltn_stop = copyPrototype("train-stop", "train-stop", "logistic-train-stop")
+local ltn_stop = optera_lib.copy_prototype(data.raw["train-stop"]["train-stop"], "logistic-train-stop")
 ltn_stop.icon = "__LogisticTrainNetwork__/graphics/icons/train-stop.png"
 ltn_stop.icon_size = 32
 ltn_stop.next_upgrade = nil
 ltn_stop.selection_box = {{-0.6, -0.6}, {0.6, 0.6}}
 ltn_stop.collision_box = {{-0.5, -0.1}, {0.5, 0.4}}
 
-local ltn_stop_in = copyPrototype("lamp", "small-lamp","logistic-train-stop-input")
+local ltn_stop_in = optera_lib.copy_prototype(data.raw["lamp"]["small-lamp"],"logistic-train-stop-input")
 ltn_stop_in.icon = "__LogisticTrainNetwork__/graphics/icons/train-stop.png"
 ltn_stop_in.icon_size = 32
 ltn_stop_in.next_upgrade = nil
@@ -22,7 +22,7 @@ ltn_stop_in.energy_usage_per_tick = "10W"
 ltn_stop_in.light = { intensity = 1, size = 6 }
 ltn_stop_in.energy_source = {type="void"}
 
-local ltn_stop_out = copyPrototype("constant-combinator","constant-combinator","logistic-train-stop-output")
+local ltn_stop_out = optera_lib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"],"logistic-train-stop-output")
 ltn_stop_out.icon = "__LogisticTrainNetwork__/graphics/icons/output.png"
 ltn_stop_out.icon_size = 32
 ltn_stop_out.next_upgrade = nil
@@ -75,7 +75,7 @@ local control_connection_points = {
   green = util.by_pixel(-1, 0)
 }
 
-local ltn_lamp_control = copyPrototype("constant-combinator","constant-combinator","logistic-train-stop-lamp-control")
+local ltn_lamp_control = optera_lib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"],"logistic-train-stop-lamp-control")
 ltn_lamp_control.icon = "__LogisticTrainNetwork__/graphics/icons/empty.png"
 ltn_lamp_control.icon_size = 32
 ltn_lamp_control.next_upgrade = nil
@@ -198,7 +198,7 @@ data:extend({
 
 -- support for cargo ship ports
 if mods["cargo-ships"] then
-  ltn_port = copyPrototype("train-stop", "port", "ltn-port")
+  ltn_port = optera_lib.copy_prototype(data.raw["train-stop"]["port"], "ltn-port")
   ltn_port.selection_box = {{-0.01, -0.6}, {1.9, 0.6}}
   ltn_port.collision_box = {{-0.01, -0.1}, {1.9, 0.4}}
   data:extend({
