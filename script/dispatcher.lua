@@ -163,13 +163,17 @@ end
 -- ensures removal of trainID from global.Dispatcher.Deliveries and stop.activeDeliveries
 function RemoveDelivery(trainID)
   for stopID, stop in pairs(global.LogisticTrainStops) do
-    for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
-      if stop.activeDeliveries[i] == trainID then
-        table.remove(stop.activeDeliveries, i)
-        if #stop.activeDeliveries > 0 then
-          setLamp(stop, "yellow", #stop.activeDeliveries)
-        else
-          setLamp(stop, "green", 1)
+    if not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
+      RemoveStop(stopID)
+    else
+      for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
+        if stop.activeDeliveries[i] == trainID then
+          table.remove(stop.activeDeliveries, i)
+          if #stop.activeDeliveries > 0 then
+            setLamp(stop, "yellow", #stop.activeDeliveries)
+          else
+            setLamp(stop, "green", 1)
+          end
         end
       end
     end
