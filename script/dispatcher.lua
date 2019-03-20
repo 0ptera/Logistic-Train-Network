@@ -309,7 +309,7 @@ local function getStationDistance(stationA, stationB)
     --log(stationPair.." found, distance: "..global.StopDistances[stationPair])
     return global.StopDistances[stationPair]
   else
-    local dist = GetDistance(stationA.position, stationB.position)
+    local dist = get_distance(stationA.position, stationB.position)
     global.StopDistances[stationPair] = dist
     --log(stationPair.." calculated, distance: "..dist)
     return dist
@@ -340,7 +340,7 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size)
       if debug_log then
         depot_network_id_string = format("0x%x", band(trainData.network_id) )
         dest_network_id_string = format("0x%x", band(nextStop.network_id) )
-        log("checking train "..tostring(GetTrainName(trainData.train)).." ,force "..trainData.force.."/"..nextStop.entity.force.name..", network "..depot_network_id_string.."/"..dest_network_id_string..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..getStationDistance(trainData.train.station, nextStop.entity))
+        log("checking train "..tostring(get_train_name(trainData.train)).." ,force "..trainData.force.."/"..nextStop.entity.force.name..", network "..depot_network_id_string.."/"..dest_network_id_string..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..getStationDistance(trainData.train.station, nextStop.entity))
       end
 
       if trainData.force == nextStop.entity.force.name -- forces match
@@ -354,7 +354,7 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size)
             smallestInventory = inventorySize
             result_train = trainData.train
             result_train_capacity = inventorySize
-            if debug_log then log("(getFreeTrain) found train "..tostring(GetTrainName(trainData.train)).." {"..depot_network_id_string.."}, length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
+            if debug_log then log("(getFreeTrain) found train "..tostring(get_train_name(trainData.train)).." {"..depot_network_id_string.."}, length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
           end
         elseif smallestInventory == 0 and inventorySize > 0 then
           -- train can be used for partial delivery, use only when no trains for whole delivery available
@@ -363,7 +363,7 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size)
             largestInventory = inventorySize
             result_train = trainData.train
             result_train_capacity = inventorySize
-            if debug_log then log("(getFreeTrain) largest available train "..tostring(GetTrainName(trainData.train)).." {"..depot_network_id_string.."}, length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
+            if debug_log then log("(getFreeTrain) largest available train "..tostring(get_train_name(trainData.train)).." {"..depot_network_id_string.."}, length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..distance) end
           end
         end
 

@@ -69,7 +69,7 @@ local function initialize(oldVersion, newVersion)
       local trains = surface.get_trains()
       for _, train in pairs(trains) do
         -- build dictionary
-        local loco = GetMainLocomotive(train)
+        local loco = get_main_locomotive(train)
         if loco then
           locoID_to_trainID[loco.unit_number] = train.id
         end
@@ -103,7 +103,7 @@ local function initialize(oldVersion, newVersion)
       global.LogisticTrainStops[stopID].provideThreshold = global.LogisticTrainStops[stopID].provideThreshold or 0
       --update to 1.10.2
       global.LogisticTrainStops[stopID].requestStackThreshold = global.LogisticTrainStops[stopID].requestStackThreshold or 0
-      global.LogisticTrainStops[stopID].provideStackThreshold = global.LogisticTrainStops[stopID].provideStackThreshold or 0      
+      global.LogisticTrainStops[stopID].provideStackThreshold = global.LogisticTrainStops[stopID].provideStackThreshold or 0
 
       -- update to 1.5.0
       global.LogisticTrainStops[stopID].requestPriority = global.LogisticTrainStops[stopID].requestPriority or 0

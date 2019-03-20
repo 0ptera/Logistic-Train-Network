@@ -4,7 +4,7 @@
  * See LICENSE.md in the project directory for license information.
 --]]
 
-optera_lib = optera_lib or {}
+local optera_lib = require("__OpteraLib__.data.utilities")
 
 require ("prototypes.technology")
 require ("prototypes.recipes")
