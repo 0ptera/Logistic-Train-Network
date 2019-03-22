@@ -6,6 +6,13 @@
   "spellright.documentTypes": [
     "markdown",
     "latex",
-    "plaintext"
-  ]
+    "plaintext",
+    "properties",
+    "lua"
+  ],
+  "spellright.parserByClass": {
+    "properties": {
+      "parser": "plain"
+    }
+  }
 }
