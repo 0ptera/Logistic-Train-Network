@@ -182,8 +182,9 @@ function UpdateStop(stopID)
   -- .." requestThreshold:"..requestThreshold.." requestPriority:"..requestPriority.." noWarnings:"..tostring(noWarnings)
   -- .." provideThreshold:"..provideThreshold.." providePriority:"..providePriority.." lockedSlots:"..lockedSlots)
 
-  -- skip duplicated names on non depots
-  if #global.TrainStopNames[stop.entity.backer_name] ~= 1 and not isDepot then
+  -- skip duplicated names on non-depot LTN stops
+  local isDuplicate = #filter(isLogisticTrainStop, global.TrainStopNames[stop.entity.backer_name]) ~= 1
+  if isDuplicate and not isDepot then
     stop.errorCode = 2
     stop.activeDeliveries = {}
     if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
