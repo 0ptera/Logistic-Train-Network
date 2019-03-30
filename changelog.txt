@@ -3,6 +3,8 @@ Version: 1.10.5
 Date: 2019-03-19
   Changes:
     - moved more functionality to Opteras Library
+Bugfixes:
+    - signal names are generated properly for locomotives and wagons with localised_name
 ---------------------------------------------------------------------------------------------------
 Version: 1.10.4
 Date: 2019-03-19

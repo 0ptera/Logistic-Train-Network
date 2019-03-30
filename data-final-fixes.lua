@@ -18,7 +18,7 @@ for _, loco in pairs(data.raw["locomotive"]) do
     icon_size = nil,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-u"..string.format("%02d", lococount),
-    localised_name = {"virtual-signal-name.LTN-locomotive", {"entity-name." .. loco.name}}
+    localised_name = {"virtual-signal-name.ltn-position", loco.localised_name or {"entity-name." .. loco.name}}
   }
   data:extend({signal})
 end
@@ -33,7 +33,7 @@ for _, wagon in pairs(data.raw["cargo-wagon"]) do
     icon_size = nil,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
-    localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
+    localised_name = {"virtual-signal-name.ltn-position", wagon.localised_name or {"entity-name." .. wagon.name}}
   }
   data:extend({signal})
 end
@@ -46,7 +46,7 @@ for _, wagon in pairs(data.raw["fluid-wagon"]) do
     icon_size = nil,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
-    localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
+    localised_name = {"virtual-signal-name.ltn-position", wagon.localised_name or {"entity-name." .. wagon.name}}
   }
   data:extend({signal})
 end
@@ -59,7 +59,7 @@ for _, wagon in pairs(data.raw["artillery-wagon"]) do
     icon_size = nil,
     subgroup = "LTN-signal",
     order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
-    localised_name = {"virtual-signal-name.LTN-wagon", {"entity-name." .. wagon.name}}
+    localised_name = {"virtual-signal-name.ltn-position", wagon.localised_name or {"entity-name." .. wagon.name}}
   }
   data:extend({signal})
 end
