@@ -229,7 +229,7 @@ function UpdateStop(stopID)
       else
         if not global.Dispatcher.availableTrains[stop.parkedTrainID] then
           -- create new available train
-          local loco = GetMainLocomotive(stop.parkedTrain)
+          local loco = get_main_locomotive(stop.parkedTrain)
           if loco then
             local capacity, fluid_capacity = GetTrainCapacity(stop.parkedTrain)
             global.Dispatcher.availableTrains[stop.parkedTrainID] = {train = stop.parkedTrain, force = loco.force.name, network_id = network_id, capacity = capacity, fluid_capacity = fluid_capacity}

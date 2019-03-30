@@ -11,7 +11,7 @@ function TrainArrives(train)
   local stop = global.LogisticTrainStops[stopID]
   if stop then
     -- assign main loco name and force
-    local loco = GetMainLocomotive(train)
+    local loco = get_main_locomotive(train)
     local trainForce = nil
     local trainName = nil
     if loco then
@@ -34,8 +34,8 @@ function TrainArrives(train)
     if message_level >= 3 then printmsg({"ltn-message.train-arrived", tostring(trainName), stop.entity.backer_name}, trainForce, false) end
     if debug_log then log("Train ["..train.id.."] "..tostring(trainName).." arrived at LTN-stop ["..stopID.."] "..stop.entity.backer_name) end
 
-    local frontDistance = GetDistance(train.front_stock.position, train.station.position)
-    local backDistance = GetDistance(train.back_stock.position, train.station.position)
+    local frontDistance = get_distance(train.front_stock.position, train.station.position)
+    local backDistance = get_distance(train.back_stock.position, train.station.position)
     if debug_log then log("Front Stock Distance: "..frontDistance..", Back Stock Distance: "..backDistance) end
     if frontDistance > backDistance then
       stop.parkedTrainFacesStop = false
@@ -184,7 +184,7 @@ end
 
 
 function OnTrainStateChanged(event)
-  -- log("(OnTrainStateChanged) Train name: "..tostring(GetTrainName(event.train))..", train.id:"..tostring(event.train.id).." stop: "..tostring(event.train.station and event.train.station.backer_name)..", state: "..tostring(event.old_state).." > "..tostring(event.train.state))
+  -- log("(OnTrainStateChanged) Train name: "..tostring(get_train_name(event.train))..", train.id:"..tostring(event.train.id).." stop: "..tostring(event.train.station and event.train.station.backer_name)..", state: "..tostring(event.old_state).." > "..tostring(event.train.state))
   local train = event.train
   if train.state == defines.train_state.wait_station and train.station ~= nil and ltn_stop_entity_names[train.station.name] then
     TrainArrives(train)
@@ -232,7 +232,7 @@ local function update_delivery(old_train_id, new_train)
 end
 
 function OnTrainCreated(event)
-  -- log("(on_train_created) Train name: "..tostring(GetTrainName(event.train))..", train.id:"..tostring(event.train.id)..", .old_train_id_1:"..tostring(event.old_train_id_1)..", .old_train_id_2:"..tostring(event.old_train_id_2)..", state: "..tostring(event.train.state))
+  -- log("(on_train_created) Train name: "..tostring(get_train_name(event.train))..", train.id:"..tostring(event.train.id)..", .old_train_id_1:"..tostring(event.old_train_id_1)..", .old_train_id_2:"..tostring(event.old_train_id_2)..", state: "..tostring(event.train.state))
   -- on_train_created always sets train.state to 9 manual, scripts have to set the train back to its former state.
 
   if event.old_train_id_1 then
