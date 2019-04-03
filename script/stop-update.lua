@@ -59,12 +59,13 @@ function UpdateStop(stopID)
     global.LogisticTrainStops[stopID].parkedTrainID = nil
   end
 
-  -- remove invalid activeDeliveries -- shouldn't be necessary
-  -- for i=#stop.activeDeliveries, 1, -1 do
-    -- if not global.Dispatcher.Deliveries[stop.activeDeliveries[i]] then
-      -- table.remove(stop.activeDeliveries, i)
-    -- end
-  -- end
+  -- remove invalid activeDeliveries -- shouldn't be necessary -- only check oldest delivery
+  local nextDelivery = stop.activeDeliveries[1]
+  if nextDelivery and not global.Dispatcher.Deliveries[nextDelivery] then
+    table.remove(stop.activeDeliveries, 1)
+    if message_level >= 1 then printmsg({"ltn-message.error-invalid-delivery", stop.entity.backer_name}) end
+    if debug_log then log("(UpdateStop) Removing invalid delivery from stop '"..stop.entity.backer_name.."': "..nextDelivery) end
+  end
 
   -- reset stop parameters in case something goes wrong
   stop.minTraincars = 0
