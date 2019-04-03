@@ -7,7 +7,7 @@ assignees: Yousei9
 
 ---
 
-**Make sure the bug is caused by LTN and not an interface recipient**
+**Make sure the bug is caused by LTN and not an interface recipient**  
 Example of a bug in LTN Tracker:
 ```
 The mod LTN - Logistic Train Network caused a non-recoverable error.
