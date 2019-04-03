@@ -20,15 +20,15 @@ Please report this error to the mod author.
 Error while running event LTN_Tracker::Custom event (ID ???)
 ```
 
-**Error message or bug description**
+**Error message or bug description**  
 If LTN caused an error message: screenshot or text of that message.
 If something did not work as expected: Description of the behavior and what you expected instead.
 
-**To Reproduce**
+**To Reproduce**  
 Steps to reproduce the bug, if known.
 
-**LTN version**
+**LTN version**  
 X.Y.Z
 
-**Log file**
+**Log file**  
 Your factorio-current.log file. It is located in Factorio's [user data directory](https://wiki.factorio.com/Application_directory#User_data_directory).
