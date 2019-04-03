@@ -166,15 +166,12 @@ function RemoveDelivery(trainID)
     if not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
       RemoveStop(stopID)
     else
-      for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
-        if stop.activeDeliveries[i] == trainID then
-          table.remove(stop.activeDeliveries, i)
-          if #stop.activeDeliveries > 0 then
-            setLamp(stop, "yellow", #stop.activeDeliveries)
-          else
-            setLamp(stop, "green", 1)
-          end
-        end
+      Station_removeTrain(stop.station, trainID)
+      local trainCount = Station_trainCount(stop.station)
+      if Station_hasPending(stop.station) then
+        setLamp(stop, "yellow", trainCount)
+      else
+        setLamp(stop, "green", Station_numStops(stop.station) - trainCount)
       end
     end
   end
@@ -269,7 +266,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
       -- and count >= stop.provideThreshold
       and (stop.minTraincars == 0 or max_length == 0 or stop.minTraincars <= max_length)
       and (stop.maxTraincars == 0 or min_length == 0 or stop.maxTraincars >= min_length) then --check if provider can actually service trains from requester
-        local activeDeliveryCount = #stop.activeDeliveries
+        local activeDeliveryCount = Station_trainCount(stop.station)
         local from_network_id_string = format("0x%x", band(stop.network_id))
         if activeDeliveryCount and (stop.trainLimit == 0 or activeDeliveryCount < stop.trainLimit) then
           if debug_log then log("found "..count.."("..tostring(stop.provideThreshold)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.providePriority..", active Deliveries: "..activeDeliveryCount.." minTraincars: "..stop.minTraincars..", maxTraincars: "..stop.maxTraincars..", locked Slots: "..stop.lockedSlots) end
@@ -410,8 +407,8 @@ function ProcessRequest(reqIndex)
     return nil
   end
 
-  if requestStation.trainLimit > 0 and #requestStation.activeDeliveries >= requestStation.trainLimit then
-    if debug_log then log(requestStation.entity.backer_name.." Request station train limit reached: "..#requestStation.activeDeliveries.."("..requestStation.trainLimit..")" ) end
+  if requestStation.trainLimit > 0 and Station_trainCount(requestStation.station) >= requestStation.trainLimit then
+    if debug_log then log(requestStation.entity.backer_name.." Request station train limit reached: "..Station_trainCount(requestStation.station).."("..requestStation.trainLimit..")" ) end
     -- goto skipRequestItem -- reached train limit
     return nil
   end
@@ -617,18 +614,23 @@ function ProcessRequest(reqIndex)
 
   -- update delivery count and lamps on stations
   -- trains will pick a stop by their own logic so we have to parse by name
-  for stopID, stop in pairs (global.LogisticTrainStops) do
-    if stop.entity.backer_name == from or stop.entity.backer_name == to then
-      table.insert(global.LogisticTrainStops[stopID].activeDeliveries, selectedTrain.id)
-      -- only update blue lamp count, otherwise change to yellow
-      local current_signal = stop.lampControl.get_control_behavior().get_signal(1)
-      if current_signal and current_signal.signal.name == "signal-blue" then
-        setLamp(stop, "blue", #stop.activeDeliveries)
-      else
-        setLamp(stop, "yellow", #stop.activeDeliveries)
+  local update = function(name)
+    local station = Station_get(name)
+    Station_addPendingTrain(station, selectedTrain.id)
+    local trainCount = Station_trainCount(station)
+    for stopID, _ in pairs(station.stops) do
+      local stop = global.LogisticTrainStops[stopID]
+      if stop then
+        if stop.parkedTrainID and stop.parkedTrain.valid then
+          setLamp(stop, "blue", trainCount)
+        else
+          setLamp(stop, "yellow", trainCount)
+        end
       end
     end
   end
+  update(from)
+  update(to)
 
   -- return train ID / delivery ID
   return selectedTrain.id

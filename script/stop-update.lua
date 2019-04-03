@@ -49,24 +49,41 @@ function UpdateStop(stopID)
   if not stop or not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
     if message_level >= 1 then printmsg({"ltn-message.error-invalid-stop", stopID}) end
     if debug_log then log("(UpdateStop) Removing invalid stop: "..stopID) end
-    RemoveStop(stopID)
+    if stop.entity.valid then
+      Station_removeStopEntity(stop.entity)
+    else
+      for i = 1, #globals.LogisticStations do
+        local station = globals.LogisticStations[i]
+        Station_removeStopFromStation(station, stopID)
+      end
+    end
     return
+  end
+
+  -- set stop.station if missing
+  if not stop.station then
+    log("LTN: adding stop to station " .. stop.entity.backer_name .. " + " .. stop.entity.unit_number)
+    stop.station = Station_addStopEntity(stop.entity)
   end
 
   -- remove invalid trains
   if stop.parkedTrain and not stop.parkedTrain.valid then
-    global.LogisticTrainStops[stopID].parkedTrain = nil
-    global.LogisticTrainStops[stopID].parkedTrainID = nil
+    Station_removeParkedTrain(stop.station, stop.parkedTrainID)
+    stop.parkedTrain = nil
+    stop.parkedTrainID = nil
   end
 
   -- remove invalid activeDeliveries -- shouldn't be necessary
-  for i=#stop.activeDeliveries, 1, -1 do
-    if not global.Dispatcher.Deliveries[stop.activeDeliveries[i]] then
-      table.remove(stop.activeDeliveries, i)
-      if message_level >= 1 then printmsg({"ltn-message.error-invalid-delivery", stop.entity.backer_name}) end
-      if debug_log then log("(UpdateStop) Removing invalid delivery from stop '"..tostring(stop.entity.backer_name).."': "..nextDelivery) end
-    end
-  end
+  local station = stop.station
+  Station_forEachTrainIfDelete(stop.station,
+                               function(trainID)
+                                 if not global.Dispatcher.Deliveries[trainID] then
+                                   if message_level >= 1 then printmsg({"ltn-message.error-invalid-delivery", stop.entity.backer_name}) end
+                                   if debug_log then log("(UpdateStop) Removing invalid delivery from stop '"..stop.entity.backer_name.."': "..nextDelivery) end
+                                   return true
+                                 end
+                                 return false
+  end)
 
   -- reset stop parameters in case something goes wrong
   stop.minTraincars = 0
@@ -80,8 +97,8 @@ function UpdateStop(stopID)
   stop.lockedSlots = 0
 
   -- add missing stops to name list
-  if not global.TrainStopNames[stop.entity.backer_name] then
-    AddStopName(stop.entity.unit_number, stop.entity.backer_name)
+  if not global.LogisticStations[stop.entity.backer_name] then
+    stop.station = Station_addStopEntity(stop.entity)
     if message_level >= 1 then printmsg({"ltn-message.error-missing-stop-name", stop.entity.backer_name}) end
     if debug_log then log("(UpdateStop) Missing stop name '"..tostring(stop.entity.backer_name).."' added to global.TrainStopNames") end
     return
@@ -110,7 +127,7 @@ function UpdateStop(stopID)
     return
   end
 
-    -- initialize control signal values to defaults
+  -- initialize control signal values to defaults
   local isDepot = false
   local network_id = -1
   local minTraincars = 0
@@ -179,7 +196,7 @@ function UpdateStop(stopID)
   -- .." provideThreshold:"..provideThreshold.." providePriority:"..providePriority.." lockedSlots:"..lockedSlots)
 
   -- skip duplicated names on non depots
-  if #global.TrainStopNames[stop.entity.backer_name] ~= 1 and not isDepot then
+  if not isDepot and Station_numStops(stop.station) > 1 then
     stop.errorCode = 2
     if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
       remove_available_train(stop.parkedTrainID)
@@ -203,14 +220,15 @@ function UpdateStop(stopID)
         setLamp(stop, "green", 1)
       end
     else
-      if #stop.activeDeliveries > 0 then
-        if stop.parkedTrainID and stop.parkedTrain.valid then
-          setLamp(stop, "blue", #stop.activeDeliveries)
-        else
-          setLamp(stop, "yellow", #stop.activeDeliveries)
-        end
-      else
+      local trainCount = Station_trainCount(stop.station)
+      if trainCount == 0 then
         setLamp(stop, "green", 1)
+      else
+        if stop.parkedTrainID and stop.parkedTrain.valid then
+          setLamp(stop, "blue", trainCount)
+        else
+          setLamp(stop, "yellow", trainCount)
+        end
       end
     end
   end
@@ -244,7 +262,7 @@ function UpdateStop(stopID)
       if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} is empty depot.") end
     end
 
-  -- not a depot > check if the name is unique
+  -- not a depot -> update cached data in dispatcher
   else
     stop.isDepot = false
     if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
@@ -331,8 +349,8 @@ function UpdateStop(stopID)
         global.Dispatcher.Provided_by_Stop[stopID][item] = count
         if debug_log then
           local trainsEnRoute = "";
-          for k,v in pairs(stop.activeDeliveries) do
-            trainsEnRoute=trainsEnRoute.." "..v
+          for k,_ in pairs(stop.station.pendingTrains) do
+            trainsEnRoute=trainsEnRoute.." "..k
           end
           log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} provides "..item.." "..count.."("..provideThreshold..")".." stacks: "..stack_count.."("..provideStackThreshold..")"..", priority: "..providePriority..", min length: "..minTraincars..", max length: "..maxTraincars..", trains en route: "..trainsEnRoute)
         end
@@ -346,8 +364,8 @@ function UpdateStop(stopID)
         global.Dispatcher.Requests_by_Stop[stopID][item] = count
         if debug_log then
           local trainsEnRoute = "";
-          for k,v in pairs(stop.activeDeliveries) do
-            trainsEnRoute=trainsEnRoute.." "..v
+          for k,_ in pairs(stop.station.pendingTrains) do
+            trainsEnRoute=trainsEnRoute.." "..k
           end
           log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} requests "..item.." "..count.."("..requestThreshold..")".." stacks: "..tostring(stack_count*-1).."("..requestStackThreshold..")"..", priority: "..requestPriority..", min length: "..minTraincars..", max length: "..maxTraincars..", age: "..global.Dispatcher.RequestAge[ageIndex].."/"..game.tick..", trains en route: "..trainsEnRoute)
         end

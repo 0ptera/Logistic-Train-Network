@@ -30,6 +30,7 @@ function TrainArrives(train)
     -- add train to global.LogisticTrainStops
     stop.parkedTrain = train
     stop.parkedTrainID = train.id
+    Station_trainArrived(stop.station, train.id)
 
     if message_level >= 3 then printmsg({"ltn-message.train-arrived", tostring(trainName), stop.entity.backer_name}, trainForce, false) end
     if debug_log then log("Train ["..train.id.."] "..tostring(trainName).." arrived at LTN-stop ["..stopID.."] "..stop.entity.backer_name) end
@@ -81,11 +82,8 @@ function TrainArrives(train)
 
       else -- stop is no Depot
         -- set lamp to blue for LTN controlled trains
-        for i=1, #stop.activeDeliveries, 1 do
-          if stop.activeDeliveries[i] == train.id then
-            setLamp(stop, "blue", #stop.activeDeliveries)
-            break
-          end
+        if Station_isParked(stop.station, train.id) then
+          setLamp(stop, "blue", Station_trainCount(stop.station))
         end
       end
     end
@@ -107,6 +105,9 @@ function TrainLeaves(trainID)
     return
   end
 
+  -- remove train from station
+  Station_removeParkedTrain(stop.station, trainID)
+
   -- train was stopped at LTN depot
   if stop.isDepot then
     if global.Dispatcher.availableTrains[trainID] then -- trains are normally removed when deliveries are created
@@ -121,12 +122,6 @@ function TrainLeaves(trainID)
   -- train was stopped at LTN stop
   else
     -- remove delivery from stop
-    for i=#stop.activeDeliveries, 1, -1 do
-      if stop.activeDeliveries[i] == trainID then
-        table.remove(stop.activeDeliveries, i)
-      end
-    end
-
     local delivery = global.Dispatcher.Deliveries[trainID]
     if stoppedTrain.train.valid and delivery then
       if delivery.from == stop.entity.backer_name then
@@ -164,10 +159,11 @@ function TrainLeaves(trainID)
       end
     end
     if stop.errorCode == 0 then
-      if #stop.activeDeliveries > 0 then
-        setLamp(stop, "yellow", #stop.activeDeliveries)
+      local trainCount = Station_trainCount(stop.station)
+      if Station_hasPending(stop.station) then
+        setLamp(stop, "yellow", trainCount)
       else
-        setLamp(stop, "green", 1)
+        setLamp(stop, "green", Station_numStops(stop.station) - trainCount)
       end
     end
   end
@@ -200,20 +196,29 @@ local function update_delivery(old_train_id, new_train)
   -- expanded RemoveDelivery(old_train_id) to also update
   for stopID, stop in pairs(global.LogisticTrainStops) do
     if not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
-      RemoveStop(stopID)
+      if stop.entity.valid then
+        Station_removeStopEntity(stop.entity)
+      else
+        for i = 1, #globals.LogisticStations do
+          local station = globals.LogisticStations[i]
+          Station_removeStopFromStation(station, stopID)
+        end
+      end
     else
-      for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
-        if stop.activeDeliveries[i] == old_train_id then
-          if delivery then
-            stop.activeDeliveries[i] = new_train.id -- update train id if delivery exists
-          else
-            table.remove(stop.activeDeliveries, i) -- otherwise remove entry
-            if #stop.activeDeliveries > 0 then
-              setLamp(stop, "yellow", #stop.activeDeliveries)
-            else
-              setLamp(stop, "green", 1)
-            end
-          end
+      Station_removeTrain(stop.station, old_train_id)
+      if delivery then
+        Station_addPendingTrain(stop.station, new_train.id)
+        if stop.parkedTrainID == old_train_id then
+          stop.parkedTrain = new_train
+          stop.parkedTrainID = new_train.id
+          Station_trainArrived(stop.station, new_train.id)
+        end
+      else
+        local trainCount = Station_trainCount(stop.station)
+        if Station_hasPending(stop.station) then
+          setLamp(stop, "yellow", trainCount)
+        else
+          setLamp(stop, "green", Station_numStops(stop.station) - trainCount)
         end
       end
     end

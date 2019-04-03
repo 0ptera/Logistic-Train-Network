@@ -4,48 +4,8 @@
  * See LICENSE.md in the project directory for license information.
 --]]
 
-
--- add stop to TrainStopNames
-function AddStopName(stopID, stopName)
-  if stopName then -- is it possible to have stops without backer_name?
-    if global.TrainStopNames[stopName] then
-      -- prevent adding the same stop multiple times
-      local idExists = false
-      for i=1, #global.TrainStopNames[stopName] do
-        if stopID == global.TrainStopNames[stopName][i] then
-          idExists = true
-        end
-      end
-      if not idExists then
-        -- multiple stops of same name > add id to the list
-        table.insert(global.TrainStopNames[stopName], stopID)
-      end
-    else
-      -- create new name-id entry
-      global.TrainStopNames[stopName] = {stopID}
-    end
-  end
-end
-
--- remove stop from TrainStopNames
-function RemoveStopName(stopID, stopName)
-  if global.TrainStopNames[stopName] then
-    -- multiple stops of same name > remove id from the list
-    for i=#global.TrainStopNames[stopName], 1, -1 do
-      if global.TrainStopNames[stopName][i] == stopID then
-        table.remove(global.TrainStopNames[stopName], i)
-      end
-    end
-    if not next(global.TrainStopNames[stopName]) then
-      -- remove name-id entry
-      global.TrainStopNames[stopName] = nil
-    end
-  end
-end
-
-
 --create stop
-function CreateStop(entity)
+function CreateStop(entity, station)
   if global.LogisticTrainStops[entity.unit_number] then
     if message_level >= 1 then printmsg({"ltn-message.error-duplicated-unit_number", entity.unit_number}, entity.force) end
     if debug_log then log("(CreateStop) duplicate stop unit number "..entity.unit_number) end
@@ -160,15 +120,15 @@ function CreateStop(entity)
   entity.get_or_create_control_behavior().send_to_train = true
   entity.get_or_create_control_behavior().read_from_train = true
 
-  global.LogisticTrainStops[entity.unit_number] = {
+  local stop = {
     entity = entity,
     input = input,
     output = output,
     lampControl = lampctrl,
     parkedTrain = nil,
     parkedTrainID = nil,
-    activeDeliveries = {},   --delivery IDs to/from stop
-    errorCode = -1,          --key to errorCodes table
+    station = station,
+    errorCode = -1,
     isDepot = false,
     network_id = -1,
     minTraincars = 0,
@@ -182,9 +142,10 @@ function CreateStop(entity)
     provideStackThreshold = 0,
     providePriority = 0,
     lockedSlots = 0,
-  }
+    }
+  global.LogisticTrainStops[entity.unit_number] = stop
   StopIDList[#StopIDList+1] = entity.unit_number
-  UpdateStopOutput(global.LogisticTrainStops[entity.unit_number])
+  UpdateStopOutput(stop)
 
   ResetUpdateInterval()
 end
@@ -192,9 +153,9 @@ end
 function OnEntityCreated(event)
   local entity = event.created_entity
   if entity.type == "train-stop" then
-     AddStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
+    local station = Station_addStopEntity(entity) -- all stop names are monitored
     if ltn_stop_entity_names[entity.name] then
-      CreateStop(entity)
+      CreateStop(entity, station)
       if #StopIDList == 1 then
         --initialize OnTick indexes
         -- stopsPerTick = 1
@@ -264,7 +225,7 @@ function OnEntityRemoved(event)
     end
 
   elseif entity.type == "train-stop" then
-    RemoveStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
+    Station_removeStopEntity(entity)
     if ltn_stop_entity_names[entity.name] then
       RemoveStop(entity.unit_number)
       if StopIDList == nil or #StopIDList == 0 then
@@ -287,7 +248,7 @@ function OnSurfaceRemoved(event)
   if surface then
     local train_stops = surface.find_entities_filtered{type = "train-stop"}
     for _, entity in pairs(train_stops) do
-      RemoveStopName(entity.unit_number, entity.backer_name)
+      Station_removeStopEntity(entity)
       if ltn_stop_entity_names[entity.name] then
         RemoveStop(entity.unit_number)
       end
@@ -296,44 +257,31 @@ function OnSurfaceRemoved(event)
 end
 
 
---rename stop
-local function renamedStop(targetID, old_name, new_name)
-  -- find identical stop names
-  local duplicateName = false
-  local renameDeliveries = true
-  for stopID, stop in pairs(global.LogisticTrainStops) do
-    if not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
-      RemoveStop(stopID)
-    elseif stop.entity.backer_name == old_name then
-      renameDeliveries = false
-    end
-  end
-  -- rename deliveries only if no other LTN stop old_name exists
-  if renameDeliveries then
-    if debug_log then log("(OnEntityRenamed) last LTN stop "..old_name.." renamed, updating deliveries to "..new_name..".") end
-    for trainID, delivery in pairs(global.Dispatcher.Deliveries) do
-      if delivery.to == old_name then
-        delivery.to = new_name
-      end
-      if delivery.from == old_name then
-        delivery.from = new_name
-      end
-    end
-  end
-end
-
 script.on_event(defines.events.on_entity_renamed, function(event)
   local uid = event.entity.unit_number
   local oldName = event.old_name
   local newName = event.entity.backer_name
 
   if event.entity.type == "train-stop" then
-    RemoveStopName(uid, oldName)
-    AddStopName(uid, newName)
-  end
-
-  if ltn_stop_entity_names[event.entity.name] then
-    renamedStop(uid, oldName, newName)
+    local oldStation = Station_removeStop(oldName, uid)
+    local newStation = Station_addStop(newName, uid)
+    local stop = global.LogisticTrainStops[uid]
+    if stop then
+      stop.station = newStation
+    end
+    if (Station_numStops(oldStation) == 0) then
+      -- last station of that name, rename all deliveries
+      if debug_log then log("(OnEntityRenamed) last LTN stop "..oldName.." renamed, updating deliveries to "..newName..".") end
+      for trainID, delivery in pairs(global.Dispatcher.Deliveries) do
+        if delivery.to == oldName then
+          delivery.to = newName
+        end
+        if delivery.from == oldName then
+          delivery.from = newName
+        end
+      end
+      Station_mergeStation(new_station, old_station)
+    end
   end
 end)
 

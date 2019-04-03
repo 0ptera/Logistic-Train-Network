@@ -7,7 +7,7 @@
 ---- INITIALIZATION ----
 
 local function initialize(oldVersion, newVersion)
-  --log("oldVersion: "..tostring(oldVersion)..", newVersion: "..tostring(newVersion))
+  log("oldVersion: "..tostring(oldVersion)..", newVersion: "..tostring(newVersion))
 
   ---- initialize logger
   global.messageBuffer = {}
@@ -92,6 +92,9 @@ local function initialize(oldVersion, newVersion)
   ---- initialize stops
   global.LogisticTrainStops = global.LogisticTrainStops or {}
 
+  ---- initialize stations
+  global.LogisticStation = global.LogisticStation or {}
+
   if next(global.LogisticTrainStops) then
     for stopID, stop in pairs (global.LogisticTrainStops) do
       global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or -1
@@ -122,6 +125,10 @@ local function initialize(oldVersion, newVersion)
       stop.input.disconnect_neighbour({target_entity=stop.lampControl, wire=defines.wire_type.red})
       stop.input.connect_neighbour({target_entity=stop.lampControl, wire=defines.wire_type.green})
       stop.input.connect_neighbour({target_entity=stop.lampControl, wire=defines.wire_type.red})
+
+      -- update to 1.10.5
+      stop.station = Station_addStopEntity(stop.entity)
+      stop.activeDeliveries = nil
     end
   end
 
@@ -131,7 +138,7 @@ end
 -- ensures global.LogisticTrainStops contains valid entities
 local function initializeTrainStops()
   global.LogisticTrainStops = global.LogisticTrainStops or {}
-  global.TrainStopNames = global.TrainStopNames or {} -- dictionary of all train stops by all mods
+  global.LogisticStations = global.LogisticStations or {} -- stops with the same name form a station
 
   -- remove invalidated stops
   for stopID, stop in pairs (global.LogisticTrainStops) do
@@ -159,25 +166,26 @@ local function initializeTrainStops()
     local foundStops = surface.find_entities_filtered{type="train-stop"}
     if foundStops then
       for k, stop in pairs(foundStops) do
+        local station = Station_addStopEntity(stop)
 
         -- validate global.LogisticTrainStops
         if ltn_stop_entity_names[stop.name] then
           local ltn_stop = global.LogisticTrainStops[stop.unit_number]
           if ltn_stop then
+            log("[LTN] setting station for stop "..tostring(stop.backer_name) )
+            ltn_stop.station = station
             if not(ltn_stop.output and ltn_stop.output.valid and ltn_stop.input and ltn_stop.input.valid and ltn_stop.lampControl and ltn_stop.lampControl.valid) then
               -- I/O entities are corrupted
               log("[LTN] recreating corrupt stop "..tostring(stop.backer_name) )
               global.LogisticTrainStops[stop.unit_number] = nil
-              CreateStop(stop) -- recreate to spawn missing I/O entities
+              CreateStop(stop, station) -- recreate to spawn missing I/O entities
 
             end
           else
             log("[LTN] recreating stop missing from global.LogisticTrainStops "..tostring(stop.backer_name) )
-            CreateStop(stop) -- recreate LTN stops missing from global.LogisticTrainStops
+            CreateStop(stop, station) -- recreate LTN stops missing from global.LogisticTrainStops
           end
         end
-
-        AddStopName(stop.unit_number, stop.backer_name)
       end
     end
   end
