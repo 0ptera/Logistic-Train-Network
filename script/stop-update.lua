@@ -89,7 +89,6 @@ function UpdateStop(stopID)
   -- skip short circuited stops
   if detectShortCircuit(stop) then
     stop.errorCode = 1
-    stop.activeDeliveries = {}
     if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
       remove_available_train(stop.parkedTrainID)
     end
@@ -102,7 +101,6 @@ function UpdateStop(stopID)
   local stopCB = stop.entity.get_control_behavior()
   if stopCB and stopCB.disabled then
     stop.errorCode = 1
-    stop.activeDeliveries = {}
     if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
       remove_available_train(stop.parkedTrainID)
     end
@@ -182,7 +180,6 @@ function UpdateStop(stopID)
   -- skip duplicated names on non depots
   if #global.TrainStopNames[stop.entity.backer_name] ~= 1 and not isDepot then
     stop.errorCode = 2
-    stop.activeDeliveries = {}
     if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
       remove_available_train(stop.parkedTrainID)
     end
@@ -221,7 +218,6 @@ function UpdateStop(stopID)
   if isDepot then
     stop.isDepot = true
     stop.network_id = network_id
-    stop.activeDeliveries = {} -- reset delivery count in case stops are toggled
 
     -- add parked train to available trains
     if stop.parkedTrainID and stop.parkedTrain.valid then
