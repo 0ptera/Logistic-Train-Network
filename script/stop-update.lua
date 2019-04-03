@@ -209,7 +209,11 @@ function UpdateStop(stopID)
       end
     else
       if #stop.activeDeliveries > 0 then
-        setLamp(stop, "yellow", #stop.activeDeliveries)
+        if stop.parkedTrainID and stop.parkedTrain.valid then
+          setLamp(stop, "blue", #stop.activeDeliveries)
+        else
+          setLamp(stop, "yellow", #stop.activeDeliveries)
+        end
       else
         setLamp(stop, "green", 1)
       end
