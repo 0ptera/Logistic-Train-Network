@@ -77,15 +77,11 @@ function UpdateStop(stopID)
   stop.providePriority = 0
   stop.lockedSlots = 0
 
-  -- reject any stop not in name list
+  -- readd any stop not in name list
   if not global.TrainStopNames[stop.entity.backer_name] then
-    stop.errorCode = 2
-    stop.activeDeliveries = {}
-    if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
-      remove_available_train(stop.parkedTrainID)
-    end
-    if message_level >= 1 then printmsg({"ltn-message.error-invalid-stop", stop.entity.backer_name}) end
-    if debug_log then log("(UpdateStop) Stop not in list global.TrainStopNames: "..stop.entity.backer_name) end
+    AddStopName(stop.entity.unit_number, stop.entity.backer_name)
+    if message_level >= 1 then printmsg({"ltn-message.error-lost-stop", stop.entity.backer_name}) end
+    if debug_log then log("(UpdateStop) Stop not in list global.TrainStopNames readded: "..stop.entity.backer_name) end
     return
   end
 
