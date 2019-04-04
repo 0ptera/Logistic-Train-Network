@@ -130,6 +130,8 @@ function TrainLeaves(trainID)
     local delivery = global.Dispatcher.Deliveries[trainID]
     if stoppedTrain.train.valid and delivery then
       if delivery.from == stop.entity.backer_name then
+        delivery.pickupDone = true -- remove reservations from this delivery
+        script.raise_event(on_delivery_pickup_complete_event, {delivery = delivery, trainID = trainID})
         -- update delivery counts to train inventory
         for item, count in pairs (delivery.shipment) do
           local itype, iname = match(item, match_string)
@@ -147,9 +149,6 @@ function TrainLeaves(trainID)
             delivery.shipment[item] = nil
           end
         end
-        delivery.pickupDone = true -- remove reservations from this delivery
-        script.raise_event(on_delivery_pickup_complete_event, {delivery = delivery, trainID = trainID})
-
       elseif delivery.to == stop.entity.backer_name then
         -- signal completed delivery and remove it
         script.raise_event(on_delivery_completed_event, {delivery = delivery, trainID = trainID})
