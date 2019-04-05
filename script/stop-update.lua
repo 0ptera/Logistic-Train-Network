@@ -78,11 +78,11 @@ function UpdateStop(stopID)
   stop.providePriority = 0
   stop.lockedSlots = 0
 
-  -- readd any stop not in name list
+  -- add missing stops to name list
   if not global.TrainStopNames[stop.entity.backer_name] then
     AddStopName(stop.entity.unit_number, stop.entity.backer_name)
-    if message_level >= 1 then printmsg({"ltn-message.error-lost-stop", stop.entity.backer_name}) end
-    if debug_log then log("(UpdateStop) Stop not in list global.TrainStopNames readded: "..stop.entity.backer_name) end
+    if message_level >= 1 then printmsg({"ltn-message.error-missing-stop-name", stop.entity.backer_name}) end
+    if debug_log then log("(UpdateStop) Missing stop name "..tostring(stop.entity.backer_name).." added to global.TrainStopNames") end
     return
   end
 
