@@ -60,11 +60,13 @@ function UpdateStop(stopID)
   end
 
   -- remove invalid activeDeliveries -- shouldn't be necessary
-  -- for i=#stop.activeDeliveries, 1, -1 do
-    -- if not global.Dispatcher.Deliveries[stop.activeDeliveries[i]] then
-      -- table.remove(stop.activeDeliveries, i)
-    -- end
-  -- end
+  for i=#stop.activeDeliveries, 1, -1 do
+    if not global.Dispatcher.Deliveries[stop.activeDeliveries[i]] then
+      table.remove(stop.activeDeliveries, i)
+      if message_level >= 1 then printmsg({"ltn-message.error-invalid-delivery", stop.entity.backer_name}) end
+      if debug_log then log("(UpdateStop) Removing invalid delivery from stop '"..tostring(stop.entity.backer_name).."': "..nextDelivery) end
+    end
+  end
 
   -- reset stop parameters in case something goes wrong
   stop.minTraincars = 0
@@ -77,22 +79,17 @@ function UpdateStop(stopID)
   stop.providePriority = 0
   stop.lockedSlots = 0
 
-  -- reject any stop not in name list
+  -- add missing stops to name list
   if not global.TrainStopNames[stop.entity.backer_name] then
-    stop.errorCode = 2
-    stop.activeDeliveries = {}
-    if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
-      remove_available_train(stop.parkedTrainID)
-    end
-    if message_level >= 1 then printmsg({"ltn-message.error-invalid-stop", stop.entity.backer_name}) end
-    if debug_log then log("(UpdateStop) Stop not in list global.TrainStopNames: "..stop.entity.backer_name) end
+    AddStopName(stop.entity.unit_number, stop.entity.backer_name)
+    if message_level >= 1 then printmsg({"ltn-message.error-missing-stop-name", stop.entity.backer_name}) end
+    if debug_log then log("(UpdateStop) Missing stop name '"..tostring(stop.entity.backer_name).."' added to global.TrainStopNames") end
     return
   end
 
   -- skip short circuited stops
   if detectShortCircuit(stop) then
     stop.errorCode = 1
-    stop.activeDeliveries = {}
     if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
       remove_available_train(stop.parkedTrainID)
     end
@@ -105,7 +102,6 @@ function UpdateStop(stopID)
   local stopCB = stop.entity.get_control_behavior()
   if stopCB and stopCB.disabled then
     stop.errorCode = 1
-    stop.activeDeliveries = {}
     if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
       remove_available_train(stop.parkedTrainID)
     end
@@ -185,7 +181,6 @@ function UpdateStop(stopID)
   -- skip duplicated names on non depots
   if #global.TrainStopNames[stop.entity.backer_name] ~= 1 and not isDepot then
     stop.errorCode = 2
-    stop.activeDeliveries = {}
     if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
       remove_available_train(stop.parkedTrainID)
     end
@@ -209,7 +204,11 @@ function UpdateStop(stopID)
       end
     else
       if #stop.activeDeliveries > 0 then
-        setLamp(stop, "yellow", #stop.activeDeliveries)
+        if stop.parkedTrainID and stop.parkedTrain.valid then
+          setLamp(stop, "blue", #stop.activeDeliveries)
+        else
+          setLamp(stop, "yellow", #stop.activeDeliveries)
+        end
       else
         setLamp(stop, "green", 1)
       end
@@ -220,7 +219,6 @@ function UpdateStop(stopID)
   if isDepot then
     stop.isDepot = true
     stop.network_id = network_id
-    stop.activeDeliveries = {} -- reset delivery count in case stops are toggled
 
     -- add parked train to available trains
     if stop.parkedTrainID and stop.parkedTrain.valid then
