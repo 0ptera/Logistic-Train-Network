@@ -98,19 +98,6 @@ function Station_mergeStation(self, old)
   end
 end
 
-function Station_forEachTrainIfDelete(self, fn)
-  for trainID, _ in pairs(self.pendingTrains) do
-    if fn(trainID) then
-      self.pendingTrains[trainID] = nil
-    end
-  end
-  for trainID, _ in pairs(self.parkedTrains) do
-    if fn(trainID) then
-      self.parkedTrains[trainID] = nil
-    end
-  end
-end
-
 function Station_isMaster(self, stopID)
   if self.stops[self.master] then
     return self.master == stopID

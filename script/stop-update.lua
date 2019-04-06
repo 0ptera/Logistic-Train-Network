@@ -68,22 +68,29 @@ function UpdateStop(stopID)
 
   -- remove invalid trains
   if stop.parkedTrain and not stop.parkedTrain.valid then
-    Station_removeParkedTrain(stop.station, stop.parkedTrainID)
+    Station_removeTrain(stop.station, stop.parkedTrainID)
     stop.parkedTrain = nil
     stop.parkedTrainID = nil
   end
 
   -- remove invalid activeDeliveries -- shouldn't be necessary
   local station = stop.station
-  Station_forEachTrainIfDelete(stop.station,
-                               function(trainID)
-                                 if not global.Dispatcher.Deliveries[trainID] then
-                                   if message_level >= 1 then printmsg({"ltn-message.error-invalid-delivery", stop.entity.backer_name}) end
-                                   if debug_log then log("(UpdateStop) Removing invalid delivery from stop '"..stop.entity.backer_name.."': "..nextDelivery) end
-                                   return true
-                                 end
-                                 return false
-  end)
+  if Station_isMaster(station, stop) then
+    for trainID, _ in pairs(station.pendingTrains) do
+      if not global.Dispatcher.Deliveries[trainID] then
+        if message_level >= 1 then printmsg({"ltn-message.error-invalid-delivery", stop.entity.backer_name}) end
+        if debug_log then log("(UpdateStop) Removing invalid delivery from stop '"..stop.entity.backer_name.."': "..nextDelivery) end
+        Station_removeTrain(station, trainID)
+      end
+    end
+    for trainID, _ in pairs(station.parkedTrains) do
+      if not global.Dispatcher.Deliveries[trainID] then
+        if message_level >= 1 then printmsg({"ltn-message.error-invalid-delivery", stop.entity.backer_name}) end
+        if debug_log then log("(UpdateStop) Removing invalid delivery from stop '"..stop.entity.backer_name.."': "..nextDelivery) end
+        Station_removeTrain(station, trainID)
+      end
+    end
+  end
 
   -- reset stop parameters in case something goes wrong
   stop.minTraincars = 0
