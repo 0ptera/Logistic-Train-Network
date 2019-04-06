@@ -9,6 +9,9 @@
 local function initialize(oldVersion, newVersion)
   --log("oldVersion: "..tostring(oldVersion)..", newVersion: "..tostring(newVersion))
 
+  ---- always start with stop updated after a config change, ensure consistent data and filled tables
+  global.tickCount = 1
+
   ---- initialize logger
   global.messageBuffer = {}
 
@@ -30,7 +33,7 @@ local function initialize(oldVersion, newVersion)
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity or 0
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity or 0
-  global.Dispatcher.Provided = global.Dispatcher.Provided or {}                 -- dictionary [type,name] used to quickly find avaialble items
+  global.Dispatcher.Provided = global.Dispatcher.Provided or {}                 -- dictionary [type,name] used to quickly find available items
   global.Dispatcher.Provided_by_Stop = global.Dispatcher.Provided_by_Stop or {} -- dictionary [stopID]; used only by interface
   global.Dispatcher.Requests = global.Dispatcher.Requests or {}                 -- array of requests sorted by priority and age; used to loop over all requests
   global.Dispatcher.Requests_by_Stop = global.Dispatcher.Requests_by_Stop or {} -- dictionary [stopID]; used to keep track of already handled requests
@@ -56,7 +59,6 @@ local function initialize(oldVersion, newVersion)
       global.LogisticTrainStops[stopID].providePriority = global.LogisticTrainStops[stopID].priority or 0
       global.LogisticTrainStops[stopID].priority = nil
     end
-
     global.Dispatcher.Requests = {} -- wipe existing requests
   end
 
@@ -73,7 +75,6 @@ local function initialize(oldVersion, newVersion)
         if loco then
           locoID_to_trainID[loco.unit_number] = train.id
         end
-
       end
     end
     -- log("locoID_to_trainID: "..serpent.block(locoID_to_trainID))
