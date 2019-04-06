@@ -299,13 +299,15 @@ function UpdateStop(stopID)
       for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
         local deliverycount = delivery.shipment[item]
         if deliverycount then
-          if stop.parkedTrain and stop.parkedTrainID == trainID then
+          if Station_isParked(station, trainID) then
+            local stopEntity = global.StoppedTrains[trainID]
+            local trainStop = global.LogisticTrainStops[stopEntity.stopID]
             -- calculate items +- train inventory
             local traincount = 0
             if signal_type == "fluid" then
-              traincount = stop.parkedTrain.get_fluid_count(signal_name)
+              traincount = trainStop.parkedTrain.get_fluid_count(signal_name)
             else
-              traincount = stop.parkedTrain.get_item_count(signal_name)
+              traincount = trainStop.parkedTrain.get_item_count(signal_name)
             end
 
             if delivery.to == stop.entity.backer_name then
