@@ -101,7 +101,7 @@ function TrainLeaves(trainID)
   end
 
   -- remove train from station
-  Station_removeParkedTrain(stop.station, trainID)
+  Station_removeTrain(stop.station, trainID)
 
   -- train was stopped at LTN depot
   if stop.isDepot then

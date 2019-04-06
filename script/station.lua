@@ -37,12 +37,8 @@ function Station_trainArrived(self, trainID)
   end
 end
 
-function Station_removeParkedTrain(self, trainID)
-  self.pendingTrains[trainID] = nil
-  self.parkedTrains[trainID] = nil
-end
-
 function Station_removeTrain(self, trainID)
+  self.pendingTrains[trainID] = nil
   self.parkedTrains[trainID] = nil
 end
 
