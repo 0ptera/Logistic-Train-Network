@@ -48,7 +48,9 @@ ltn_stop_output_controller = "logistic-train-stop-lamp-control"
 ErrorCodes = {
   [-1] = "white", -- not initialized
   [1] = "red",    -- short circuit / disabled
-  [2] = "pink",   -- duplicate stop name
+  [2] = "pink",   -- depot and non-depot with same name
+  [3] = "pink",   -- duplicate stop name without wire
+  [4] = "pink",   -- LTN stop and other stop with same name
 }
 
 ColorLookup = {

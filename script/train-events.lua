@@ -44,11 +44,11 @@ function TrainArrives(train)
       stop.parkedTrainFacesStop = true
     end
 
-    if stop.errorCode == 0 then
-      if stop.isDepot then
-        -- remove delivery
-        RemoveDelivery(train.id)
+    if stop.isDepot then
+      -- remove delivery
+      RemoveDelivery(train.id)
 
+      if stop.station.finishedErrorCode == 0 then
         -- make train available for new deliveries
         local capacity, fluid_capacity = GetTrainCapacity(train)
         global.Dispatcher.availableTrains[train.id] = {train = train, force = loco.force.name, network_id = stop.network_id, capacity = capacity, fluid_capacity = fluid_capacity}
@@ -59,35 +59,30 @@ function TrainArrives(train)
         local schedule = {current = 1, records = {}}
         schedule.records[1] = NewScheduleRecord(stop.entity.backer_name, "inactivity", depot_inactivity)
         train.schedule = schedule
-        setLamp(stop, "blue", 1)
+        SetStopLamp(stop)
 
         -- reset filters and bars
         if reset_filters and train.cargo_wagons then
-        for n,wagon in pairs(train.cargo_wagons) do
-          local inventory = wagon.get_inventory(defines.inventory.cargo_wagon)
-          if inventory then
-            if inventory.is_filtered() then
-              log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory).." filtered slots.")
-              for slotIndex=1, #inventory, 1 do
-                inventory.set_filter(slotIndex, nil)
+          for n,wagon in pairs(train.cargo_wagons) do
+            local inventory = wagon.get_inventory(defines.inventory.cargo_wagon)
+            if inventory then
+              if inventory.is_filtered() then
+                log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory).." filtered slots.")
+                for slotIndex=1, #inventory, 1 do
+                  inventory.set_filter(slotIndex, nil)
+                end
+              end
+              if inventory.hasbar and #inventory - inventory.getbar() > 0 then
+                log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory - inventory.getbar()).." locked slots.")
+                inventory.setbar()
               end
             end
-            if inventory.hasbar and #inventory - inventory.getbar() > 0 then
-              log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory - inventory.getbar()).." locked slots.")
-              inventory.setbar()
-            end
           end
-        end
-        end
-
-      else -- stop is no Depot
-        -- set lamp to blue for LTN controlled trains
-        if Station_isParked(stop.station, train.id) then
-          setLamp(stop, "blue", Station_trainCount(stop.station))
         end
       end
     end
 
+    SetStopLamp(stop)
     UpdateStopOutput(stop)
   end
 end
@@ -114,9 +109,6 @@ function TrainLeaves(trainID)
       global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[trainID].capacity
       global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[trainID].fluid_capacity
       global.Dispatcher.availableTrains[trainID] = nil
-    end
-    if stop.errorCode == 0 then
-      setLamp(stop, "green", 1)
     end
 
   -- train was stopped at LTN stop
@@ -158,14 +150,6 @@ function TrainLeaves(trainID)
         end
       end
     end
-    if stop.errorCode == 0 then
-      local trainCount = Station_trainCount(stop.station)
-      if Station_hasPending(stop.station) then
-        setLamp(stop, "yellow", trainCount)
-      else
-        setLamp(stop, "green", Station_numStops(stop.station) - trainCount)
-      end
-    end
   end
 
   -- remove train reference
@@ -173,6 +157,7 @@ function TrainLeaves(trainID)
   stop.parkedTrainID = nil
   if message_level >= 3 then printmsg({"ltn-message.train-left", tostring(stoppedTrain.name), stop.entity.backer_name}, stoppedTrain.force) end
   if debug_log then log("Train ["..trainID.."] "..tostring(stoppedTrain.trainName).." left LTN-stop ["..stopID.."] "..stop.entity.backer_name) end
+  SetStopLamp(stop)
   UpdateStopOutput(stop)
 
   global.StoppedTrains[trainID] = nil
@@ -214,12 +199,7 @@ local function update_delivery(old_train_id, new_train)
           Station_trainArrived(stop.station, new_train.id)
         end
       else
-        local trainCount = Station_trainCount(stop.station)
-        if Station_hasPending(stop.station) then
-          setLamp(stop, "yellow", trainCount)
-        else
-          setLamp(stop, "green", Station_numStops(stop.station) - trainCount)
-        end
+        SetStopLamp(stop)
       end
     end
   end

@@ -128,7 +128,6 @@ function CreateStop(entity, station)
     parkedTrain = nil,
     parkedTrainID = nil,
     station = station,
-    errorCode = -1,
     isDepot = false,
     network_id = -1,
     minTraincars = 0,
@@ -280,7 +279,7 @@ script.on_event(defines.events.on_entity_renamed, function(event)
           delivery.from = newName
         end
       end
-      Station_mergeStation(new_station, old_station)
+      Station_mergeStation(newStation, oldStation)
     end
   end
 end)

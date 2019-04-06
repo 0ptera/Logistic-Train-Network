@@ -167,12 +167,7 @@ function RemoveDelivery(trainID)
       RemoveStop(stopID)
     else
       Station_removeTrain(stop.station, trainID)
-      local trainCount = Station_trainCount(stop.station)
-      if Station_hasPending(stop.station) then
-        setLamp(stop, "yellow", trainCount)
-      else
-        setLamp(stop, "green", Station_numStops(stop.station) - trainCount)
-      end
+      SetStopLamp(stop)
     end
   end
   global.Dispatcher.Deliveries[trainID] = nil
@@ -610,7 +605,7 @@ function ProcessRequest(reqIndex)
   global.Dispatcher.availableTrains[selectedTrain.id] = nil
 
   -- train is no longer available => set depot to yellow
-  setLamp(depot, "yellow", 1)
+  SetStopLamp(depot)
 
   -- update delivery count and lamps on stations
   -- trains will pick a stop by their own logic so we have to parse by name
@@ -621,11 +616,7 @@ function ProcessRequest(reqIndex)
     for stopID, _ in pairs(station.stops) do
       local stop = global.LogisticTrainStops[stopID]
       if stop then
-        if stop.parkedTrainID and stop.parkedTrain.valid then
-          setLamp(stop, "blue", trainCount)
-        else
-          setLamp(stop, "yellow", trainCount)
-        end
+        SetStopLamp(stop)
       end
     end
   end

@@ -104,26 +104,42 @@ function UpdateStop(stopID)
     return
   end
 
-  -- skip short circuited stops
-  if detectShortCircuit(stop) then
-    stop.errorCode = 1
-    if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
-      remove_available_train(stop.parkedTrainID)
+  -- finalize error code and reset check if master stop
+  if Station_isMaster(station, stopID) then
+    if station.ltnStopCount ~= Station_numStops(station) then
+      -- not all stops for this station are LTN stops
+      station.finishedErrorCode = 4
     end
-    setLamp(stop, ErrorCodes[stop.errorCode], 1)
-    if debug_log then log("(UpdateStop) Short circuit error: "..stop.entity.backer_name) end
-    return
+    -- finalize error code
+    station.finishedErrorCode = station.errorCode
+    -- reset variables for check
+    station.ltnStopCount = 0
+    station.errorCode = 0
+    local wire = stop.entity.get_circuit_network(defines.wire_type.green)
+    station.greenNetworkID = wire and wire.network_id
+    wire = stop.entity.get_circuit_network(defines.wire_type.red)
+    station.redNetworkID = wire and wire.network_id
+    station.isDepot = stop.isDepot
   end
 
   -- skip deactivated stops
   local stopCB = stop.entity.get_control_behavior()
   if stopCB and stopCB.disabled then
-    stop.errorCode = 1
     if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
       remove_available_train(stop.parkedTrainID)
     end
-    setLamp(stop, ErrorCodes[stop.errorCode], 2)
+    setLamp(stop, ErrorCodes[1], 2)
     if debug_log then log("(UpdateStop) Circuit deactivated stop: "..stop.entity.backer_name) end
+    return
+  end
+  
+  -- skip short circuited stops
+  if detectShortCircuit(stop) then
+    if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
+      remove_available_train(stop.parkedTrainID)
+    end
+    setLamp(stop, ErrorCodes[1], 1)
+    if debug_log then log("(UpdateStop) Short circuit error: "..stop.entity.backer_name) end
     return
   end
 
@@ -195,42 +211,37 @@ function UpdateStop(stopID)
   -- .." requestThreshold:"..requestThreshold.." requestPriority:"..requestPriority.." noWarnings:"..tostring(noWarnings)
   -- .." provideThreshold:"..provideThreshold.." providePriority:"..providePriority.." lockedSlots:"..lockedSlots)
 
-  -- skip duplicated names on non depots
-  if not isDepot and Station_numStops(stop.station) > 1 then
-    stop.errorCode = 2
-    if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
-      remove_available_train(stop.parkedTrainID)
+  -- update error code for station
+  stop.isDepot = isDepot
+  if not Station_isMaster(station, stopID) then
+    if isDepot ~= station.isDepot then
+      -- depot and non-depot don't mix
+      station.errorCode = 2
+      station.finishedErrorCode = 2
     end
-    setLamp(stop, ErrorCodes[stop.errorCode], 1)
-    if debug_log then log("(UpdateStop) Duplicate stop name: "..stop.entity.backer_name) end
-    return
+    if not isDepot then
+      -- non-depot stops must be connected by wire
+      local wire = stop.entity.get_circuit_network(defines.wire_type.green)
+      if station.greenNetworkID ~= (wire and wire.network_id) then
+        station.greenNetworkID = nil
+      end
+      wire = stop.entity.get_circuit_network(defines.wire_type.red)
+      if station.redNetworkID ~= (wire and wire.network_id) then
+        station.redNetworkID = nil
+      end
+      if (station.greenNetworkID == nil) and (station.redNetworkID == nil) then
+        station.errorCode = 3
+        station.finishedErrorCode = 3
+      end
+    end
   end
 
-  --update lamp colors when errorCode or isDepot changed state
-  if stop.errorCode ~=0 or stop.isDepot ~= isDepot then
-    stop.errorCode = 0 -- we are error free here
-    if isDepot then
-      if stop.parkedTrainID and stop.parkedTrain.valid then
-        if global.Dispatcher.Deliveries[stop.parkedTrainID] then
-          setLamp(stop, "yellow", 1)
-        else
-          setLamp(stop, "blue", 1)
-        end
-      else
-        setLamp(stop, "green", 1)
-      end
-    else
-      local trainCount = Station_trainCount(stop.station)
-      if trainCount == 0 then
-        setLamp(stop, "green", 1)
-      else
-        if stop.parkedTrainID and stop.parkedTrain.valid then
-          setLamp(stop, "blue", trainCount)
-        else
-          setLamp(stop, "yellow", trainCount)
-        end
-      end
-    end
+  --update lamp colors
+  SetStopLamp(stop)
+
+  -- skip stops with errors
+  if station.finishedErrorCode ~= 0 then
+    return
   end
 
   -- check if it's a depot
@@ -507,3 +518,37 @@ function UpdateStopOutput(trainStop)
   end
 end
 
+function SetStopLamp(stop)
+  local station = stop.station
+  if station.finishedErrorCode ~= 0 then
+    setLamp(stop, ErrorCodes[station.finishedErrorCode], station.finishedErrorCode)
+    -- remove parked train from dispatcher (if this is/was a depot)
+    if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
+      remove_available_train(stop.parkedTrainID)
+    end
+    if debug_log then log("(SetStopLamp) Stop with error "..station.finishedErrorCode..": "..stop.entity.backer_name.."("..stop.entity.unit_number..")") end
+  else
+    if stop.isDepot then
+      if stop.parkedTrainID and stop.parkedTrain.valid then
+        if global.Dispatcher.Deliveries[stop.parkedTrainID] then
+          setLamp(stop, "yellow", 1)
+        else
+          setLamp(stop, "blue", 1)
+        end
+      else
+        setLamp(stop, "green", 1)
+      end
+    else
+      local trainCount = Station_pendingCount(station)
+      if stop.parkedTrainID and stop.parkedTrain.valid then
+        setLamp(stop, "blue", trainCount + 1)
+      else
+        if trainCount == 0 then
+          setLamp(stop, "green", Station_numStops(station) - Station_trainCount(station))
+        else
+          setLamp(stop, "yellow", trainCount)
+        end
+      end
+    end
+  end
+end

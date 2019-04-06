@@ -11,9 +11,16 @@ function Station_get(name)
   if station then return station end
   station = {
     name = name,
+    master = -1,
+    ltnStopCount = 0,
     stops = {},
     pendingTrains = {},
     parkedTrains = {},
+    isDepot = false,
+    errorCode = -1,
+    finishedErrorCode = -1,
+    greenNetworkID = nil,
+    redNetworkID = nil,
   }
   global.LogisticStations[name] = station
   return station
@@ -47,6 +54,10 @@ function Station_trainCount(self)
   return table_size(self.pendingTrains) + table_size(self.parkedTrains)
 end
 
+function Station_pendingCount(self)
+  return table_size(self.pendingTrains)
+end
+
 function Station_hasPending(self)
   return table_size(self.pendingTrains) > 0
 end
@@ -70,7 +81,7 @@ end
 
 function Station_removeStop(name, stopID)
   local station = Station_get(name)
-  Station_removeStopFromStation(station. stopID)
+  Station_removeStopFromStation(station, stopID)
   return station
 end
 
@@ -102,4 +113,12 @@ function Station_forEachTrainIfDelete(self, fn)
       self.parkedTrains[trainID] = nil
     end
   end
+end
+
+function Station_isMaster(self, stopID)
+  if self.stops[self.master] then
+    return self.master == stopID
+  end
+  self.master = stopID
+  return true
 end
