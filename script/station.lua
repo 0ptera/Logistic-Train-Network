@@ -42,6 +42,20 @@ function Station_removeTrain(self, trainID)
   self.parkedTrains[trainID] = nil
 end
 
+function Station_replaceTrain(self, oldTrainID, newTrainID)
+  if self.pendingTrains[oldTrainID] then
+    self.pendingTrains[oldTrainID] = nil
+    self.pendingTrains[newTrainID] = true
+    return true
+  end
+  if self.parkedTrains[oldTrainID] then
+    self.parkedTrains[oldTrainID] = nil
+    self.parkedTrains[newTrainID] = true
+    return true
+  end
+  return false
+end
+
 function Station_isParked(self, trainID)
   return self.parkedTrains[trainID]
 end

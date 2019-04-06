@@ -179,27 +179,30 @@ local function update_delivery(old_train_id, new_train)
   local delivery = global.Dispatcher.Deliveries[old_train_id]
 
   -- expanded RemoveDelivery(old_train_id) to also update
-  for stopID, stop in pairs(global.LogisticTrainStops) do
-    if not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
-      if stop.entity.valid then
-        Station_removeStopEntity(stop.entity)
-      else
-        for i = 1, #globals.LogisticStations do
-          local station = globals.LogisticStations[i]
-          Station_removeStopFromStation(station, stopID)
+  for name, station in pairs(global.LogisticStations) do
+    if Station_replaceTrain(station, old_train_id, new_train.id) and delivery then
+      for stopID, _ in pairs(station.stops) do
+        local stop = global.LogisticTrainStops[stopID]
+        if stop then
+          -- remove invlaid stops
+          if not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
+            if stop.entity.valid then
+              Station_removeStopEntity(stop.entity)
+            else
+              for i = 1, #globals.LogisticStations do
+                local station = globals.LogisticStations[i]
+                Station_removeStopFromStation(station, stopID)
+              end
+            end
+          else
+            if stop.parkedTrainID == old_train_id then
+              stop.parkedTrain = new_train
+              stop.parkedTrainID = new_train.id
+              Station_trainArrived(stop.station, new_train.id)
+            end
+          SetStopLamp(stop)
+          end
         end
-      end
-    else
-      Station_removeTrain(stop.station, old_train_id)
-      if delivery then
-        Station_addPendingTrain(stop.station, new_train.id)
-        if stop.parkedTrainID == old_train_id then
-          stop.parkedTrain = new_train
-          stop.parkedTrainID = new_train.id
-          Station_trainArrived(stop.station, new_train.id)
-        end
-      else
-        SetStopLamp(stop)
       end
     end
   end
