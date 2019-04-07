@@ -131,8 +131,10 @@ function TrainLeaves(trainID)
     if stoppedTrain.train.valid and delivery then
       if delivery.from == stop.entity.backer_name then
         -- update delivery counts to train inventory
+        local original_shipment = {}
         for item, count in pairs (delivery.shipment) do
           local itype, iname = match(item, match_string)
+          original_shipment[item] = count
           if itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname]) then
             if itype == "fluid" then
               local traincount = stoppedTrain.train.get_fluid_count(iname)
@@ -148,7 +150,7 @@ function TrainLeaves(trainID)
           end
         end
         delivery.pickupDone = true -- remove reservations from this delivery
-        script.raise_event(on_delivery_pickup_complete_event, {delivery = delivery, trainID = trainID})
+        script.raise_event(on_delivery_pickup_complete_event, {delivery = delivery, trainID = trainID, original_shipment = original_shipment})
 
       elseif delivery.to == stop.entity.backer_name then
         -- signal completed delivery and remove it
