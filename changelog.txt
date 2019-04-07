@@ -1,9 +1,15 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.10.6
+Date: 2019-04-06
+  Bugfixes:
+    - Restore lamp color after fixing stop error #171
+    - always start with stop updated after a config change, ensure consistent data and filled tables
+---------------------------------------------------------------------------------------------------
 Version: 1.10.5
 Date: 2019-03-30
   Changes:
     - moved more functionality to Opteras Library
-Bugfixes:
+  Bugfixes:
     - signal names are generated properly for locomotives and wagons with localised_name
 ---------------------------------------------------------------------------------------------------
 Version: 1.10.4
