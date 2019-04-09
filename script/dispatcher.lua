@@ -428,7 +428,7 @@ function ProcessRequest(reqIndex)
     if (global.Dispatcher.availableTrains_total_fluid_capacity or 0) == 0 then
       if message_level >= 2 then printmsg({"ltn-message.empty-depot-fluid"}, requestForce, true) end
       if debug_log then log("Skipping request "..to.." {"..to_network_id_string.."}: "..item..". No trains available.") end
-      script.raise_event(on_train_not_found_event, {to = to, to_id = toID, network_id = requestStation.network_id, item = item})
+      script.raise_event(on_dispatcher_no_train_found_event, {to = to, to_id = toID, network_id = requestStation.network_id, item = item})
       return nil
     end
   else
@@ -437,7 +437,7 @@ function ProcessRequest(reqIndex)
     if (global.Dispatcher.availableTrains_total_capacity or 0) == 0 then
       if message_level >= 2 then printmsg({"ltn-message.empty-depot-item"}, requestForce, true) end
       if debug_log then log("Skipping request "..to.." {"..to_network_id_string.."}: "..item..". No trains available.") end
-      script.raise_event(on_train_not_found_event, {to = to, to_id = toID, network_id = requestStation.network_id, item = item})
+      script.raise_event(on_dispatcher_no_train_found_event, {to = to, to_id = toID, network_id = requestStation.network_id, item = item})
       return nil
     end
   end
@@ -521,7 +521,7 @@ function ProcessRequest(reqIndex)
   if not selectedTrain or not trainInventorySize then
     if message_level >= 2 then printmsg({"ltn-message.no-train-found", from, to, matched_network_id_string, tostring(minTraincars), tostring(maxTraincars) }, requestForce, true) end
     if debug_log then log("No train with "..tostring(minTraincars).." <= length <= "..tostring(maxTraincars).." to transport "..tostring(totalStacks).." stacks from "..from.." to "..to.." in network "..matched_network_id_string.." found in Depot.") end
-    script.raise_event(on_train_not_found_event, {
+    script.raise_event(on_dispatcher_no_train_found_event, {
       to = to,
       to_id = toID,
       from = from,
@@ -530,7 +530,6 @@ function ProcessRequest(reqIndex)
       minTraincars = minTraincars,
       maxTraincars = maxTraincars,
       shipment = loadingList,
-      network_id = providerData.network_id
     })
     return nil
   end
