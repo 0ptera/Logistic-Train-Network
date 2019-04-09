@@ -427,8 +427,8 @@ function ProcessRequest(reqIndex)
     -- skip if no trains are available
     if (global.Dispatcher.availableTrains_total_fluid_capacity or 0) == 0 then
       if message_level >= 2 then printmsg({"ltn-message.empty-depot-fluid"}, requestForce, true) end
-      if debug_log then log("Skipping request "..requestStation.entity.backer_name.." {"..to_network_id_string.."}: "..item..". No trains available.") end
-      script.raise_event(on_train_not_found_event, {to = requestStation.entity.backer_name, to_id = toID, network_id = requestStation.network_id, item = item})
+      if debug_log then log("Skipping request "..to.." {"..to_network_id_string.."}: "..item..". No trains available.") end
+      script.raise_event(on_train_not_found_event, {to = to, to_id = toID, network_id = requestStation.network_id, item = item})
       return nil
     end
   else
@@ -436,8 +436,8 @@ function ProcessRequest(reqIndex)
     -- skip if no trains are available
     if (global.Dispatcher.availableTrains_total_capacity or 0) == 0 then
       if message_level >= 2 then printmsg({"ltn-message.empty-depot-item"}, requestForce, true) end
-      if debug_log then log("Skipping request "..requestStation.entity.backer_name.." {"..to_network_id_string.."}: "..item..". No trains available.") end
-      script.raise_event(on_train_not_found_event, {to = requestStation.entity.backer_name, to_id = toID, network_id = requestStation.network_id, item = item})
+      if debug_log then log("Skipping request "..to.." {"..to_network_id_string.."}: "..item..". No trains available.") end
+      script.raise_event(on_train_not_found_event, {to = to, to_id = toID, network_id = requestStation.network_id, item = item})
       return nil
     end
   end
