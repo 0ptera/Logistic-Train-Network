@@ -134,10 +134,6 @@ function OnTick(event)
   -- tick 60: reset
   else
     -- raise events for interface mods
-    -- script.raise_event(on_stops_updated_event, {data = global.LogisticTrainStops})
-    -- script.raise_event(on_dispatcher_updated_event, {data = global.Dispatcher}) -- sending whole dispatcher might not be ideal
-
-    -- raise events for interface mods
     script.raise_event(on_stops_updated_event,
       {
         logistic_train_stops = global.LogisticTrainStops,
@@ -431,7 +427,8 @@ function ProcessRequest(reqIndex)
     -- skip if no trains are available
     if (global.Dispatcher.availableTrains_total_fluid_capacity or 0) == 0 then
       if message_level >= 2 then printmsg({"ltn-message.empty-depot-fluid"}, requestForce, true) end
-      if debug_log then log("Skipping request "..requestStation.entity.backer_name.." {"..to_network_id_string.."}: "..item..". No trains available.") end
+      if debug_log then log("Skipping request "..to.." {"..to_network_id_string.."}: "..item..". No trains available.") end
+      script.raise_event(on_dispatcher_no_train_found_event, {to = to, to_id = toID, network_id = requestStation.network_id, item = item})
       return nil
     end
   else
@@ -439,7 +436,8 @@ function ProcessRequest(reqIndex)
     -- skip if no trains are available
     if (global.Dispatcher.availableTrains_total_capacity or 0) == 0 then
       if message_level >= 2 then printmsg({"ltn-message.empty-depot-item"}, requestForce, true) end
-      if debug_log then log("Skipping request "..requestStation.entity.backer_name.." {"..to_network_id_string.."}: "..item..". No trains available.") end
+      if debug_log then log("Skipping request "..to.." {"..to_network_id_string.."}: "..item..". No trains available.") end
+      script.raise_event(on_dispatcher_no_train_found_event, {to = to, to_id = toID, network_id = requestStation.network_id, item = item})
       return nil
     end
   end
@@ -523,6 +521,16 @@ function ProcessRequest(reqIndex)
   if not selectedTrain or not trainInventorySize then
     if message_level >= 2 then printmsg({"ltn-message.no-train-found", from, to, matched_network_id_string, tostring(minTraincars), tostring(maxTraincars) }, requestForce, true) end
     if debug_log then log("No train with "..tostring(minTraincars).." <= length <= "..tostring(maxTraincars).." to transport "..tostring(totalStacks).." stacks from "..from.." to "..to.." in network "..matched_network_id_string.." found in Depot.") end
+    script.raise_event(on_dispatcher_no_train_found_event, {
+      to = to,
+      to_id = toID,
+      from = from,
+      from_id = fromID,
+      network_id = requestStation.network_id,
+      minTraincars = minTraincars,
+      maxTraincars = maxTraincars,
+      shipment = loadingList,
+    })
     return nil
   end
 
@@ -607,7 +615,16 @@ function ProcessRequest(reqIndex)
 
     if debug_log then log("  "..loadingListItem..", "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks ") end
   end
-  global.Dispatcher.Deliveries[selectedTrain.id] = {force=requestForce, train=selectedTrain, started=game.tick, from=from, to=to, networkID=providerData.network_id, shipment=shipment}
+  global.Dispatcher.Deliveries[selectedTrain.id] = {
+    force = requestForce,
+    train = selectedTrain,
+    started = game.tick,
+    from = from,
+    from_id = fromID,
+    to = to,
+    to_id = toID,
+    networkID = providerData.network_id,
+    shipment = shipment}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[selectedTrain.id].capacity
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[selectedTrain.id].fluid_capacity
   global.Dispatcher.availableTrains[selectedTrain.id] = nil
