@@ -64,7 +64,7 @@ function UpdateStop(stopID)
     if not global.Dispatcher.Deliveries[stop.activeDeliveries[i]] then
       table.remove(stop.activeDeliveries, i)
       if message_level >= 1 then printmsg({"ltn-message.error-invalid-delivery", stop.entity.backer_name}) end
-      if debug_log then log("(UpdateStop) Removing invalid delivery from stop '"..tostring(stop.entity.backer_name).."': "..nextDelivery) end
+      if debug_log then log("(UpdateStop) Removing invalid delivery from stop '"..tostring(stop.entity.backer_name).."': "..tostring(stop.activeDeliveries[i])) end
     end
   end
 
