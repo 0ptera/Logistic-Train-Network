@@ -523,6 +523,7 @@ function ProcessRequest(reqIndex)
     if debug_log then log("No train with "..tostring(minTraincars).." <= length <= "..tostring(maxTraincars).." to transport "..tostring(totalStacks).." stacks from "..from.." to "..to.." in network "..matched_network_id_string.." found in Depot.") end
     script.raise_event(on_dispatcher_no_train_found_event, { to = to, to_id = toID, from = from, from_id = fromID, network_id = requestStation.network_id, minTraincars = minTraincars, maxTraincars = maxTraincars, shipment = loadingList,
     })
+    global.Dispatcher.Requests_by_Stop[toID][item] = count -- add removed item back to list of requested items.
     return nil
   end
 
