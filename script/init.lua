@@ -11,13 +11,13 @@ local function initialize(oldVersion, newVersion)
 
   ---- always start with stop updated after a config change, ensure consistent data and filled tables
   global.tickCount = 1
+  global.stopIdStartIndex = 1 --start index for on_tick stop updates
 
   ---- initialize logger
   global.messageBuffer = {}
 
   ---- initialize global lookup tables
-  global.stopIdStartIndex = global.stopIdStartIndex or 1 --start index for on_tick stop updates
-  global.StopDistances = global.StopDistances or {} -- station distance lookup table
+  global.StopDistances = {} -- reset station distance lookup table
   global.WagonCapacity = { --preoccupy table with wagons to ignore at 0 capacity
     ["rail-tanker"] = 0
   }

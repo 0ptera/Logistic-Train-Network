@@ -486,7 +486,6 @@ function ProcessRequest(reqIndex)
   global.Dispatcher.Requests_by_Stop[toID][item] = nil -- remove before merge so it's not added twice
   local loadingList = { {type=itype, name=iname, localname=localname, count=deliverySize, stacks=stacks} }
   local totalStacks = stacks
-  -- local order = {toID=toID, fromID=fromID, minTraincars=minTraincars, maxTraincars=maxTraincars, totalStacks=stacks, lockedSlots=providerData.lockedSlots, loadingList={loadingList} } -- orders as intermediate step are no longer required
   if debug_log then log("created new order "..from.." >> "..to..": "..deliverySize.." "..item.." in "..stacks.."/"..totalStacks.." stacks, min length: "..minTraincars.." max length: "..maxTraincars) end
 
   -- find possible mergable items, fluids can't be merged in a sane way
@@ -523,6 +522,7 @@ function ProcessRequest(reqIndex)
     if debug_log then log("No train with "..tostring(minTraincars).." <= length <= "..tostring(maxTraincars).." to transport "..tostring(totalStacks).." stacks from "..from.." to "..to.." in network "..matched_network_id_string.." found in Depot.") end
     script.raise_event(on_dispatcher_no_train_found_event, { to = to, to_id = toID, from = from, from_id = fromID, network_id = requestStation.network_id, minTraincars = minTraincars, maxTraincars = maxTraincars, shipment = loadingList,
     })
+    global.Dispatcher.Requests_by_Stop[toID][item] = count -- add removed item back to list of requested items.
     return nil
   end
 
