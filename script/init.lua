@@ -231,6 +231,16 @@ local function registerEvents()
     remote.call("creative-mode", "exclude_from_instant_blueprint", ltn_stop_output)
     remote.call("creative-mode", "exclude_from_instant_blueprint", ltn_stop_output_controller)
   end
+
+  -- blacklist LTN entities from picker dollies
+  if remote.interfaces["PickerDollies"] then
+    for name, offset in pairs(ltn_stop_entity_names) do
+      remote.call("PickerDollies", "add_blacklist_name", name, true)
+    end
+    remote.call("PickerDollies", "add_blacklist_name", ltn_stop_input, true)
+    remote.call("PickerDollies", "add_blacklist_name", ltn_stop_output, true)
+    remote.call("PickerDollies", "add_blacklist_name", ltn_stop_output_controller, true)
+  end
 end
 
 script.on_load(function()
