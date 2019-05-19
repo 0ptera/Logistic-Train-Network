@@ -3,7 +3,7 @@ Version: 1.10.9
 Date: 2019-09-19
   Features:
     - add LTN entities to picker dolly blacklist
-    - default network ID configurable in map settings
+    - added map setting for default network ID #163
 ---------------------------------------------------------------------------------------------------
 Version: 1.10.8
 Date: 2019-04-21
