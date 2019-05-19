@@ -111,7 +111,7 @@ local function initialize(oldVersion, newVersion)
       global.LogisticTrainStops[stopID].providePriority = global.LogisticTrainStops[stopID].providePriority or 0
 
       -- update to 1.7.0
-      global.LogisticTrainStops[stopID].network_id = global.LogisticTrainStops[stopID].network_id or -1 --all bits set = any network
+      global.LogisticTrainStops[stopID].network_id = global.LogisticTrainStops[stopID].network_id or default_network
 
       -- update to 1.8.0
       global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().send_to_train = true
@@ -230,6 +230,16 @@ local function registerEvents()
     remote.call("creative-mode", "exclude_from_instant_blueprint", ltn_stop_input)
     remote.call("creative-mode", "exclude_from_instant_blueprint", ltn_stop_output)
     remote.call("creative-mode", "exclude_from_instant_blueprint", ltn_stop_output_controller)
+  end
+
+  -- blacklist LTN entities from picker dollies
+  if remote.interfaces["PickerDollies"] then
+    for name, offset in pairs(ltn_stop_entity_names) do
+      remote.call("PickerDollies", "add_blacklist_name", name, true)
+    end
+    remote.call("PickerDollies", "add_blacklist_name", ltn_stop_input, true)
+    remote.call("PickerDollies", "add_blacklist_name", ltn_stop_output, true)
+    remote.call("PickerDollies", "add_blacklist_name", ltn_stop_output_controller, true)
   end
 end
 

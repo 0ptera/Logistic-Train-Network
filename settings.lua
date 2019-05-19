@@ -118,4 +118,11 @@ data:extend({
     setting_type = "runtime-global",
     default_value = true
   },
+  {
+    type = "int-setting",
+    name = "ltn-stop-default-network",
+    order = "ea",
+    setting_type = "runtime-global",
+    default_value = -1, -- any
+  },
 })

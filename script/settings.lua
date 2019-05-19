@@ -18,6 +18,7 @@ requester_delivery_reset = settings.global["ltn-dispatcher-requester-delivery-re
 dispatcher_enabled = settings.global["ltn-dispatcher-enabled"].value
 dispatcher_max_stops_per_tick = settings.global["ltn-dispatcher-stops-per-tick"].value
 reset_filters = settings.global["ltn-depot-reset-filters"].value
+default_network = settings.global["ltn-stop-default-network"].value
 
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
@@ -39,4 +40,5 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
     ResetUpdateInterval()
   end
   if event.setting == "ltn-depot-reset-filters" then reset_filters = settings.global["ltn-depot-reset-filters"].value end
+  if event.setting == "ltn-stop-default-network" then default_network = settings.global["ltn-stop-default-network"].value end
 end)
