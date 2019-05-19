@@ -111,7 +111,7 @@ local function initialize(oldVersion, newVersion)
       global.LogisticTrainStops[stopID].providePriority = global.LogisticTrainStops[stopID].providePriority or 0
 
       -- update to 1.7.0
-      global.LogisticTrainStops[stopID].network_id = global.LogisticTrainStops[stopID].network_id or -1 --all bits set = any network
+      global.LogisticTrainStops[stopID].network_id = global.LogisticTrainStops[stopID].network_id or default_network
 
       -- update to 1.8.0
       global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().send_to_train = true

@@ -112,7 +112,7 @@ function UpdateStop(stopID)
 
     -- initialize control signal values to defaults
   local isDepot = false
-  local network_id = -1
+  local network_id = default_network
   local minTraincars = 0
   local maxTraincars = 0
   local trainLimit = 0

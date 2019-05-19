@@ -170,7 +170,7 @@ function CreateStop(entity)
     activeDeliveries = {},   --delivery IDs to/from stop
     errorCode = -1,          --key to errorCodes table
     isDepot = false,
-    network_id = -1,
+    network_id = default_network,
     minTraincars = 0,
     maxTraincars = 0,
     trainLimit = 0,
