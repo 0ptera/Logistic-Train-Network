@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.10.10
+Date: 2019-09-21
+  Features:
+    - support script_raised_built and script_raised_destroy
+  Bugfixes:
+    - ensure remote functions exist before calling them
+---------------------------------------------------------------------------------------------------
 Version: 1.10.9
 Date: 2019-09-19
   Features:

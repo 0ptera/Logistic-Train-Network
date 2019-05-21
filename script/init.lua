@@ -213,27 +213,30 @@ end
 -- register events
 local function registerEvents()
   -- always track built/removed train stops for duplicate name list
-  script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity}, OnEntityCreated)
-  script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, OnEntityRemoved)
+  script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity, defines.events.script_raised_built}, OnEntityCreated)
+  script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died, script_raised_destroy}, OnEntityRemoved)
   script.on_event(defines.events.on_pre_surface_deleted, OnSurfaceRemoved)
-  if remote.interfaces["newgameplus"] then  -- custom event for nauvis reset
-    script.on_event(remote.call("newgameplus", "get_on_pre_surface_cleared_event"), OnSurfaceRemoved)
-  end
+
   if global.LogisticTrainStops and next(global.LogisticTrainStops) then
     script.on_event(defines.events.on_tick, OnTick)
     script.on_event(defines.events.on_train_changed_state, OnTrainStateChanged)
     script.on_event(defines.events.on_train_created, OnTrainCreated)
   end
 
+  -- custom event for nauvis reset
+  if remote.interfaces["newgameplus"] and remote.interfaces["newgameplus"]["get_on_pre_surface_cleared_event"] then
+    script.on_event(remote.call("newgameplus", "get_on_pre_surface_cleared_event"), OnSurfaceRemoved)
+  end
+
   -- disable instant blueprint in creative mode
-  if remote.interfaces["creative-mode"] then
+  if remote.interfaces["creative-mode"] and remote.interfaces["creative-mode"]["exclude_from_instant_blueprint"] then
     remote.call("creative-mode", "exclude_from_instant_blueprint", ltn_stop_input)
     remote.call("creative-mode", "exclude_from_instant_blueprint", ltn_stop_output)
     remote.call("creative-mode", "exclude_from_instant_blueprint", ltn_stop_output_controller)
   end
 
   -- blacklist LTN entities from picker dollies
-  if remote.interfaces["PickerDollies"] then
+  if remote.interfaces["PickerDollies"] and remote.interfaces["PickerDollies"]["add_blacklist_name"] then
     for name, offset in pairs(ltn_stop_entity_names) do
       remote.call("PickerDollies", "add_blacklist_name", name, true)
     end

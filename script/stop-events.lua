@@ -190,7 +190,9 @@ function CreateStop(entity)
 end
 
 function OnEntityCreated(event)
-  local entity = event.created_entity
+  local entity = event.created_entity or event.entity
+  if not entity or not entity.valid then return end
+
   if entity.type == "train-stop" then
      AddStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
     if ltn_stop_entity_names[entity.name] then
@@ -247,8 +249,9 @@ function RemoveStop(stopID)
 end
 
 function OnEntityRemoved(event)
--- script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died}, function(event)
   local entity = event.entity
+  if not entity or not entity.valid then return end
+
   if entity.train then
     local trainID = entity.train.id
     -- remove from stop if parked
