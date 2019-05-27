@@ -1,13 +1,13 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.10.10
-Date: 2019-09-21
+Date: 2019-05-21
   Features:
     - support script_raised_built and script_raised_destroy
   Bugfixes:
     - ensure remote functions exist before calling them
 ---------------------------------------------------------------------------------------------------
 Version: 1.10.9
-Date: 2019-09-19
+Date: 2019-05-19
   Features:
     - add LTN entities to picker dolly blacklist
     - added map setting for default network ID #163
