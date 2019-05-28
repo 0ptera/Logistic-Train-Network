@@ -5,6 +5,7 @@ Date: 2019-05-28
     - depot inactivity is now in seconds
     - stop timeout is now in seconds
     - delivery timeout is now in seconds
+    - removed 60 min limits for timeouts
   Bugfixes:
     - changes to stop timeout only applied after save and reload #178
 ---------------------------------------------------------------------------------------------------
