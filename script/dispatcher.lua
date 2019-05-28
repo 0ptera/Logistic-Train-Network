@@ -223,7 +223,7 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
       record.wait_conditions[#record.wait_conditions+1] = condition_circuit_green
     end
 
-    if stop_timeout > 0 then -- less than 60 ticks results in 0s condition
+    if stop_timeout > 0 then -- send stuck trains away when stop_timeout is set
       record.wait_conditions[#record.wait_conditions+1] = condition_stop_timeout
       -- should it also wait for red = 0?
       if schedule_cc then
