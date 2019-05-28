@@ -1,6 +1,23 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.10.11
+Date: 2019-05-28
+  Changes:
+    - depot inactivity is now in seconds
+    - stop timeout is now in seconds
+    - delivery timeout is now in seconds
+    - removed 60 min limits for timeouts
+  Bugfixes:
+    - changes to stop timeout only applied after save and reload #178
+---------------------------------------------------------------------------------------------------
+Version: 1.10.10
+Date: 2019-05-21
+  Features:
+    - support script_raised_built and script_raised_destroy
+  Bugfixes:
+    - ensure remote functions exist before calling them
+---------------------------------------------------------------------------------------------------
 Version: 1.10.9
-Date: 2019-09-19
+Date: 2019-05-19
   Features:
     - add LTN entities to picker dolly blacklist
     - added map setting for default network ID #163

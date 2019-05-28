@@ -72,30 +72,30 @@ data:extend({
   },
   {
     type = "int-setting",
-    name = "ltn-dispatcher-depot-inactivity",
+    name = "ltn-dispatcher-depot-inactivity(s)",
     order = "cb",
     setting_type = "runtime-global",
-    default_value = 300, --5s
-    minimum_value = 60, --1s
+    default_value = 5, --5s
+    minimum_value = 1, --1s
     maximum_value = 4294967295, -- prevent 32bit signed overflow
   },
   {
     type = "int-setting",
-    name = "ltn-dispatcher-stop-timeout",
+    name = "ltn-dispatcher-stop-timeout(s)",
     order = "cc",
     setting_type = "runtime-global",
-    default_value = 7200, --2min
+    default_value = 120, --2min
     minimum_value = 0, --0:off
-    maximum_value = 216000, -- 60min
+    maximum_value = 4294967295, -- prevent 32bit signed overflow
   },
   {
     type = "int-setting",
-    name = "ltn-dispatcher-delivery-timeout",
+    name = "ltn-dispatcher-delivery-timeout(s)",
     order = "cd",
     setting_type = "runtime-global",
-    default_value = 18000, --5min
-    minimum_value = 3600, -- 1min
-    maximum_value = 216000, -- 60min
+    default_value = 600, --10min
+    minimum_value = 60, -- 1min
+    maximum_value = 4294967295, -- prevent 32bit signed overflow
   },
   {
     type = "bool-setting",
