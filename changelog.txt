@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.10.11
+Date: 2019-05-28
+  Changes:
+    - stop timeout is now in seconds
+  Bugfixes:
+    - changes to stop timeout only applied after save and reload #178
+---------------------------------------------------------------------------------------------------
 Version: 1.10.10
 Date: 2019-05-21
   Features:

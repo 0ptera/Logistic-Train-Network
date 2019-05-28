@@ -11,7 +11,8 @@ min_requested = settings.global["ltn-dispatcher-requester-threshold"].value
 min_provided = settings.global["ltn-dispatcher-provider-threshold"].value
 schedule_cc = settings.global["ltn-dispatcher-schedule-circuit-control"].value
 depot_inactivity = settings.global["ltn-dispatcher-depot-inactivity"].value
-stop_timeout = settings.global["ltn-dispatcher-stop-timeout"].value
+stop_timeout = settings.global["ltn-dispatcher-stop-timeout"].value * 60
+condition_stop_timeout = {type = "time", compare_type = "or", ticks = stop_timeout }
 delivery_timeout = settings.global["ltn-dispatcher-delivery-timeout"].value
 finish_loading = settings.global["ltn-dispatcher-finish-loading"].value
 requester_delivery_reset = settings.global["ltn-dispatcher-requester-delivery-reset"].value
@@ -30,7 +31,10 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if event.setting == "ltn-dispatcher-provider-threshold" then min_provided = settings.global["ltn-dispatcher-provider-threshold"].value end
   if event.setting == "ltn-dispatcher-schedule-circuit-control" then schedule_cc = settings.global["ltn-dispatcher-schedule-circuit-control"].value end
   if event.setting == "ltn-dispatcher-depot-inactivity" then depot_inactivity = settings.global["ltn-dispatcher-depot-inactivity"].value end
-  if event.setting == "ltn-dispatcher-stop-timeout" then stop_timeout = settings.global["ltn-dispatcher-stop-timeout"].value end
+  if event.setting == "ltn-dispatcher-stop-timeout" then
+    stop_timeout = settings.global["ltn-dispatcher-stop-timeout"].value * 60
+    condition_stop_timeout = {type = "time", compare_type = "or", ticks = stop_timeout }
+  end
   if event.setting == "ltn-dispatcher-delivery-timeout" then delivery_timeout = settings.global["ltn-dispatcher-delivery-timeout"].value end
   if event.setting == "ltn-dispatcher-finish-loading" then finish_loading = settings.global["ltn-dispatcher-finish-loading"].value end
   if event.setting == "ltn-dispatcher-requester-delivery-reset" then requester_delivery_reset = settings.global["ltn-dispatcher-requester-delivery-reset"].value end
