@@ -16,8 +16,8 @@ for _, loco in pairs(data.raw["locomotive"]) do
     name = "ltn-position-"..loco.name,
     icons = optera_lib.create_icons(loco, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
-    subgroup = "ltn-position-signal-locomotive",
-    order = "b"..string.format("%02d", lococount),
+    subgroup = "ltn-position-signal",
+    order = "a"..string.format("%02d", lococount),
     localised_name = {"virtual-signal-name.ltn-position", loco.localised_name or {"entity-name." .. loco.name}}
   }
   data:extend({signal})
@@ -31,7 +31,7 @@ for _, wagon in pairs(data.raw["cargo-wagon"]) do
     name = "ltn-position-"..wagon.name,
     icons = optera_lib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
-    subgroup = "ltn-position-signal-cargo-wagon",
+    subgroup = "ltn-position-signal",
     order = "b"..string.format("%02d", wagoncount),
     localised_name = {"virtual-signal-name.ltn-position", wagon.localised_name or {"entity-name." .. wagon.name}}
   }
@@ -46,8 +46,8 @@ for _, wagon in pairs(data.raw["fluid-wagon"]) do
     name = "ltn-position-"..wagon.name,
     icons = optera_lib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
-    subgroup = "ltn-position-signal-fluid-wagon",
-    order = "b"..string.format("%02d", wagoncount_fluid),
+    subgroup = "ltn-position-signal",
+    order = "c"..string.format("%02d", wagoncount_fluid),
     localised_name = {"virtual-signal-name.ltn-position", wagon.localised_name or {"entity-name." .. wagon.name}}
   }
   data:extend({signal})
@@ -61,8 +61,8 @@ for _, wagon in pairs(data.raw["artillery-wagon"]) do
     name = "ltn-position-"..wagon.name,
     icons = optera_lib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
-    subgroup = "ltn-position-signal-artillery-wagon",
-    order = "b"..string.format("%02d", wagoncount_artillery),
+    subgroup = "ltn-position-signal",
+    order = "d"..string.format("%02d", wagoncount_artillery),
     localised_name = {"virtual-signal-name.ltn-position", wagon.localised_name or {"entity-name." .. wagon.name}}
   }
   data:extend({signal})

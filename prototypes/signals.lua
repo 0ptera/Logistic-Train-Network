@@ -118,9 +118,9 @@ data:extend({
 
   {
     type = "item-subgroup",
-    name = "ltn-position-signal-locomotive",
+    name = "ltn-position-signal",
     group = "signals",
-    order = "ltn1[ltn-position-signal-locomotive]"
+    order = "ltn1[ltn-position-signal]"
   },
   {
     type = "item-subgroup",
@@ -143,46 +143,46 @@ data:extend({
   {
     type = "virtual-signal",
     name = "ltn-position-any-locomotive",
-    localised_name = {"virtual-signal-name.ltn-position-any", {"entity-name.locomotive"}},
+    -- localised_name = {"virtual-signal-name.ltn-position-any", {"entity-name.locomotive"}},
     icons = {
       { icon = "__base__/graphics/icons/signal/signal_red.png", icon_size = 32 },
       { icon = "__base__/graphics/icons/diesel-locomotive.png", icon_size = 32, scale = 0.75 },
     },
-    subgroup = "ltn-position-signal-locomotive",
-    order = "a"
+    subgroup = "ltn-position-signal",
+    order = "a0"
   },
   {
     type = "virtual-signal",
     name = "ltn-position-any-cargo-wagon",
-    localised_name = {"virtual-signal-name.ltn-position-any", {"entity-name.cargo-wagon"}},
+    -- localised_name = {"virtual-signal-name.ltn-position-any", {"entity-name.cargo-wagon"}},
     icons = {
       { icon = "__base__/graphics/icons/signal/signal_red.png", icon_size = 32 },
       { icon = "__base__/graphics/icons/cargo-wagon.png", icon_size = 32, scale = 0.75 },
     },
-    subgroup = "ltn-position-signal-cargo-wagon",
-    order = "a"
+    subgroup = "ltn-position-signal",
+    order = "b0"
   },
   {
     type = "virtual-signal",
     name = "ltn-position-any-fluid-wagon",
-    localised_name = {"virtual-signal-name.ltn-position-any", {"entity-name.fluid-wagon"}},
+    -- localised_name = {"virtual-signal-name.ltn-position-any", {"entity-name.fluid-wagon"}},
     icons = {
       { icon = "__base__/graphics/icons/signal/signal_red.png", icon_size = 32 },
       { icon = "__base__/graphics/icons/fluid-wagon.png", icon_size = 32, scale = 0.75 },
     },
-    subgroup = "ltn-position-signal-fluid-wagon",
-    order = "a"
+    subgroup = "ltn-position-signal",
+    order = "c0"
   },
   {
     type = "virtual-signal",
     name = "ltn-position-any-artillery-wagon",
-    localised_name = {"virtual-signal-name.ltn-position-any", {"entity-name.artillery-wagon"}},
+    -- localised_name = {"virtual-signal-name.ltn-position-any", {"entity-name.artillery-wagon"}},
     icons = {
       { icon = "__base__/graphics/icons/signal/signal_red.png", icon_size = 32 },
       { icon = "__base__/graphics/icons/artillery-wagon.png", icon_size = 32, scale = 0.75 },
     },
-    subgroup = "ltn-position-signal-artillery-wagon",
-    order = "a"
+    subgroup = "ltn-position-signal",
+    order = "d0"
   },
 
 })
