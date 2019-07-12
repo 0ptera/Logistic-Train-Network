@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.10.13
+Date: 2019-07-11
+  Features:
+    - Encoded position signal for carriage types https://forums.factorio.com/viewtopic.php?f=214&t=73122
+    - reorganized encoded position signals in subgroups per carriage type
+---------------------------------------------------------------------------------------------------
 Version: 1.10.12
 Date: 2019-07-05
   Bugfixes:

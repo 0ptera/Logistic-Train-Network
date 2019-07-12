@@ -394,36 +394,53 @@ function UpdateStopOutput(trainStop)
   if trainStop.parkedTrain and trainStop.parkedTrain.valid then
     -- get train composition
     local carriages = trainStop.parkedTrain.carriages
-    local carriagesDec = {}
+    local encoded_positions_by_name = {}
+    local encoded_positions_by_type = {}
     local inventory = trainStop.parkedTrain.get_contents() or {}
     local fluidInventory = trainStop.parkedTrain.get_fluid_contents() or {}
 
     if #carriages < 32 then --prevent circuit network integer overflow error
       if trainStop.parkedTrainFacesStop then --train faces forwards >> iterate normal
         for i=1, #carriages do
-          local name = carriages[i].name
-          if carriagesDec[name] then
-            carriagesDec[name] = carriagesDec[name] + 2^(i-1)
+          local type = carriages[i].type
+          if encoded_positions_by_type[type] then
+            encoded_positions_by_type[type] = encoded_positions_by_type[type] + 2^(i-1)
           else
-            carriagesDec[name] = 2^(i-1)
+            encoded_positions_by_type[type] = 2^(i-1)
+          end
+          local name = carriages[i].name
+          if encoded_positions_by_name[name] then
+            encoded_positions_by_name[name] = encoded_positions_by_name[name] + 2^(i-1)
+          else
+            encoded_positions_by_name[name] = 2^(i-1)
           end
         end
       else --train faces backwards >> iterate backwards
         n = 0
         for i=#carriages, 1, -1 do
-          local name = carriages[i].name
-          if carriagesDec[name] then
-            carriagesDec[name] = carriagesDec[name] + 2^n
+          local type = carriages[i].type
+          if encoded_positions_by_type[type] then
+            encoded_positions_by_type[type] = encoded_positions_by_type[type] + 2^(i-1)
           else
-            carriagesDec[name] = 2^n
+            encoded_positions_by_type[type] = 2^(i-1)
+          end
+          local name = carriages[i].name
+          if encoded_positions_by_name[name] then
+            encoded_positions_by_name[name] = encoded_positions_by_name[name] + 2^n
+          else
+            encoded_positions_by_name[name] = 2^n
           end
           n=n+1
         end
       end
 
-      for k ,v in pairs (carriagesDec) do
+      for k ,v in pairs (encoded_positions_by_type) do
         index = index+1
-        table.insert(signals, {index = index, signal = {type="virtual",name="LTN-"..k}, count = v })
+        table.insert(signals, {index = index, signal = {type="virtual",name="ltn-position-any-"..k}, count = v })
+      end
+      for k ,v in pairs (encoded_positions_by_name) do
+        index = index+1
+        table.insert(signals, {index = index, signal = {type="virtual",name="ltn-position-"..k}, count = v })
       end
     end
 

@@ -13,52 +13,56 @@ for _, loco in pairs(data.raw["locomotive"]) do
   lococount=lococount+1
   local signal = {
     type = "virtual-signal",
-    name = "LTN-"..loco.name,
+    name = "ltn-position-"..loco.name,
     icons = optera_lib.create_icons(loco, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
-    subgroup = "LTN-signal",
-    order = "z[LTN-signal]-u"..string.format("%02d", lococount),
+    subgroup = "ltn-position-signal-locomotive",
+    order = "b"..string.format("%02d", lococount),
     localised_name = {"virtual-signal-name.ltn-position", loco.localised_name or {"entity-name." .. loco.name}}
   }
   data:extend({signal})
 end
 
-wagoncount = 0
+local wagoncount = 0
 for _, wagon in pairs(data.raw["cargo-wagon"]) do
   wagoncount=wagoncount+1
   local signal = {
     type = "virtual-signal",
-    name = "LTN-"..wagon.name,
+    name = "ltn-position-"..wagon.name,
     icons = optera_lib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
-    subgroup = "LTN-signal",
-    order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
+    subgroup = "ltn-position-signal-cargo-wagon",
+    order = "b"..string.format("%02d", wagoncount),
     localised_name = {"virtual-signal-name.ltn-position", wagon.localised_name or {"entity-name." .. wagon.name}}
   }
   data:extend({signal})
 end
+
+local wagoncount_fluid = 0
 for _, wagon in pairs(data.raw["fluid-wagon"]) do
-  wagoncount=wagoncount+1
+  wagoncount_fluid=wagoncount_fluid+1
   local signal = {
     type = "virtual-signal",
-    name = "LTN-"..wagon.name,
+    name = "ltn-position-"..wagon.name,
     icons = optera_lib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
-    subgroup = "LTN-signal",
-    order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
+    subgroup = "ltn-position-signal-fluid-wagon",
+    order = "b"..string.format("%02d", wagoncount_fluid),
     localised_name = {"virtual-signal-name.ltn-position", wagon.localised_name or {"entity-name." .. wagon.name}}
   }
   data:extend({signal})
 end
+
+local wagoncount_artillery = 0
 for _, wagon in pairs(data.raw["artillery-wagon"]) do
-  wagoncount=wagoncount+1
+  wagoncount_artillery=wagoncount_artillery+1
   local signal = {
     type = "virtual-signal",
-    name = "LTN-"..wagon.name,
+    name = "ltn-position-"..wagon.name,
     icons = optera_lib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
-    subgroup = "LTN-signal",
-    order = "z[LTN-signal]-v"..string.format("%02d", wagoncount),
+    subgroup = "ltn-position-signal-artillery-wagon",
+    order = "b"..string.format("%02d", wagoncount_artillery),
     localised_name = {"virtual-signal-name.ltn-position", wagon.localised_name or {"entity-name." .. wagon.name}}
   }
   data:extend({signal})
@@ -80,6 +84,6 @@ for type, type_data in pairs(data.raw) do
   end
 end
 
-data.raw["constant-combinator"]["logistic-train-stop-output"].item_slot_count = lococount + wagoncount + itemcount + fluidcount
-log("[LTN] found "..tostring(itemcount).." items, "..tostring(fluidcount).." fluids, "..tostring(lococount).." locomotives, "..tostring(wagoncount).." wagons")
+data.raw["constant-combinator"]["logistic-train-stop-output"].item_slot_count = 4 + lococount + wagoncount + wagoncount_fluid + wagoncount_artillery + itemcount + fluidcount
+log("[LTN] found "..tostring(itemcount).." items, "..tostring(fluidcount).." fluids, "..tostring(lococount).." locomotives, "..tostring(wagoncount + wagoncount_fluid + wagoncount_artillery).." wagons")
 
