@@ -1,0 +1,9 @@
+{
+  "virtual-signal":
+  [
+    ["LTN-locomotive", "ltn-position-locomotive"],
+    ["LTN-cargo-wagon", "ltn-position-cargo-wagon"],
+    ["LTN-fluid-wagon", "ltn-position-fluid-wagon"],
+    ["LTN-artillery-wagon", "ltn-position-artillery-wagon"]
+  ]
+}
