@@ -284,7 +284,7 @@ end
 
 -- remove stop references when deleting surfaces
 function OnSurfaceRemoved(event)
-  local surfaceID = event.surface_index or "nauvis"
+  local surfaceID = event.surface_index
   log("removing LTN stops on surface "..tostring(surfaceID) )
   local surface = game.surfaces[surfaceID]
   if surface then
