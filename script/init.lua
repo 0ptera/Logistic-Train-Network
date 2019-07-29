@@ -215,17 +215,12 @@ local function registerEvents()
   -- always track built/removed train stops for duplicate name list
   script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity, defines.events.script_raised_built}, OnEntityCreated)
   script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died, script_raised_destroy}, OnEntityRemoved)
-  script.on_event(defines.events.on_pre_surface_deleted, OnSurfaceRemoved)
+  script.on_event({defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared}, OnSurfaceRemoved)
 
   if global.LogisticTrainStops and next(global.LogisticTrainStops) then
     script.on_event(defines.events.on_tick, OnTick)
     script.on_event(defines.events.on_train_changed_state, OnTrainStateChanged)
     script.on_event(defines.events.on_train_created, OnTrainCreated)
-  end
-
-  -- custom event for nauvis reset
-  if remote.interfaces["newgameplus"] and remote.interfaces["newgameplus"]["get_on_pre_surface_cleared_event"] then
-    script.on_event(remote.call("newgameplus", "get_on_pre_surface_cleared_event"), OnSurfaceRemoved)
   end
 
   -- disable instant blueprint in creative mode
