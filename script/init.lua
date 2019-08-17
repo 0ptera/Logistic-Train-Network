@@ -213,9 +213,22 @@ end
 -- register events
 local function registerEvents()
   -- always track built/removed train stops for duplicate name list
-  script.on_event({defines.events.on_built_entity, defines.events.on_robot_built_entity, defines.events.script_raised_built}, OnEntityCreated)
-  script.on_event({defines.events.on_pre_player_mined_item, defines.events.on_robot_pre_mined, defines.events.on_entity_died, script_raised_destroy}, OnEntityRemoved)
-  script.on_event({defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared}, OnSurfaceRemoved)
+  script.on_event({
+    defines.events.on_built_entity,
+    defines.events.on_robot_built_entity,
+    defines.events.script_raised_built,
+    defines.events.script_raised_revive,
+  }, OnEntityCreated)
+  script.on_event({
+    defines.events.on_pre_player_mined_item,
+    defines.events.on_robot_pre_mined,
+    defines.events.on_entity_died,
+    script_raised_destroy
+  }, OnEntityRemoved)
+  script.on_event({
+    defines.events.on_pre_surface_deleted,
+    defines.events.on_pre_surface_cleared,
+  }, OnSurfaceRemoved)
 
   if global.LogisticTrainStops and next(global.LogisticTrainStops) then
     script.on_event(defines.events.on_tick, OnTick)
