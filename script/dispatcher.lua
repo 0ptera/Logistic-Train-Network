@@ -17,53 +17,25 @@ end)
 
 ---------------------------------- MAIN LOOP ----------------------------------
 
--- recalculate update interval based on stops-per-tick setting
-function ResetUpdateInterval()
-  local new_update_interval = ceil(#StopIDList/dispatcher_max_stops_per_tick) + 3 -- n-3 ticks for stop Updates, 3 ticks for dispatcher
-  if new_update_interval < 60 then  -- limit fastest possible update interval to 60 ticks
-    global.Dispatcher.UpdateInterval = 60
-    global.Dispatcher.UpdateStopsPerTick = ceil(#StopIDList/57)
-  else
-    global.Dispatcher.UpdateInterval = new_update_interval
-    global.Dispatcher.UpdateStopsPerTick = dispatcher_max_stops_per_tick
-  end
-  if debug_log then log("(ResetUpdateInterval) UpdateInterval = "..global.Dispatcher.UpdateInterval..", UpdateStopsPerTick = "..global.Dispatcher.UpdateStopsPerTick..", #StopIDList = "..#StopIDList) end
-end
-
-
 function OnTick(event)
-  -- exit when there are no logistic train stops
   local tick = event.tick
-  global.tickCount = global.tickCount or 1
+  -- log("DEBUG: (OnTick) "..tick.." global.tick_state: "..tostring(global.tick_state))
 
-  if global.tickCount == 1 then
-
-    -- stopsPerTick = ceil(#StopIDList/(global.Dispatcher.UpdateInterval - 3)) -- n-3 ticks for stop Updates, 3 ticks for dispatcher
-    -- ResetUpdateInterval()
-    global.stopIdStartIndex = 1
-
-    -- clear Dispatcher.Storage
-    global.Dispatcher.Provided = {}
-    global.Dispatcher.Requests = {}
-    global.Dispatcher.Provided_by_Stop = {}
-    global.Dispatcher.Requests_by_Stop = {}
-  end
-
-  -- ticks 1 - 57: update stops
-  if global.tickCount < global.Dispatcher.UpdateInterval - 2 then
-    local stopIdLastIndex = global.stopIdStartIndex + global.Dispatcher.UpdateStopsPerTick - 1
-    if stopIdLastIndex > #StopIDList then
-      stopIdLastIndex = #StopIDList
+  if global.tick_state == 1 then -- update stops
+    for i = 1, dispatcher_max_stops_per_tick, 1 do
+      global.stop_update_index = next(global.LogisticTrainStops, global.stop_update_index)
+      if global.stop_update_index then
+        if debug_log then log("(OnTick) "..tick.." updating stopID "..tostring(global.stop_update_index)) end
+        UpdateStop(global.stop_update_index)
+      else
+        global.tick_state = 2
+        return
+      end
     end
-    for i = global.stopIdStartIndex, stopIdLastIndex, 1 do
-      local stopID = StopIDList[i]
-      if debug_log then log("(OnTick) "..global.tickCount.."/"..tick.." updating stopID "..tostring(stopID)) end
-      UpdateStop(stopID)
-    end
-    global.stopIdStartIndex = stopIdLastIndex + 1
 
-  -- tick 58: clean up and sort lists
-  elseif global.tickCount == global.Dispatcher.UpdateInterval - 2 then
+  elseif global.tick_state == 2 then -- clean up and sort lists
+    global.tick_state = 3
+
     -- remove messages older than message_filter_age from messageBuffer
     for bufferedMsg, v in pairs(global.messageBuffer) do
       if (tick - v.tick) > message_filter_age then
@@ -113,8 +85,8 @@ function OnTick(event)
         end
       end)
 
-  -- tick 59: parse requests and dispatch trains
-  elseif global.tickCount == global.Dispatcher.UpdateInterval - 1 then
+  elseif global.tick_state == 3 then -- parse requests and dispatch trains
+    global.tick_state = 4
     if dispatcher_enabled then
       if debug_log then log("(OnTick) Available train capacity: "..global.Dispatcher.availableTrains_total_capacity.." item stacks, "..global.Dispatcher.availableTrains_total_fluid_capacity.. " fluid capacity.") end
       local created_deliveries = 0
@@ -131,8 +103,8 @@ function OnTick(event)
       if debug_log then log("(OnTick) Dispatcher disabled.") end
     end
 
-  -- tick 60: reset
-  else
+  elseif global.tick_state == 4 then -- raise API events
+    global.tick_state = 0
     -- raise events for interface mods
     script.raise_event(on_stops_updated_event,
       {
@@ -147,10 +119,16 @@ function OnTick(event)
         available_trains = global.Dispatcher.availableTrains,
       })
 
-    global.tickCount = 0 -- reset tick count
-  end
+  else -- reset
+    global.tick_state = 1
+    global.stop_update_index = nil
 
-  global.tickCount = global.tickCount + 1
+    -- clear Dispatcher.Storage
+    global.Dispatcher.Provided = {}
+    global.Dispatcher.Requests = {}
+    global.Dispatcher.Provided_by_Stop = {}
+    global.Dispatcher.Requests_by_Stop = {}
+  end
 end
 
 

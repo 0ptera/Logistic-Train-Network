@@ -49,6 +49,7 @@ function UpdateStop(stopID)
   if not stop or not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
     if message_level >= 1 then printmsg({"ltn-message.error-invalid-stop", stopID}) end
     if debug_log then log("(UpdateStop) Removing invalid stop: "..stopID) end
+    RemoveStopName(stopID)
     RemoveStop(stopID)
     return
   end

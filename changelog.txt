@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.10.16
+Date: 2019-09-04
+  Bugfixes:
+    - stop name list wasn't updated correctly when removing invalid stops
+  Changes:
+    - stop iteration should be more robust using next(global.LogisticTrainStops)
+---------------------------------------------------------------------------------------------------
 Version: 1.10.15
 Date: 2019-08-17
   Features:

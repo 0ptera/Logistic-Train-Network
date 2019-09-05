@@ -63,7 +63,6 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   end
   if event.setting == "ltn-dispatcher-stops-per-tick" then
     dispatcher_max_stops_per_tick = settings.global["ltn-dispatcher-stops-per-tick"].value
-    ResetUpdateInterval()
   end
   if event.setting == "ltn-depot-reset-filters" then
     reset_filters = settings.global["ltn-depot-reset-filters"].value

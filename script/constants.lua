@@ -63,9 +63,6 @@ ColorLookup = {
   black = "signal-black"
 }
 
-
-StopIDList = {} -- stopIDs list for on_tick updates
-
 -- cache often used strings and functions
 format = string.format
 match = string.match

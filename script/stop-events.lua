@@ -28,21 +28,19 @@ function AddStopName(stopID, stopName)
 end
 
 -- remove stop from TrainStopNames
-function RemoveStopName(stopID, stopName)
-  if global.TrainStopNames[stopName] then
-    -- multiple stops of same name > remove id from the list
-    for i=#global.TrainStopNames[stopName], 1, -1 do
-      if global.TrainStopNames[stopName][i] == stopID then
-        table.remove(global.TrainStopNames[stopName], i)
+function RemoveStopName(stopID)
+  for stopName, stopIDs in pairs(global.TrainStopNames) do
+    for i=#stopIDs, 1, -1 do
+      if stopIDs[i] == stopID then
+        table.remove(stopIDs, i)
       end
     end
-    if not next(global.TrainStopNames[stopName]) then
+    if #stopIDs == 0 then
       -- remove name-id entry
       global.TrainStopNames[stopName] = nil
     end
   end
 end
-
 
 --create stop
 function CreateStop(entity)
@@ -183,10 +181,15 @@ function CreateStop(entity)
     providePriority = 0,
     lockedSlots = 0,
   }
-  StopIDList[#StopIDList+1] = entity.unit_number
   UpdateStopOutput(global.LogisticTrainStops[entity.unit_number])
 
-  ResetUpdateInterval()
+  if not script.get_event_handler(defines.events.on_tick) then
+    -- register events
+    script.on_event(defines.events.on_tick, OnTick)
+    script.on_event(defines.events.on_train_changed_state, OnTrainStateChanged)
+    script.on_event(defines.events.on_train_created, OnTrainCreated)
+    if debug_log then log("(OnEntityCreated) First LTN Stop built: OnTick, OnTrainStateChanged, OnTrainCreated registered") end
+  end
 end
 
 function OnEntityCreated(event)
@@ -197,16 +200,6 @@ function OnEntityCreated(event)
      AddStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
     if ltn_stop_entity_names[entity.name] then
       CreateStop(entity)
-      if #StopIDList == 1 then
-        --initialize OnTick indexes
-        -- stopsPerTick = 1
-        global.stopIdStartIndex = 1
-        -- register events
-        script.on_event(defines.events.on_tick, OnTick)
-        script.on_event(defines.events.on_train_changed_state, OnTrainStateChanged)
-        script.on_event(defines.events.on_train_created, OnTrainCreated)
-        if debug_log then log("(OnEntityCreated) First LTN Stop built: OnTick, OnTrainStateChanged, OnTrainCreated registered") end
-      end
     end
   end
 end
@@ -218,11 +211,6 @@ function RemoveStop(stopID)
   local stop = global.LogisticTrainStops[stopID]
 
   -- clean lookup tables
-  for i=#StopIDList, 1, -1 do
-    if StopIDList[i] == stopID then
-      table.remove(StopIDList, i)
-    end
-  end
   for k,v in pairs(global.StopDistances) do
     if k:find(stopID) then
       global.StopDistances[k] = nil
@@ -245,7 +233,13 @@ function RemoveStop(stopID)
 
   global.LogisticTrainStops[stopID] = nil
 
-  ResetUpdateInterval()
+  if not next(global.LogisticTrainStops) then
+    -- unregister events
+    script.on_event(defines.events.on_tick, nil)
+    script.on_event(defines.events.on_train_changed_state, nil)
+    script.on_event(defines.events.on_train_created, nil)
+    if debug_log then log("(OnEntityRemoved) Removed last LTN Stop: OnTick, OnTrainStateChanged, OnTrainCreated unregistered") end
+  end
 end
 
 function OnEntityRemoved(event)
@@ -267,16 +261,9 @@ function OnEntityRemoved(event)
     end
 
   elseif entity.type == "train-stop" then
-    RemoveStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
+    RemoveStopName(entity.unit_number) -- all stop names are monitored
     if ltn_stop_entity_names[entity.name] then
       RemoveStop(entity.unit_number)
-      if StopIDList == nil or #StopIDList == 0 then
-        -- unregister events
-        script.on_event(defines.events.on_tick, nil)
-        script.on_event(defines.events.on_train_changed_state, nil)
-        script.on_event(defines.events.on_train_created, nil)
-        if debug_log then log("(OnEntityRemoved) Removed last LTN Stop: OnTick, OnTrainStateChanged, OnTrainCreated unregistered") end
-      end
     end
   end
 end
@@ -290,7 +277,7 @@ function OnSurfaceRemoved(event)
   if surface then
     local train_stops = surface.find_entities_filtered{type = "train-stop"}
     for _, entity in pairs(train_stops) do
-      RemoveStopName(entity.unit_number, entity.backer_name)
+      RemoveStopName(entity.unit_number)
       if ltn_stop_entity_names[entity.name] then
         RemoveStop(entity.unit_number)
       end
@@ -331,7 +318,7 @@ script.on_event(defines.events.on_entity_renamed, function(event)
   local newName = event.entity.backer_name
 
   if event.entity.type == "train-stop" then
-    RemoveStopName(uid, oldName)
+    RemoveStopName(uid)
     AddStopName(uid, newName)
   end
 
