@@ -13,6 +13,7 @@ local function initialize(oldVersion, newVersion)
   global.tick_state = 0 -- index determining on_tick update mode 0: init, 1: stop update, 2: sort requests, 3: parse requests, 4: raise API update events
   global.tick_stop_index = nil
   global.tick_request_index = nil
+  global.tick_interval_start = nil -- stores tick of last state 0 for on_dispatcher_updated_event.update_interval
 
   ---- initialize logger
   global.messageBuffer = {}

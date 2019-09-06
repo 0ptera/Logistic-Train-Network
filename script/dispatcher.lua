@@ -117,7 +117,7 @@ function OnTick(event)
       })
     script.raise_event(on_dispatcher_updated_event,
       {
-        update_interval = global.Dispatcher.UpdateInterval,
+        update_interval = tick - global.tick_interval_start,
         provided_by_stop = global.Dispatcher.Provided_by_Stop,
         requests_by_stop = global.Dispatcher.Requests_by_Stop,
         deliveries = global.Dispatcher.Deliveries,
@@ -126,6 +126,7 @@ function OnTick(event)
 
   else -- reset
     global.tick_state = 1
+    global.tick_interval_start = tick
     -- clear Dispatcher.Storage
     global.Dispatcher.Provided = {}
     global.Dispatcher.Requests = {}
