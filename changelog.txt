@@ -1,4 +1,17 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.11.0
+Date: 2019-09-06
+  Features:
+    - stop iteration should be more robust
+    - allow n-th tick stepping for all updates
+    - request processing spread across multiple ticks
+  Changes:
+    - replaced setting "limit stops per tick" with "updates per tick"
+    - added setting "update every n-th tick"
+  Bugfixes:
+    - stop name list wasn't updated correctly when removing invalid stops
+    - some fixes to German setting translation
+---------------------------------------------------------------------------------------------------
 Version: 1.10.15
 Date: 2019-08-17
   Features:

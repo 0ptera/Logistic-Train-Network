@@ -17,7 +17,11 @@ delivery_timeout = settings.global["ltn-dispatcher-delivery-timeout(s)"].value *
 finish_loading = settings.global["ltn-dispatcher-finish-loading"].value
 requester_delivery_reset = settings.global["ltn-dispatcher-requester-delivery-reset"].value
 dispatcher_enabled = settings.global["ltn-dispatcher-enabled"].value
-dispatcher_max_stops_per_tick = settings.global["ltn-dispatcher-stops-per-tick"].value
+dispatcher_updates_per_tick = settings.global["ltn-dispatcher-updates-per-tick"].value
+dispatcher_nth_tick = settings.global["ltn-dispatcher-nth_tick"].value
+if dispatcher_nth_tick > 1 then
+  dispatcher_updates_per_tick = 1
+end
 reset_filters = settings.global["ltn-depot-reset-filters"].value
 default_network = settings.global["ltn-stop-default-network"].value
 
@@ -61,9 +65,24 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if event.setting == "ltn-dispatcher-enabled" then
     dispatcher_enabled = settings.global["ltn-dispatcher-enabled"].value
   end
-  if event.setting == "ltn-dispatcher-stops-per-tick" then
-    dispatcher_max_stops_per_tick = settings.global["ltn-dispatcher-stops-per-tick"].value
-    ResetUpdateInterval()
+  if event.setting == "ltn-dispatcher-updates-per-tick" then
+    if dispatcher_nth_tick == 1 then
+      dispatcher_updates_per_tick = settings.global["ltn-dispatcher-updates-per-tick"].value
+    else
+      dispatcher_updates_per_tick = 1
+    end
+  end
+  if event.setting == "ltn-dispatcher-nth_tick" then
+    dispatcher_nth_tick = settings.global["ltn-dispatcher-nth_tick"].value
+    if dispatcher_nth_tick == 1 then
+      dispatcher_updates_per_tick = settings.global["ltn-dispatcher-updates-per-tick"].value
+    else
+      dispatcher_updates_per_tick = 1
+    end
+    script.on_nth_tick(nil)
+    if next(global.LogisticTrainStops) then
+      script.on_nth_tick(dispatcher_nth_tick, OnTick)
+    end
   end
   if event.setting == "ltn-depot-reset-filters" then
     reset_filters = settings.global["ltn-depot-reset-filters"].value

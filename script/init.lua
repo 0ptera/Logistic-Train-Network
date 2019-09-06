@@ -10,8 +10,10 @@ local function initialize(oldVersion, newVersion)
   --log("oldVersion: "..tostring(oldVersion)..", newVersion: "..tostring(newVersion))
 
   ---- always start with stop updated after a config change, ensure consistent data and filled tables
-  global.tickCount = 1
-  global.stopIdStartIndex = 1 --start index for on_tick stop updates
+  global.tick_state = 0 -- index determining on_tick update mode 0: init, 1: stop update, 2: sort requests, 3: parse requests, 4: raise API update events
+  global.tick_stop_index = nil
+  global.tick_request_index = nil
+  global.tick_interval_start = nil -- stores tick of last state 0 for on_dispatcher_updated_event.update_interval
 
   ---- initialize logger
   global.messageBuffer = {}
@@ -26,8 +28,6 @@ local function initialize(oldVersion, newVersion)
 
   ---- initialize Dispatcher
   global.Dispatcher = global.Dispatcher or {}
-  -- global.Dispatcher.UpdateInterval      -- set in ResetUpdateInterval()
-  -- global.Dispatcher.UpdateStopsPerTick  -- set in ResetUpdateInterval()
 
   -- set in UpdateAllTrains
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
@@ -46,6 +46,10 @@ local function initialize(oldVersion, newVersion)
   global.Dispatcher.OrderAge = nil
   global.Dispatcher.Storage = nil
   global.useRailTanker = nil
+  global.tickCount = nil
+  global.stopIdStartIndex = nil --start index for on_tick stop updates
+  global.Dispatcher.UpdateInterval = nil      -- set in ResetUpdateInterval()
+  global.Dispatcher.UpdateStopsPerTick = nil  -- set in ResetUpdateInterval()
 
    -- update to 1.4.0
   if oldVersion and oldVersion < "01.04.00" then
@@ -231,7 +235,9 @@ local function registerEvents()
   }, OnSurfaceRemoved)
 
   if global.LogisticTrainStops and next(global.LogisticTrainStops) then
-    script.on_event(defines.events.on_tick, OnTick)
+    -- script.on_event(defines.events.on_tick, OnTick)
+    script.on_nth_tick(nil)
+    script.on_nth_tick(dispatcher_nth_tick, OnTick)
     script.on_event(defines.events.on_train_changed_state, OnTrainStateChanged)
     script.on_event(defines.events.on_train_created, OnTrainCreated)
   end
@@ -255,14 +261,6 @@ local function registerEvents()
 end
 
 script.on_load(function()
-  if global.LogisticTrainStops and next(global.LogisticTrainStops) then
-    for stopID, stop in pairs(global.LogisticTrainStops) do --outputs are not stored in save
-      -- UpdateStopOutput(stop)
-      if stop and stop.entity and stop.entity.valid and stop.input and stop.input.valid and stop.output and stop.output.valid and stop.lampControl and stop.lampControl.valid then
-        StopIDList[#StopIDList+1] = stopID
-      end
-    end
-  end
   registerEvents()
 end)
 
@@ -276,7 +274,6 @@ script.on_init(function()
 
   initializeTrainStops()
   initialize(oldVersion, newVersion)
-  ResetUpdateInterval()
   updateAllTrains()
   registerEvents()
 
@@ -307,7 +304,6 @@ script.on_configuration_changed(function(data)
       printmsg("[LTN] Migration from "..tostring(oldVersionString).." to "..tostring(newVersionString).." complete.")
     end
   end
-  ResetUpdateInterval()
   updateAllTrains()
   registerEvents()
   log("[LTN] ".. MOD_NAME.." "..tostring(game.active_mods[MOD_NAME]).." configuration updated.")
