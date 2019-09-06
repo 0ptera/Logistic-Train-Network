@@ -110,7 +110,7 @@ function OnTick(event)
 
   elseif global.tick_state == 4 then -- raise API events
     global.tick_state = 0
-    -- raise events for interface mods
+    -- raise events for mod API
     script.raise_event(on_stops_updated_event,
       {
         logistic_train_stops = global.LogisticTrainStops,
