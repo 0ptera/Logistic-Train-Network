@@ -1,11 +1,11 @@
 {
   "name": "LogisticTrainNetwork",
-  "version": "1.10.16",
+  "version": "1.11.0",
   "title": "LTN - Logistic Train Network",
   "author": "Optera",
   "contact": "https://forums.factorio.com/memberlist.php?mode=viewprofile&u=21729",
   "homepage": "https://forums.factorio.com/viewforum.php?f=214",
   "description": "Adds new train stops forming a highly configurable, fully automated logistic network.",
   "factorio_version": "0.17",
-  "dependencies": ["base >= 0.17.59", "OpteraLib >= 0.1.7", "?cargo-ships >= 0.0.27"]
+  "dependencies": ["base >= 0.17.68", "OpteraLib >= 0.1.7", "?cargo-ships >= 0.0.27"]
 }

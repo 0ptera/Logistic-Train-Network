@@ -22,12 +22,14 @@ function OnTick(event)
   -- log("DEBUG: (OnTick) "..tick.." global.tick_state: "..tostring(global.tick_state))
 
   if global.tick_state == 1 then -- update stops
-    for i = 1, dispatcher_max_stops_per_tick, 1 do
-      global.stop_update_index = next(global.LogisticTrainStops, global.stop_update_index)
-      if global.stop_update_index then
-        if debug_log then log("(OnTick) "..tick.." updating stopID "..tostring(global.stop_update_index)) end
-        UpdateStop(global.stop_update_index)
-      else
+    for i = 1, dispatcher_updates_per_tick, 1 do
+      local stopID, stop = next(global.LogisticTrainStops, global.tick_stop_index)
+      global.tick_stop_index = stopID
+      if stopID then
+        if debug_log then log("(OnTick) "..tick.." updating stopID "..tostring(stopID)) end
+        UpdateStop(stopID, stop)
+      else -- stop updates complete, moving on
+        global.tick_stop_index = nil
         global.tick_state = 2
         return
       end
@@ -86,21 +88,24 @@ function OnTick(event)
       end)
 
   elseif global.tick_state == 3 then -- parse requests and dispatch trains
-    global.tick_state = 4
     if dispatcher_enabled then
       if debug_log then log("(OnTick) Available train capacity: "..global.Dispatcher.availableTrains_total_capacity.." item stacks, "..global.Dispatcher.availableTrains_total_fluid_capacity.. " fluid capacity.") end
-      local created_deliveries = 0
-      for reqIndex = 1, #global.Dispatcher.Requests, 1 do
-      -- for reqIndex, request in pairs (global.Dispatcher.Requests) do
-        local delivery_ID = ProcessRequest(reqIndex)
-        if delivery_ID then
-          created_deliveries = created_deliveries + 1
+      for i = 1, dispatcher_updates_per_tick, 1 do
+        local request_index, request = next(global.Dispatcher.Requests, global.tick_request_index)
+        global.tick_request_index = request_index
+        if request_index then
+          if debug_log then log("(OnTick) "..tick.." parsing request "..tostring(request_index).."/"..tostring(#global.Dispatcher.Requests) ) end
+          ProcessRequest(request_index, request)
+        else -- request updates complete, moving on
+          global.tick_request_index = nil
+          global.tick_state = 4
         end
       end
-      if debug_log then log("(OnTick) Created "..created_deliveries.." deliveries this interval.") end
     else
       if message_level >= 1 then printmsg({"ltn-message.warning-dispatcher-disabled"}, nil, true) end
       if debug_log then log("(OnTick) Dispatcher disabled.") end
+      global.tick_request_index = nil
+      global.tick_state = 4
     end
 
   elseif global.tick_state == 4 then -- raise API events
@@ -121,8 +126,6 @@ function OnTick(event)
 
   else -- reset
     global.tick_state = 1
-    global.stop_update_index = nil
-
     -- clear Dispatcher.Storage
     global.Dispatcher.Provided = {}
     global.Dispatcher.Requests = {}
@@ -220,7 +223,7 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
 end
 
 
--- ProcessRequest
+---- ProcessRequest ----
 
 -- return a list ordered priority > #activeDeliveries > item-count of {entity, network_id, priority, activeDeliveryCount, item, count, provideThreshold, provideStackThreshold, minTraincars, maxTraincars, lockedSlots}
 local function getProviders(requestStation, item, req_count, min_length, max_length)
@@ -355,9 +358,7 @@ end
 
 -- parse single request from global.Dispatcher.Request={stopID, item, age, count}
 -- returns created delivery ID or nil
-function ProcessRequest(reqIndex)
-  local request = global.Dispatcher.Requests[reqIndex]
-
+function ProcessRequest(reqIndex, request)
   -- ensure validity of request stop
   local toID = request.stopID
   local requestStation = global.LogisticTrainStops[toID]
@@ -617,7 +618,7 @@ function ProcessRequest(reqIndex)
     end
   end
 
-  -- return train ID / delivery ID
+  -- return train ID = delivery ID
   return selectedTrain.id
 end
 

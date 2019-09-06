@@ -41,8 +41,7 @@ local function remove_available_train(trainID)
 end
 
 -- update stop input signals
-function UpdateStop(stopID)
-  local stop = global.LogisticTrainStops[stopID]
+function UpdateStop(stopID, stop)
   global.Dispatcher.Requests_by_Stop[stopID] = nil
 
   -- remove invalid stops

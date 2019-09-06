@@ -11,7 +11,8 @@ local function initialize(oldVersion, newVersion)
 
   ---- always start with stop updated after a config change, ensure consistent data and filled tables
   global.tick_state = 0 -- index determining on_tick update mode 0: init, 1: stop update, 2: sort requests, 3: parse requests, 4: raise API update events
-  global.stop_update_index = nil
+  global.tick_stop_index = nil
+  global.tick_request_index = nil
 
   ---- initialize logger
   global.messageBuffer = {}
@@ -233,7 +234,9 @@ local function registerEvents()
   }, OnSurfaceRemoved)
 
   if global.LogisticTrainStops and next(global.LogisticTrainStops) then
-    script.on_event(defines.events.on_tick, OnTick)
+    -- script.on_event(defines.events.on_tick, OnTick)
+    script.on_nth_tick(nil)
+    script.on_nth_tick(dispatcher_nth_tick, OnTick)
     script.on_event(defines.events.on_train_changed_state, OnTrainStateChanged)
     script.on_event(defines.events.on_train_created, OnTrainCreated)
   end
