@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.11.1
+Date: 2019-09-26
+  Features:
+    - check if requester, provider and train are on the same surface
+    - check forces by object instead of name
+---------------------------------------------------------------------------------------------------
 Version: 1.11.0
 Date: 2019-09-06
   Features:

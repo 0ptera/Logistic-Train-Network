@@ -235,6 +235,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
   end
   local toID = requestStation.entity.unit_number
   local force = requestStation.entity.force
+  local surface = requestStation.entity.surface
 
   for stopID, count in pairs (providers) do
     local stop = global.LogisticTrainStops[stopID]
@@ -242,7 +243,8 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
       local matched_networks = band(requestStation.network_id, stop.network_id)
       -- log("DEBUG: comparing 0x"..string.format("%x", band(requestStation.network_id)).." & 0x"..string.format("%x", band(stop.network_id)).." = 0x"..string.format("%x", band(matched_networks)) )
 
-      if stop.entity.force.name == force.name
+      if stop.entity.force == force
+      and stop.entity.surface == surface
       and matched_networks ~= 0
       -- and count >= stop.provideThreshold
       and (stop.minTraincars == 0 or max_length == 0 or stop.minTraincars <= max_length)
@@ -318,10 +320,11 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size)
       if debug_log then
         depot_network_id_string = format("0x%x", band(trainData.network_id) )
         dest_network_id_string = format("0x%x", band(nextStop.network_id) )
-        log("checking train "..tostring(get_train_name(trainData.train)).." ,force "..trainData.force.."/"..nextStop.entity.force.name..", network "..depot_network_id_string.."/"..dest_network_id_string..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..getStationDistance(trainData.train.station, nextStop.entity))
+        log("checking train "..tostring(get_train_name(trainData.train)).." ,force "..trainData.force.name.."/"..nextStop.entity.force.name..", network "..depot_network_id_string.."/"..dest_network_id_string..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..getStationDistance(trainData.train.station, nextStop.entity))
       end
 
-      if trainData.force == nextStop.entity.force.name -- forces match
+      if trainData.force == nextStop.entity.force -- forces match
+      and trainData.surface == nextStop.entity.surface
       and btest(trainData.network_id, nextStop.network_id) -- depot is in the same network as requester and provider
       and (minTraincars == 0 or #trainData.train.carriages >= minTraincars) and (maxTraincars == 0 or #trainData.train.carriages <= maxTraincars) then -- train length fits
         local distance = getStationDistance(trainData.train.station, nextStop.entity)
