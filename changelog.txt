@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.11.2
+Date: 2019-10-07
+  Bugfixes:
+    - compare forces by object when merging forces
+    - process request state didn't end tick update after running out of requests #196
+---------------------------------------------------------------------------------------------------
 Version: 1.11.1
 Date: 2019-09-26
   Features:

@@ -8,7 +8,7 @@
 -- update global.Dispatcher.Deliveries.force when forces are removed/merged
 script.on_event(defines.events.on_forces_merging, function(event)
   for _, delivery in pairs(global.Dispatcher.Deliveries) do
-    if delivery.force.name == event.source.name then
+    if delivery.force == event.source then
       delivery.force = event.destination
     end
   end
@@ -19,13 +19,13 @@ end)
 
 function OnTick(event)
   local tick = event.tick
-  -- log("DEBUG: (OnTick) "..tick.." global.tick_state: "..tostring(global.tick_state))
+  -- log("DEBUG: (OnTick) "..tick.." global.tick_state: "..tostring(global.tick_state).." global.tick_stop_index: "..tostring(global.tick_stop_index).." global.tick_request_index: "..tostring(global.tick_request_index) )
 
   if global.tick_state == 1 then -- update stops
     for i = 1, dispatcher_updates_per_tick, 1 do
       local stopID, stop = next(global.LogisticTrainStops, global.tick_stop_index)
-      global.tick_stop_index = stopID
       if stopID then
+        global.tick_stop_index = stopID
         if debug_log then log("(OnTick) "..tick.." updating stopID "..tostring(stopID)) end
         UpdateStop(stopID, stop)
       else -- stop updates complete, moving on
@@ -92,13 +92,14 @@ function OnTick(event)
       if debug_log then log("(OnTick) Available train capacity: "..global.Dispatcher.availableTrains_total_capacity.." item stacks, "..global.Dispatcher.availableTrains_total_fluid_capacity.. " fluid capacity.") end
       for i = 1, dispatcher_updates_per_tick, 1 do
         local request_index, request = next(global.Dispatcher.Requests, global.tick_request_index)
-        global.tick_request_index = request_index
-        if request_index then
+        if request_index and request then
+          global.tick_request_index = request_index
           if debug_log then log("(OnTick) "..tick.." parsing request "..tostring(request_index).."/"..tostring(#global.Dispatcher.Requests) ) end
           ProcessRequest(request_index, request)
         else -- request updates complete, moving on
           global.tick_request_index = nil
           global.tick_state = 4
+          return
         end
       end
     else
@@ -106,6 +107,7 @@ function OnTick(event)
       if debug_log then log("(OnTick) Dispatcher disabled.") end
       global.tick_request_index = nil
       global.tick_state = 4
+      return
     end
 
   elseif global.tick_state == 4 then -- raise API events
