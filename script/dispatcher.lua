@@ -23,6 +23,13 @@ function OnTick(event)
 
   if global.tick_state == 1 then -- update stops
     for i = 1, dispatcher_updates_per_tick, 1 do
+      -- reset on invalid index
+      if global.tick_stop_index and not global.LogisticTrainStops[global.tick_stop_index] then
+        global.tick_state = 0
+        if message_level >= 1 then printmsg({"ltn-message.error-invalid-stop-index", global.tick_stop_index}, nil, false) end
+        return
+      end
+
       local stopID, stop = next(global.LogisticTrainStops, global.tick_stop_index)
       if stopID then
         global.tick_stop_index = stopID
@@ -91,6 +98,13 @@ function OnTick(event)
     if dispatcher_enabled then
       if debug_log then log("(OnTick) Available train capacity: "..global.Dispatcher.availableTrains_total_capacity.." item stacks, "..global.Dispatcher.availableTrains_total_fluid_capacity.. " fluid capacity.") end
       for i = 1, dispatcher_updates_per_tick, 1 do
+        -- reset on invalid index
+        if global.tick_request_index and not global.Dispatcher.Requests[global.tick_request_index] then
+          global.tick_state = 0
+          if message_level >= 1 then printmsg({"ltn-message.error-invalid-request-index", global.tick_request_index}, nil, false) end
+          return
+        end
+
         local request_index, request = next(global.Dispatcher.Requests, global.tick_request_index)
         if request_index and request then
           global.tick_request_index = request_index
@@ -555,6 +569,7 @@ function ProcessRequest(reqIndex, request)
   schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", depot_inactivity)
   schedule.records[2] = NewScheduleRecord(from, "item_count", "≥", loadingList)
   schedule.records[3] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
+  log("DEBUG: schedule = "..serpent.block(schedule))
   selectedTrain.schedule = schedule
 
 

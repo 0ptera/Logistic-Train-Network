@@ -45,7 +45,7 @@ data:extend({
     setting_type = "runtime-global",
     default_value = 18000,
     minimum_value = 0,
-    maximum_value = 4294967295, -- prevent 32bit signed overflow
+    maximum_value = 2147483647, -- prevent 32bit signed overflow
   },
 	{
     type = "bool-setting",
@@ -61,7 +61,7 @@ data:extend({
     setting_type = "runtime-global",
     default_value = 1000,
     minimum_value = 1,
-    maximum_value = 4294967295, -- prevent 32bit signed overflow
+    maximum_value = 2147483647, -- prevent 32bit signed overflow
   },
   {
     type = "int-setting",
@@ -70,7 +70,7 @@ data:extend({
     setting_type = "runtime-global",
     default_value = 1000,
     minimum_value = 1,
-    maximum_value = 4294967295, -- prevent 32bit signed overflow
+    maximum_value = 2147483647, -- prevent 32bit signed overflow
   },
   {
     type = "bool-setting",
@@ -86,7 +86,7 @@ data:extend({
     setting_type = "runtime-global",
     default_value = 5, --5s
     minimum_value = 1, --1s
-    maximum_value = 4294967295, -- prevent 32bit signed overflow
+    maximum_value = 36000, -- 10h
   },
   {
     type = "int-setting",
@@ -95,7 +95,7 @@ data:extend({
     setting_type = "runtime-global",
     default_value = 120, --2min
     minimum_value = 0, --0:off
-    maximum_value = 4294967295, -- prevent 32bit signed overflow
+    maximum_value = 36000, -- 10h
   },
   {
     type = "int-setting",
@@ -104,7 +104,7 @@ data:extend({
     setting_type = "runtime-global",
     default_value = 600, --10min
     minimum_value = 60, -- 1min
-    maximum_value = 4294967295, -- prevent 32bit signed overflow
+    maximum_value = 36000, -- 10h
   },
   {
     type = "bool-setting",

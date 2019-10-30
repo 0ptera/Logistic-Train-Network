@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.11.3
+Date: 2019-10-30
+  Changes:
+    - push to stable 0.17.74
+  Bugfixes:
+    - prevent entering too large values in timeout settings #196
+    - additional safeguards against invalid indexing
+---------------------------------------------------------------------------------------------------
 Version: 1.11.2
 Date: 2019-10-07
   Bugfixes:
