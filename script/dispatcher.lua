@@ -569,7 +569,7 @@ function ProcessRequest(reqIndex, request)
   schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", depot_inactivity)
   schedule.records[2] = NewScheduleRecord(from, "item_count", "≥", loadingList)
   schedule.records[3] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
-  log("DEBUG: schedule = "..serpent.block(schedule))
+  -- log("DEBUG: schedule = "..serpent.block(schedule))
   selectedTrain.schedule = schedule
 
 
