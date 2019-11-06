@@ -27,6 +27,8 @@ function OnTick(event)
       if global.tick_stop_index and not global.LogisticTrainStops[global.tick_stop_index] then
         global.tick_state = 0
         if message_level >= 1 then printmsg({"ltn-message.error-invalid-stop-index", global.tick_stop_index}, nil, false) end
+        log("(OnTick) Invalid global.tick_stop_index "..tostring(global.tick_stop_index).." in global.LogisticTrainStops. Removing stop and starting over.")
+        RemoveStop(global.tick_stop_index)
         return
       end
 
@@ -102,6 +104,7 @@ function OnTick(event)
         if global.tick_request_index and not global.Dispatcher.Requests[global.tick_request_index] then
           global.tick_state = 0
           if message_level >= 1 then printmsg({"ltn-message.error-invalid-request-index", global.tick_request_index}, nil, false) end
+          log("(OnTick) Invalid global.tick_request_index "..tostring(global.tick_request_index).." in global.Dispatcher.Requests. Starting over.")
           return
         end
 
