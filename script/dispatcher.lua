@@ -144,6 +144,9 @@ function OnTick(event)
       })
 
   else -- reset
+    global.tick_stop_index = nil
+    global.tick_request_index = nil
+
     global.tick_state = 1
     global.tick_interval_start = tick
     -- clear Dispatcher.Storage
