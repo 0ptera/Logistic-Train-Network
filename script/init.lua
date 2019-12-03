@@ -18,14 +18,6 @@ local function initialize(oldVersion, newVersion)
   ---- initialize logger
   global.messageBuffer = {}
 
-  ---- initialize global lookup tables
-  global.StopDistances = {} -- reset station distance lookup table
-  global.WagonCapacity = { --preoccupy table with wagons to ignore at 0 capacity
-    ["rail-tanker"] = 0
-  }
-  -- set in UpdateAllTrains
-  global.StoppedTrains = global.StoppedTrains or {} -- trains stopped at LTN stops
-
   ---- initialize Dispatcher
   global.Dispatcher = global.Dispatcher or {}
 
@@ -190,10 +182,16 @@ end
 
 -- run every time the mod configuration is changed to catch changes to wagon capacities by other mods
 local function updateAllTrains()
+  -- reset global lookup tables
+  global.StoppedTrains = {} -- trains stopped at LTN stops
+  global.StopDistances = {} -- reset station distance lookup table
+  global.WagonCapacity = {  --preoccupy table with wagons to ignore at 0 capacity
+    ["rail-tanker"] = 0
+  }
   global.Dispatcher.availableTrains_total_capacity = 0
   global.Dispatcher.availableTrains_total_fluid_capacity = 0
   global.Dispatcher.availableTrains = {}
-  global.StoppedTrains = {}
+
   -- remove all parked train from logistic stops
   for stopID, stop in pairs (global.LogisticTrainStops) do
     stop.parkedTrain =  nil

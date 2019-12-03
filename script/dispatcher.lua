@@ -342,7 +342,7 @@ local function getFreeTrain(nextStop, minTraincars, maxTraincars, type, size)
       if debug_log then
         depot_network_id_string = format("0x%x", band(trainData.network_id) )
         dest_network_id_string = format("0x%x", band(nextStop.network_id) )
-        log("checking train "..tostring(get_train_name(trainData.train)).." ,force "..trainData.force.name.."/"..nextStop.entity.force.name..", network "..depot_network_id_string.."/"..dest_network_id_string..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..getStationDistance(trainData.train.station, nextStop.entity))
+        log("checking train "..tostring(get_train_name(trainData.train)).." ,force "..tostring(trainData.force.name).."/"..tostring(nextStop.entity.force.name)..", network "..depot_network_id_string.."/"..dest_network_id_string..", length: "..minTraincars.."<="..#trainData.train.carriages.."<="..maxTraincars.. ", inventory size: "..inventorySize.."/"..size..", distance: "..getStationDistance(trainData.train.station, nextStop.entity))
       end
 
       if trainData.force == nextStop.entity.force -- forces match
