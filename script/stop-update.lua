@@ -420,9 +420,9 @@ function UpdateStopOutput(trainStop)
         for i=#carriages, 1, -1 do
           local type = carriages[i].type
           if encoded_positions_by_type[type] then
-            encoded_positions_by_type[type] = encoded_positions_by_type[type] + 2^(i-1)
+            encoded_positions_by_type[type] = encoded_positions_by_type[type] + 2^n
           else
-            encoded_positions_by_type[type] = 2^(i-1)
+            encoded_positions_by_type[type] = 2^n
           end
           local name = carriages[i].name
           if encoded_positions_by_name[name] then
