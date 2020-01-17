@@ -230,7 +230,14 @@ function UpdateStop(stopID, stop)
           local loco = get_main_locomotive(stop.parkedTrain)
           if loco then
             local capacity, fluid_capacity = GetTrainCapacity(stop.parkedTrain)
-            global.Dispatcher.availableTrains[stop.parkedTrainID] = {train = stop.parkedTrain, force = loco.force.name, network_id = network_id, capacity = capacity, fluid_capacity = fluid_capacity}
+            global.Dispatcher.availableTrains[stop.parkedTrainID] = {
+              train = stop.parkedTrain,
+              surface = loco.surface,
+              force = loco.force,
+              network_id = network_id,
+              capacity = capacity,
+              fluid_capacity = fluid_capacity
+            }
             global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity + capacity
             global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity + fluid_capacity
           end
