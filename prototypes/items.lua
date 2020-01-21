@@ -20,7 +20,7 @@ ltn_stop_out.icon_size = 32
 local ltn_lamp_control = optera_lib.copy_prototype(data.raw["item"]["constant-combinator"],"logistic-train-stop-lamp-control")
 ltn_lamp_control.flags = {"hidden"}
 ltn_lamp_control.icon = "__LogisticTrainNetwork__/graphics/icons/empty.png"
-ltn_stop_out.icon_size = 32
+ltn_lamp_control.icon_size = 32
 
 data:extend({
   ltn_stop,

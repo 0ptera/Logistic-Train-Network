@@ -194,7 +194,7 @@ local function updateAllTrains()
 
   -- remove all parked train from logistic stops
   for stopID, stop in pairs (global.LogisticTrainStops) do
-    stop.parkedTrain =  nil
+    stop.parkedTrain = nil
     stop.parkedTrainID = nil
     UpdateStopOutput(stop)
   end

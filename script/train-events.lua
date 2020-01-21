@@ -78,9 +78,9 @@ function TrainArrives(train)
                 inventory.set_filter(slotIndex, nil)
               end
             end
-            if inventory.hasbar and #inventory - inventory.getbar() > 0 then
-              log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory - inventory.getbar()).." locked slots.")
-              inventory.setbar()
+            if inventory.supports_bar and #inventory - inventory.get_bar() > 0 then
+              log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory - inventory.get_bar()).." locked slots.")
+              inventory.set_bar()
             end
           end
         end
