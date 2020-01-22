@@ -7,6 +7,7 @@
 local ltn_stop = optera_lib.copy_prototype(data.raw["item"]["train-stop"], "logistic-train-stop")
 ltn_stop.icon = "__LogisticTrainNetwork__/graphics/icons/train-stop.png"
 ltn_stop.icon_size = 32
+ltn_stop.icon_mipmaps = nil
 ltn_stop.order = ltn_stop.order.."-c"
 
 local ltn_stop_in = optera_lib.copy_prototype(data.raw["item"]["small-lamp"], "logistic-train-stop-input")
@@ -16,11 +17,13 @@ local ltn_stop_out = optera_lib.copy_prototype(data.raw["item"]["constant-combin
 ltn_stop_out.flags = {"hidden"}
 ltn_stop_out.icon = "__LogisticTrainNetwork__/graphics/icons/output.png"
 ltn_stop_out.icon_size = 32
+ltn_stop_out.icon_mipmaps = nil
 
 local ltn_lamp_control = optera_lib.copy_prototype(data.raw["item"]["constant-combinator"],"logistic-train-stop-lamp-control")
 ltn_lamp_control.flags = {"hidden"}
 ltn_lamp_control.icon = "__LogisticTrainNetwork__/graphics/icons/empty.png"
 ltn_lamp_control.icon_size = 32
+ltn_lamp_control.icon_mipmaps = nil
 
 data:extend({
   ltn_stop,
