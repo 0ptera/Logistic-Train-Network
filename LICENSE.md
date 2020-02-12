@@ -8,10 +8,7 @@ This software is provided without warranty and the author/license holder cannot 
 -	Distribution - You are allowed to redistribute my mods as is. This includes being repackaged as part of a mod pack.
 - Contributions - Contributions are welcome, however due to legal reasons you have to agree to transfer ownership of said contributions to me.
 
-Exceptions to the no modification rule include:
-- Minor bug fixes/tweak for compatibility reasons, such as altering the dependencies line in info.json to force a load order in a modpack.
-- Config - Any config.lua file may be edited and freely redistributed by itself.
-
+Exceptions to the no modification rule may be granted after written requests.
 Any further modifications, such as changing values of entities/recipes in my mods should be done externally in another mod.
 If you would like to use any extracts from this mod in your own, please talk to me about it first.
 
