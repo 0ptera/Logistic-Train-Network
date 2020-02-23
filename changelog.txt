@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.12.3
+Date: 2020-02-23
+  Changes:
+    - refactored on_dispatcher_updated, on_delivery_pickup_complete, on_delivery_completed and on_delivery_failed to be in line with base event naming conventions
+---------------------------------------------------------------------------------------------------
 Version: 1.12.2
 Date: 2020-02-12
   Changes:

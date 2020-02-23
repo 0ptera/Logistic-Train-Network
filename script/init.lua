@@ -86,6 +86,14 @@ local function initialize(oldVersion, newVersion)
     global.Dispatcher.Deliveries = new_Deliveries
   end
 
+  -- update to 1.6.1 migrate networkID to network_id
+  if oldVersion and oldVersion < "01.12.03" then
+    for train_id, delivery in pairs(global.Dispatcher.Deliveries) do
+      delivery.network_id = delivery.networkID
+      delivery.networkID = nil
+    end
+  end
+
   ---- initialize stops
   global.LogisticTrainStops = global.LogisticTrainStops or {}
 

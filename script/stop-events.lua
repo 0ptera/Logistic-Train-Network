@@ -262,7 +262,7 @@ function OnEntityRemoved(event)
     -- otherwise I'd have to handle splitting and merging a delivery across train parts
     local delivery = global.Dispatcher.Deliveries[trainID]
     if delivery then
-      script.raise_event(on_delivery_failed_event, {delivery = delivery, trainID = trainID})
+      script.raise_event(on_delivery_failed_event, {train_id = trainID, shipment = delivery.shipment})
       RemoveDelivery(trainID)
     end
 

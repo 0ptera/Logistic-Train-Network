@@ -61,13 +61,13 @@ function OnTick(event)
         if message_level >= 1 then printmsg({"ltn-message.delivery-removed-train-invalid", delivery.from, delivery.to}, delivery.force, false) end
         if debug_log then log("(OnTick) Delivery from "..delivery.from.." to "..delivery.to.." removed. Train no longer valid.") end
 
-        script.raise_event(on_delivery_failed_event, {delivery = delivery, trainID = trainID})
+        script.raise_event(on_delivery_failed_event, {train_id = trainID, shipment = delivery.shipment})
         RemoveDelivery(trainID)
       elseif tick-delivery.started > delivery_timeout then
         if message_level >= 1 then printmsg({"ltn-message.delivery-removed-timeout", delivery.from, delivery.to, tick-delivery.started}, delivery.force, false) end
         if debug_log then log("(OnTick) Delivery from "..delivery.from.." to "..delivery.to.." removed. Timed out after "..tick-delivery.started.."/"..delivery_timeout.." ticks.") end
 
-        script.raise_event(on_delivery_failed_event, {delivery = delivery, trainID = trainID})
+        script.raise_event(on_delivery_failed_event, {train_id = trainID, shipment = delivery.shipment})
         RemoveDelivery(trainID)
       else
         activeDeliveryTrains = activeDeliveryTrains.." "..trainID
@@ -621,7 +621,8 @@ function ProcessRequest(reqIndex, request)
     from_id = fromID,
     to = to,
     to_id = toID,
-    networkID = providerData.network_id,
+    -- networkID = providerData.network_id,
+    network_id = providerData.network_id,
     shipment = shipment}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[selectedTrain.id].capacity
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[selectedTrain.id].fluid_capacity

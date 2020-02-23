@@ -75,11 +75,11 @@ event.logistic_train_stops = {  [stopID],  {
 on_dispatcher_updated
 Raised every UpdateInterval, after delivery generation
 -> Contains:
-  event.update_interval = int -- LTN update interval (depends on existing ltn stops and stops per tick setting
-  event.provided_by_stop = { [stopID], { [item], count } }
-  event.requests_by_stop = { [stopID], { [item], count } }
-  event.deliveries = { trainID = {force, train, from, to, networkID, started, shipment = { item = count } } }
-  event.available_trains = { [trainID ], { capacity, fluid_capacity, force, network_id, train } }
+  event.update_interval = int -- time in ticks LTN needed to run all updates, varies depending on number of stops and requests
+  event.provided_by_stop = { [stop_id], { [item], count } }
+  event.requests_by_stop = { [stop_id], { [item], count } }
+  event.deliveries = { [train_id], {force, train, from, to, network_id, started, shipment = { [item], count } } }
+  event.available_trains = { [train_id], { capacity, fluid_capacity, force, network_id, train } }
 
 
 on_dispatcher_no_train_found
@@ -99,22 +99,22 @@ Raised when no train was found to handle a request
 on_delivery_pickup_complete
 Raised when a train leaves provider stop
 -> Contains:
-  event.trainID
-  event.delivery = {force, train, from, to, networkID, started, shipment = { [item], count } } -- updated shipment to current train inventory
-  event.original_shipment = { [item], count } }
+  event.train_id
+  event.planned_shipment= { [item], count } }
+  event.actual_shipment = { [item], count } } -- shipment updated to train inventory
 
 
 on_delivery_completed
 Raised when train leaves requester stop
 -> Contains:
-  event.trainID
-  event.delivery = {force, train, from, to, networkID, started, shipment = { [item], count } }
+  event.train_id
+  event.shipment= { [item], count } }
 
 
 on_delivery_failed
 Raised when rolling stock of a train gets removed or the delivery timed out
 -> Contains:
-  event.trainID
-  event.delivery = {force, train, from, to, networkID, started, shipment = { [item], count } }
+  event.train_id
+  event.shipment= { [item], count } }
 
 --]]

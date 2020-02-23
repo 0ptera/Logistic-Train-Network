@@ -157,11 +157,11 @@ function TrainLeaves(trainID)
           end
         end
         delivery.pickupDone = true -- remove reservations from this delivery
-        script.raise_event(on_delivery_pickup_complete_event, {delivery = delivery, trainID = trainID, original_shipment = original_shipment})
+        script.raise_event(on_delivery_pickup_complete_event, {train_id = trainID, planned_shipment = original_shipment, actual_shipment = delivery.shipment})
 
       elseif delivery.to == stop.entity.backer_name then
         -- signal completed delivery and remove it
-        script.raise_event(on_delivery_completed_event, {delivery = delivery, trainID = trainID})
+        script.raise_event(on_delivery_completed_event, {train_id = trainID, shipment = delivery.shipment})
         global.Dispatcher.Deliveries[trainID] = nil
 
         -- reset schedule when ltn-dispatcher-early-schedule-reset is active
