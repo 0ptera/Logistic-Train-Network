@@ -261,7 +261,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
 
   for stopID, count in pairs (providers) do
     local stop = global.LogisticTrainStops[stopID]
-    if stop and stop.valid then
+    if stop and stop.entity.valid then
       local matched_networks = band(requestStation.network_id, stop.network_id)
       -- log("DEBUG: comparing 0x"..string.format("%x", band(requestStation.network_id)).." & 0x"..string.format("%x", band(stop.network_id)).." = 0x"..string.format("%x", band(matched_networks)) )
 
