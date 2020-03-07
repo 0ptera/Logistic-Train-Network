@@ -634,7 +634,7 @@ function ProcessRequest(reqIndex, request)
   -- update delivery count and lamps on stations
   -- trains will pick a stop by their own logic so we have to parse by name
   for stopID, stop in pairs (global.LogisticTrainStops) do
-    if stop.entity.backer_name == from or stop.entity.backer_name == to then
+    if stop.entity.valid and (stop.entity.backer_name == from or stop.entity.backer_name == to) then
       table.insert(global.LogisticTrainStops[stopID].activeDeliveries, selectedTrain.id)
       -- only update blue lamp count, otherwise change to yellow
       local current_signal = stop.lampControl.get_control_behavior().get_signal(1)
