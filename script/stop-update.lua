@@ -460,20 +460,20 @@ function UpdateStopOutput(trainStop)
         for _, c in pairs(conditions) do
           if c.condition and c.condition.first_signal then -- loading without mods can make first signal nil?
             if c.type == "item_count" then
-              if (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this item
+              if (c.condition.comparator == "=" and c.condition.constant == 0) then
+                 --train expects to be unloaded of each of this item
                 inventory[c.condition.first_signal.name] = nil
-              elseif c.condition.comparator == "≥" then --train expects to be loaded to x of this item
+              elseif c.condition.comparator == "≥" then
+                 --train expects to be loaded to x of this item
                 inventory[c.condition.first_signal.name] = c.condition.constant
-              elseif c.condition.comparator == ">" then --train expects to be loaded to x of this item
-                inventory[c.condition.first_signal.name] = c.condition.constant + 1
               end
             elseif c.type == "fluid_count" then
-              if (c.condition.comparator == "=" and c.condition.constant == 0) then --train expects to be unloaded of each of this fluid
+              if (c.condition.comparator == "=" and c.condition.constant == 0) then
+                 --train expects to be unloaded of each of this fluid
                 fluidInventory[c.condition.first_signal.name] = -1
-              elseif c.condition.comparator == "≥" then --train expects to be loaded to x of this fluid
+              elseif c.condition.comparator == "≥" then
+                 --train expects to be loaded to x of this fluid
                 fluidInventory[c.condition.first_signal.name] = c.condition.constant
-              elseif c.condition.comparator == ">" then --train expects to be loaded to x of this fluid
-                fluidInventory[c.condition.first_signal.name] = c.condition.constant + 1
               end
             end
           end
