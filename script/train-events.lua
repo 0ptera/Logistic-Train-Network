@@ -138,26 +138,18 @@ function TrainLeaves(trainID)
     if stoppedTrain.train.valid and delivery then
       if delivery.from == stop.entity.backer_name then
         -- update delivery counts to train inventory
-        local original_shipment = {}
-        for item, count in pairs (delivery.shipment) do
-          local itype, iname = match(item, match_string)
-          original_shipment[item] = count
-          if itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname]) then
-            if itype == "fluid" then
-              local traincount = stoppedTrain.train.get_fluid_count(iname)
-              if debug_log then log("(TrainLeaves): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount) ) end
-              delivery.shipment[item] = traincount
-            else
-              local traincount = stoppedTrain.train.get_item_count(iname)
-              if debug_log then log("(TrainLeaves): updating delivery after train left "..delivery.from..", "..item.." "..tostring(traincount) ) end
-              delivery.shipment[item] = traincount
-            end
-          else -- remove invalid item from shipment
-            delivery.shipment[item] = nil
-          end
+        local actual_shipment = {}
+        local train_items = stoppedTrain.train.get_contents()
+        local train_fluids = stoppedTrain.train.get_fluid_contents()
+        for name, count in pairs(train_items) do
+          actual_shipment["item,"..name] = count
+        end
+        for name, count in pairs(train_fluids) do
+          actual_shipment["fluid,"..name] = count
         end
         delivery.pickupDone = true -- remove reservations from this delivery
-        script.raise_event(on_delivery_pickup_complete_event, {train_id = trainID, planned_shipment = original_shipment, actual_shipment = delivery.shipment})
+        script.raise_event(on_delivery_pickup_complete_event, {train_id = trainID, planned_shipment = delivery.shipment, actual_shipment = actual_shipment})
+        delivery.shipment = actual_shipment
 
       elseif delivery.to == stop.entity.backer_name then
         -- signal completed delivery and remove it
