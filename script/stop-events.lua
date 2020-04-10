@@ -207,7 +207,6 @@ end
 
 -- stop removed
 function RemoveStop(stopID)
-  -- local stopID = entity.unit_number
   local stop = global.LogisticTrainStops[stopID]
 
   -- clean lookup tables
@@ -240,7 +239,6 @@ function RemoveStop(stopID)
     global.tick_request_index = nil
 
     -- unregister events
-    -- script.on_event(defines.events.on_tick, nil)
     script.on_nth_tick(nil)
     script.on_event(defines.events.on_train_changed_state, nil)
     script.on_event(defines.events.on_train_created, nil)

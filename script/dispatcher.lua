@@ -26,7 +26,7 @@ function OnTick(event)
       -- reset on invalid index
       if global.tick_stop_index and not global.LogisticTrainStops[global.tick_stop_index] then
         global.tick_state = 0
-        if message_level >= 1 then printmsg({"ltn-message.error-invalid-stop-index", global.tick_stop_index}, nil, false) end
+        if message_level >= 2 then printmsg({"ltn-message.error-invalid-stop-index", global.tick_stop_index}, nil, false) end
         log("(OnTick) Invalid global.tick_stop_index "..tostring(global.tick_stop_index).." in global.LogisticTrainStops. Removing stop and starting over.")
         RemoveStop(global.tick_stop_index)
         return

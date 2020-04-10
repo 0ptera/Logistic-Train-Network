@@ -222,40 +222,20 @@ end
 
 -- register events
 local function registerEvents()
+  local filters_on_built = {{ filter="type", type="train-stop" }}
+  local filters_on_mined = {{ filter="type", type="train-stop" }, { filter="rolling-stock" }}
+
   -- always track built/removed train stops for duplicate name list
-  script.on_event( defines.events.on_built_entity,
-    function(event) OnEntityCreated(event) end,
-    {{ filter="type", type="train-stop" }}
-  )
-  script.on_event( defines.events.on_robot_built_entity,
-    function(event) OnEntityCreated(event) end,
-    {{ filter="type", type="train-stop" }}
-  )
-  script.on_event({
-    defines.events.script_raised_built,
-    defines.events.script_raised_revive,
-  }, OnEntityCreated)
+  script.on_event( defines.events.on_built_entity, OnEntityCreated, filters_on_built )
+  script.on_event( defines.events.on_robot_built_entity, OnEntityCreated, filters_on_built )
+  script.on_event( {defines.events.script_raised_built, defines.events.script_raised_revive}, OnEntityCreated )
 
-  script.on_event( defines.events.on_pre_player_mined_item,
-    function(event) OnEntityRemoved(event) end,
-    {{ filter="type", type="train-stop" }, { filter="rolling-stock" }}
-  )
-  script.on_event( defines.events.on_robot_pre_mined,
-    function(event) OnEntityRemoved(event) end,
-    {{ filter="type", type="train-stop" }, { filter="rolling-stock" }}
-  )
-  script.on_event( defines.events.on_entity_died,
-    function(event) OnEntityRemoved(event) end,
-    {{ filter="type", type="train-stop" }, { filter="rolling-stock" }}
-  )
-  script.on_event({
-    script_raised_destroy
-  }, OnEntityRemoved)
+  script.on_event( defines.events.on_pre_player_mined_item, OnEntityRemoved, filters_on_mined )
+  script.on_event( defines.events.on_robot_pre_mined, OnEntityRemoved, filters_on_mined )
+  script.on_event( defines.events.on_entity_died, OnEntityRemoved, filters_on_mined )
+  script.on_event( defines.events.script_raised_destroy, OnEntityRemoved )
 
-  script.on_event({
-    defines.events.on_pre_surface_deleted,
-    defines.events.on_pre_surface_cleared,
-  }, OnSurfaceRemoved)
+  script.on_event( {defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared }, OnSurfaceRemoved )
 
   if global.LogisticTrainStops and next(global.LogisticTrainStops) then
     -- script.on_event(defines.events.on_tick, OnTick)

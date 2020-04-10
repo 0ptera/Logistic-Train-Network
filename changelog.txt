@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.12.10
+Date: 2020-04-10
+  Changes:
+    - optimized filtered event calls
+    - changed error-invalid-stop-index to warning
+  Bugfixes:
+    - script_raised_destroy wasn't properly registered
+---------------------------------------------------------------------------------------------------
 Version: 1.12.9
 Date: 2020-04-08
   Changes:
