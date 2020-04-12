@@ -39,9 +39,10 @@ local function initialize(oldVersion, newVersion)
   global.Dispatcher.Storage = nil
   global.useRailTanker = nil
   global.tickCount = nil
-  global.stopIdStartIndex = nil --start index for on_tick stop updates
-  global.Dispatcher.UpdateInterval = nil      -- set in ResetUpdateInterval()
-  global.Dispatcher.UpdateStopsPerTick = nil  -- set in ResetUpdateInterval()
+  global.stopIdStartIndex = nil
+  global.Dispatcher.UpdateInterval = nil
+  global.Dispatcher.UpdateStopsPerTick = nil
+  global.TrainStopNames = nil
 
    -- update to 1.4.0
   if oldVersion and oldVersion < "01.04.00" then
@@ -136,8 +137,6 @@ end
 -- ensures global.LogisticTrainStops contains valid entities
 local function initializeTrainStops()
   global.LogisticTrainStops = global.LogisticTrainStops or {}
-  global.TrainStopNames = global.TrainStopNames or {} -- dictionary of all train stops by all mods
-
   -- remove invalidated stops
   for stopID, stop in pairs (global.LogisticTrainStops) do
     if not stop then
@@ -159,12 +158,11 @@ local function initializeTrainStops()
     end
   end
 
-  -- add missing ltn stops and build stop name list
+  -- add missing ltn stops
   for _, surface in pairs(game.surfaces) do
     local foundStops = surface.find_entities_filtered{type="train-stop"}
     if foundStops then
       for k, stop in pairs(foundStops) do
-
         -- validate global.LogisticTrainStops
         if ltn_stop_entity_names[stop.name] then
           local ltn_stop = global.LogisticTrainStops[stop.unit_number]
@@ -181,8 +179,6 @@ local function initializeTrainStops()
             CreateStop(stop) -- recreate LTN stops missing from global.LogisticTrainStops
           end
         end
-
-        AddStopName(stop.unit_number, stop.backer_name)
       end
     end
   end

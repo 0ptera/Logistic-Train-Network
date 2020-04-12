@@ -5,42 +5,6 @@
 --]]
 
 
--- add stop to TrainStopNames
-function AddStopName(stopID, stopName)
-  if stopName then -- is it possible to have stops without backer_name?
-    if global.TrainStopNames[stopName] then
-      -- prevent adding the same stop multiple times
-      local idExists = false
-      for i=1, #global.TrainStopNames[stopName] do
-        if stopID == global.TrainStopNames[stopName][i] then
-          idExists = true
-        end
-      end
-      if not idExists then
-        -- multiple stops of same name > add id to the list
-        table.insert(global.TrainStopNames[stopName], stopID)
-      end
-    else
-      -- create new name-id entry
-      global.TrainStopNames[stopName] = {stopID}
-    end
-  end
-end
-
--- remove stop from TrainStopNames
-function RemoveStopName(stopID)
-  for stopName, stopIDs in pairs(global.TrainStopNames) do
-    for i=#stopIDs, 1, -1 do
-      if stopIDs[i] == stopID then
-        table.remove(stopIDs, i)
-      end
-    end
-    if #stopIDs == 0 then
-      -- remove name-id entry
-      global.TrainStopNames[stopName] = nil
-    end
-  end
-end
 
 --create stop
 function CreateStop(entity)
@@ -196,11 +160,8 @@ function OnEntityCreated(event)
   local entity = event.created_entity or event.entity
   if not entity or not entity.valid then return end
 
-  if entity.type == "train-stop" then
-     AddStopName(entity.unit_number, entity.backer_name) -- all stop names are monitored
-    if ltn_stop_entity_names[entity.name] then
-      CreateStop(entity)
-    end
+  if ltn_stop_entity_names[entity.name] then
+    CreateStop(entity)
   end
 end
 
@@ -264,11 +225,8 @@ function OnEntityRemoved(event)
       RemoveDelivery(trainID)
     end
 
-  elseif entity.type == "train-stop" then
-    RemoveStopName(entity.unit_number) -- all stop names are monitored
-    if ltn_stop_entity_names[entity.name] then
-      RemoveStop(entity.unit_number)
-    end
+  elseif ltn_stop_entity_names[entity.name] then
+    RemoveStop(entity.unit_number)
   end
 end
 
@@ -281,7 +239,6 @@ function OnSurfaceRemoved(event)
   if surface then
     local train_stops = surface.find_entities_filtered{type = "train-stop"}
     for _, entity in pairs(train_stops) do
-      RemoveStopName(entity.unit_number)
       if ltn_stop_entity_names[entity.name] then
         RemoveStop(entity.unit_number)
       end
@@ -320,12 +277,6 @@ script.on_event(defines.events.on_entity_renamed, function(event)
   local uid = event.entity.unit_number
   local oldName = event.old_name
   local newName = event.entity.backer_name
-
-  if event.entity.type == "train-stop" then
-    RemoveStopName(uid)
-    AddStopName(uid, newName)
-  end
-
   if ltn_stop_entity_names[event.entity.name] then
     renamedStop(uid, oldName, newName)
   end

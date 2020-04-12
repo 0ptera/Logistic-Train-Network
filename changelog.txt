@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.13.0
+Date: 2020-04-12
+  Features:
+    - use temp stops for train pathing, removes requirement of unique stop names by GloinTheDark #210
+---------------------------------------------------------------------------------------------------
 Version: 1.12.10
 Date: 2020-04-10
   Changes:
