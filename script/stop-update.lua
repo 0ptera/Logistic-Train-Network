@@ -178,17 +178,8 @@ function UpdateStop(stopID, stop)
   -- .." requestThreshold:"..requestThreshold.." requestPriority:"..requestPriority.." noWarnings:"..tostring(noWarnings)
   -- .." provideThreshold:"..provideThreshold.." providePriority:"..providePriority.." lockedSlots:"..lockedSlots)
 
-  -- skip duplicated names on non depots
-  if #global.TrainStopNames[stop.entity.backer_name] ~= 1 and not isDepot then
-    stop.errorCode = 2
-    if stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
-      remove_available_train(stop.parkedTrainID)
-    end
-    setLamp(stop, ErrorCodes[stop.errorCode], 1)
-    if debug_log then log("(UpdateStop) Duplicate stop name: "..stop.entity.backer_name) end
-    return
-  end
-
+  -- Duplicate station names are ok
+  
   --update lamp colors when errorCode or isDepot changed state
   if stop.errorCode ~=0 or stop.isDepot ~= isDepot then
     stop.errorCode = 0 -- we are error free here
@@ -284,7 +275,7 @@ function UpdateStop(stopID, stop)
               if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
               if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating requested count with train inventory: "..item.." "..count.."+"..traincount.."="..newcount) end
               count = newcount
-            elseif delivery.from == stop.entity.backer_name then
+            elseif delivery.from_id == stop.entity.unit_number then
               if traincount <= deliverycount then
                 local newcount = count - (deliverycount - traincount)
                 if newcount < 0 then newcount = 0 end --make sure we don't turn it into a request
@@ -304,7 +295,7 @@ function UpdateStop(stopID, stop)
               if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
               if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating requested count with delivery: "..item.." "..count.."+"..deliverycount.."="..newcount) end
               count = newcount
-            elseif delivery.from == stop.entity.backer_name and not delivery.pickupDone then
+            elseif delivery.from_id == stop.entity.unit_number and not delivery.pickupDone then
               local newcount = count - deliverycount
               if newcount < 0 then newcount = 0 end --make sure we don't turn it into a request
               if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating provided count with delivery: "..item.." "..count.."-"..deliverycount.."="..newcount) end
