@@ -136,7 +136,7 @@ function TrainLeaves(trainID)
 
     local delivery = global.Dispatcher.Deliveries[trainID]
     if stoppedTrain.train.valid and delivery then
-      if delivery.from == stop.entity.backer_name then
+      if delivery.from_id == stop.entity.unit_number then
         -- update delivery counts to train inventory
         local actual_shipment = {}
         local train_items = stoppedTrain.train.get_contents()
@@ -151,7 +151,7 @@ function TrainLeaves(trainID)
         script.raise_event(on_delivery_pickup_complete_event, {train_id = trainID, planned_shipment = delivery.shipment, actual_shipment = actual_shipment})
         delivery.shipment = actual_shipment
 
-      elseif delivery.to == stop.entity.backer_name then
+      elseif delivery.to_id == stop.entity.unit_number then
         -- signal completed delivery and remove it
         script.raise_event(on_delivery_completed_event, {train_id = trainID, shipment = delivery.shipment})
         global.Dispatcher.Deliveries[trainID] = nil

@@ -189,10 +189,16 @@ local condition_wait_empty = {type = "empty", compare_type = "and" }
 local condition_finish_loading = {type = "inactivity", compare_type = "and", ticks = 120 }
 -- local condition_stop_timeout -- set in settings.lua to capture changes
 
-function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverride)
-  local record = {station = stationName, wait_conditions = {}}
+function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverride, rail)
+  local record = {station = stationName, wait_conditions = {}, rail = rail}
 
-  if condType == "item_count" then
+  if rail then
+    record.temporary = true
+  end
+
+  if condType == "time" then
+    record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp }
+  elseif condType == "item_count" then
     local waitEmpty = false
     -- write itemlist to conditions
     for i=1, #itemlist do
@@ -395,6 +401,7 @@ function ProcessRequest(reqIndex, request)
   end
 
   local to = requestStation.entity.backer_name
+  local toRail = requestStation.entity.connected_rail
   local to_network_id_string = format("0x%x", band(requestStation.network_id))
   local item = request.item
   local count = request.count
@@ -458,6 +465,7 @@ function ProcessRequest(reqIndex, request)
 
   local providerData = providers[1] -- only one delivery/request is created so use only the best provider
   local fromID = providerData.entity.unit_number
+  local fromRail = providerData.entity.connected_rail
   local from = providerData.entity.backer_name
   local matched_network_id_string = format("0x%x", band(providerData.network_id))
 
@@ -572,9 +580,20 @@ function ProcessRequest(reqIndex, request)
   -- local selectedTrain = global.Dispatcher.availableTrains[trainID].train
   local depot = global.LogisticTrainStops[selectedTrain.station.unit_number]
   local schedule = {current = 1, records = {}}
-  schedule.records[1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", depot_inactivity)
-  schedule.records[2] = NewScheduleRecord(from, "item_count", "≥", loadingList)
-  schedule.records[3] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
+  schedule.records[#schedule.records + 1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", depot_inactivity)
+
+  -- force train to go to the station we pick by setting a temporary waypoint on the rail that the station is connected to
+  if fromRail then
+    -- when train arrives at waypoint it will stop and wait for 0 ticks
+    schedule.records[#schedule.records + 1] = NewScheduleRecord(nil, "time", 0, nil, 0, fromRail)
+  end
+  schedule.records[#schedule.records + 1] = NewScheduleRecord(from, "item_count", "≥", loadingList)
+
+  if toRail then
+    schedule.records[#schedule.records + 1] = NewScheduleRecord(nil, "time", 0, nil, 0, toRail)
+  end
+  schedule.records[#schedule.records + 1] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
+
   -- log("DEBUG: schedule = "..serpent.block(schedule))
   selectedTrain.schedule = schedule
 
@@ -632,10 +651,12 @@ function ProcessRequest(reqIndex, request)
   setLamp(depot, "yellow", 1)
 
   -- update delivery count and lamps on stations
-  -- trains will pick a stop by their own logic so we have to parse by name
-  for stopID, stop in pairs (global.LogisticTrainStops) do
-    if stop.entity.valid and (stop.entity.backer_name == from or stop.entity.backer_name == to) then
-      table.insert(global.LogisticTrainStops[stopID].activeDeliveries, selectedTrain.id)
+  -- we now force trains to go to the right station
+  -- therefore no need to parse by name
+  for _, stopID in pairs({fromID, toID}) do
+    local stop = global.LogisticTrainStops[stopID]
+    if stop.entity.valid and (stop.entity.unit_number == fromID or stop.entity.unit_number == toID) then
+      table.insert(stop.activeDeliveries, selectedTrain.id)
       -- only update blue lamp count, otherwise change to yellow
       local current_signal = stop.lampControl.get_control_behavior().get_signal(1)
       if current_signal and current_signal.signal.name == "signal-blue" then
