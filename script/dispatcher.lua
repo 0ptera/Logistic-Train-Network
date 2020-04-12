@@ -198,6 +198,7 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
 
   if condType == "time" then
     record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp }
+
   elseif condType == "item_count" then
     local waitEmpty = false
     -- write itemlist to conditions
@@ -240,6 +241,7 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
         record.wait_conditions[#record.wait_conditions+1] = condition_circuit_red
       end
     end
+
   elseif condType == "inactivity" then
     record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp }
     -- with circuit control enabled keep trains waiting until red = 0 and force them out with green ≥ 1
@@ -584,7 +586,7 @@ function ProcessRequest(reqIndex, request)
 
   -- force train to go to the station we pick by setting a temporary waypoint on the rail that the station is connected to
   if fromRail then
-    -- when train arrives at waypoint it will stop and wait for 0 ticks
+    -- wait time 0 is interpreted as waypoint without stopping by Factorio
     schedule.records[#schedule.records + 1] = NewScheduleRecord(nil, "time", 0, nil, 0, fromRail)
   end
   schedule.records[#schedule.records + 1] = NewScheduleRecord(from, "item_count", "≥", loadingList)
@@ -650,14 +652,12 @@ function ProcessRequest(reqIndex, request)
   -- train is no longer available => set depot to yellow
   setLamp(depot, "yellow", 1)
 
-  -- update delivery count and lamps on stations
-  -- we now force trains to go to the right station
-  -- therefore no need to parse by name
+  -- update delivery count and lamps on provider and requester
   for _, stopID in pairs({fromID, toID}) do
     local stop = global.LogisticTrainStops[stopID]
     if stop.entity.valid and (stop.entity.unit_number == fromID or stop.entity.unit_number == toID) then
       table.insert(stop.activeDeliveries, selectedTrain.id)
-      -- only update blue lamp count, otherwise change to yellow
+      -- only update blue signal count; change to yellow if it wasn't blue
       local current_signal = stop.lampControl.get_control_behavior().get_signal(1)
       if current_signal and current_signal.signal.name == "signal-blue" then
         setLamp(stop, "blue", #stop.activeDeliveries)
