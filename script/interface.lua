@@ -41,7 +41,7 @@ end
 on_stops_updated
 Raised every UpdateInterval, after delivery generation
 -> Contains:
-event.logistic_train_stops = {  [stopID],  {
+event.logistic_train_stops = {  [stop_id],  {
     -- stop data
     active_deliveries,
     entity,
