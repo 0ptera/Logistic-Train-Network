@@ -126,24 +126,25 @@ function CreateStop(entity)
     entity = entity,
     input = input,
     output = output,
-    lampControl = lampctrl,
-    parkedTrain = nil,
-    parkedTrainID = nil,
-    activeDeliveries = {},   --delivery IDs to/from stop
-    errorCode = -1,          --key to errorCodes table
-    isDepot = false,
+    lamp_control = lampctrl,
+    parked_train = nil,
+    parked_train_id = nil,
+    active_deliveries = {},   --delivery IDs to/from stop
+    error_code = -1,          --key to error_codes table
+    is_depot = false,
+    depot_priority = 0,
     network_id = default_network,
-    minTraincars = 0,
-    maxTraincars = 0,
-    trainLimit = 0,
-    requestThreshold = min_requested,
-    requestStackThreshold = 0,
-    requestPriority = 0,
-    noWarnings = false,
-    provideThreshold = min_provided,
-    provideStackThreshold = 0,
-    providePriority = 0,
-    lockedSlots = 0,
+    min_carriages = 0,
+    max_carriages = 0,
+    max_trains = 0,
+    requesting_threshold = min_requested,
+    requesting_threshold_stacks = 0,
+    requester_priority = 0,
+    no_warnings = false,
+    providing_threshold = min_provided,
+    providing_threshold_stacks = 0,
+    provider_priority = 0,
+    locked_slots = 0,
   }
   UpdateStopOutput(global.LogisticTrainStops[entity.unit_number])
 
@@ -178,17 +179,17 @@ function RemoveStop(stopID)
   end
 
   -- remove available train
-  if stop and stop.isDepot and stop.parkedTrainID and global.Dispatcher.availableTrains[stop.parkedTrainID] then
-    global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].capacity
-    global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[stop.parkedTrainID].fluid_capacity
-    global.Dispatcher.availableTrains[stop.parkedTrainID] = nil
+  if stop and stop.is_depot and stop.parked_train_id and global.Dispatcher.availableTrains[stop.parked_train_id] then
+    global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[stop.parked_train_id].capacity
+    global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[stop.parked_train_id].fluid_capacity
+    global.Dispatcher.availableTrains[stop.parked_train_id] = nil
   end
 
   -- destroy IO entities, broken IO entities should be sufficiently handled in initializeTrainStops()
   if stop then
     if stop.input and stop.input.valid then stop.input.destroy() end
     if stop.output and stop.output.valid then stop.output.destroy() end
-    if stop.lampControl and stop.lampControl.valid then stop.lampControl.destroy() end
+    if stop.lamp_control and stop.lamp_control.valid then stop.lamp_control.destroy() end
   end
 
   global.LogisticTrainStops[stopID] = nil
@@ -253,7 +254,7 @@ local function renamedStop(targetID, old_name, new_name)
   local duplicateName = false
   local renameDeliveries = true
   for stopID, stop in pairs(global.LogisticTrainStops) do
-    if not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
+    if not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lamp_control.valid then
       RemoveStop(stopID)
     elseif stop.entity.backer_name == old_name then
       renameDeliveries = false

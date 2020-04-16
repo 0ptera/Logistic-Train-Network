@@ -32,6 +32,9 @@ local function initialize(oldVersion, newVersion)
   global.Dispatcher.RequestAge = global.Dispatcher.RequestAge or {}
   global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
 
+  ---- initialize stops
+  global.LogisticTrainStops = global.LogisticTrainStops or {}
+
   -- clean obsolete global
   global.Dispatcher.Requested = nil
   global.Dispatcher.Orders = nil
@@ -44,19 +47,22 @@ local function initialize(oldVersion, newVersion)
   global.Dispatcher.UpdateStopsPerTick = nil
   global.TrainStopNames = nil
 
-   -- update to 1.4.0
-  if oldVersion and oldVersion < "01.04.00" then
-    global.Dispatcher.Requests = {} -- wipe existing requests
-    global.Dispatcher.RequestAge = {}
+  -- update to 1.3.0
+  if oldVersion and oldVersion < "01.03.00" then
+    for stopID, stop in pairs(global.LogisticTrainStops) do
+      stop.minDelivery = nil
+      stop.ignoreMinDeliverySize = nil
+    end
   end
 
-  -- update to 1.5.0
+  -- update to 1.5.0 renamed priority to provider_priority
   if oldVersion and oldVersion < "01.05.00" then
     for stopID, stop in pairs (global.LogisticTrainStops) do
-      global.LogisticTrainStops[stopID].providePriority = global.LogisticTrainStops[stopID].priority or 0
-      global.LogisticTrainStops[stopID].priority = nil
+      stop.provider_priority = stop.priority or 0
+      stop.priority = nil
     end
-    global.Dispatcher.Requests = {} -- wipe existing requests
+    global.Dispatcher.Requests = {}
+    global.Dispatcher.RequestAge = {}
   end
 
   -- update to 1.6.1 migrate locomotiveID to trainID
@@ -87,6 +93,14 @@ local function initialize(oldVersion, newVersion)
     global.Dispatcher.Deliveries = new_Deliveries
   end
 
+  -- update to 1.8.0
+  if oldVersion and oldVersion < "01.08.00" then
+    for stopID, stop in pairs(global.LogisticTrainStops) do
+      stop.entity.get_or_create_control_behavior().send_to_train = true
+      stop.entity.get_or_create_control_behavior().read_from_train = true
+    end
+  end
+
   -- update to 1.12.3 migrate networkID to network_id
   if oldVersion and oldVersion < "01.12.03" then
     for train_id, delivery in pairs(global.Dispatcher.Deliveries) do
@@ -95,39 +109,56 @@ local function initialize(oldVersion, newVersion)
     end
   end
 
-  ---- initialize stops
-  global.LogisticTrainStops = global.LogisticTrainStops or {}
+   -- update to 1.13.1 renamed almost all stop properties
+  if oldVersion and oldVersion < "01.13.01" and next(global.LogisticTrainStops) then
+    for stopID, stop in pairs(global.LogisticTrainStops) do
+      stop.lamp_control = stop.lamp_control or stop.lampControl
+      stop.lampControl = nil
+      stop.error_code = stop.error_code or stop.errorCode or -1
+      stop.errorCode = nil
+      stop.active_deliveries = stop.active_deliveries or stop.activeDeliveries or {}
+      stop.activeDeliveries = nil
+      -- control signals
+      stop.is_depot = stop.is_depot or stop.isDepot or false
+      stop.isDepot = nil
+      stop.depot_priority = stop.depot_priority or 0
+      stop.max_carriages = stop.max_carriages or stop.maxTraincars or 0
+      stop.maxTraincars = nil
+      stop.min_carriages = stop.min_carriages or stop.minTraincars or 0
+      stop.minTraincars = nil
+      stop.max_trains = stop.max_trains or stop.trainLimit or 0
+      stop.trainLimit = nil
+      stop.providing_threshold = stop.providing_threshold or stop.provideThreshold or min_provided
+      stop.provideThreshold = nil
+      stop.providing_threshold_stacks = stop.providing_threshold_stacks or stop.provideStackThreshold or 0
+      stop.provideStackThreshold = nil
+      stop.provider_priority = stop.provider_priority or stop.providePriority or 0
+      stop.providePriority = nil
+      stop.requesting_threshold = stop.requesting_threshold or stop.requestThreshold or min_requested
+      stop.requestThreshold = nil
+      stop.requesting_threshold_stacks = stop.requesting_threshold_stacks or stop.requestStackThreshold or 0
+      stop.requestStackThreshold = nil
+      stop.requester_priority = stop.requester_priority or stop.requestPriority or 0
+      stop.requestPriority = nil
+      stop.locked_slots = stop.locked_slots or stop.lockedSlots or 0
+      stop.lockedSlots = nil
+      stop.no_warnings = stop.no_warnings or stop.noWarnings or false
+      stop.noWarnings = nil
+      -- parked train data will be set during initializeTrainStops() and updateAllTrains()
+      stop.parkedTrain = nil
+      stop.parkedTrainID = nil
+      stop.parkedTrainFacesStop = nil
+    end
+  end
 
-  if next(global.LogisticTrainStops) then
-    for stopID, stop in pairs (global.LogisticTrainStops) do
-      global.LogisticTrainStops[stopID].errorCode = global.LogisticTrainStops[stopID].errorCode or -1
-
-      -- update to 1.3.0
-      global.LogisticTrainStops[stopID].minDelivery = nil
-      global.LogisticTrainStops[stopID].ignoreMinDeliverySize = nil
-      global.LogisticTrainStops[stopID].requestThreshold = global.LogisticTrainStops[stopID].requestThreshold or 0
-      global.LogisticTrainStops[stopID].provideThreshold = global.LogisticTrainStops[stopID].provideThreshold or 0
-      --update to 1.10.2
-      global.LogisticTrainStops[stopID].requestStackThreshold = global.LogisticTrainStops[stopID].requestStackThreshold or 0
-      global.LogisticTrainStops[stopID].provideStackThreshold = global.LogisticTrainStops[stopID].provideStackThreshold or 0
-
-      -- update to 1.5.0
-      global.LogisticTrainStops[stopID].requestPriority = global.LogisticTrainStops[stopID].requestPriority or 0
-      global.LogisticTrainStops[stopID].providePriority = global.LogisticTrainStops[stopID].providePriority or 0
-
-      -- update to 1.7.0
-      global.LogisticTrainStops[stopID].network_id = global.LogisticTrainStops[stopID].network_id or default_network
-
-      -- update to 1.8.0
-      global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().send_to_train = true
-      global.LogisticTrainStops[stopID].entity.get_or_create_control_behavior().read_from_train = true
-
-      -- update to 1.9.4
-      stop.lampControl.teleport({stop.input.position.x, stop.input.position.y}) -- move control under lamp
-      stop.input.disconnect_neighbour({target_entity=stop.lampControl, wire=defines.wire_type.green}) -- reconnect wires
-      stop.input.disconnect_neighbour({target_entity=stop.lampControl, wire=defines.wire_type.red})
-      stop.input.connect_neighbour({target_entity=stop.lampControl, wire=defines.wire_type.green})
-      stop.input.connect_neighbour({target_entity=stop.lampControl, wire=defines.wire_type.red})
+  -- update to 1.9.4
+  if oldVersion and oldVersion < "01.09.04" then
+    for stopID, stop in pairs(global.LogisticTrainStops) do
+      stop.lamp_control.teleport({stop.input.position.x, stop.input.position.y}) -- move control under lamp
+      stop.input.disconnect_neighbour({target_entity=stop.lamp_control, wire=defines.wire_type.green}) -- reconnect wires
+      stop.input.disconnect_neighbour({target_entity=stop.lamp_control, wire=defines.wire_type.red})
+      stop.input.connect_neighbour({target_entity=stop.lamp_control, wire=defines.wire_type.green})
+      stop.input.connect_neighbour({target_entity=stop.lamp_control, wire=defines.wire_type.red})
     end
   end
 
@@ -151,8 +182,8 @@ local function initializeTrainStops()
       if stop.output and stop.output.valid then
         stop.output.destroy()
       end
-      if stop.lampControl and stop.lampControl.valid then
-        stop.lampControl.destroy()
+      if stop.lamp_control and stop.lamp_control.valid then
+        stop.lamp_control.destroy()
       end
       global.LogisticTrainStops[stopID] = nil
     end
@@ -167,7 +198,7 @@ local function initializeTrainStops()
         if ltn_stop_entity_names[stop.name] then
           local ltn_stop = global.LogisticTrainStops[stop.unit_number]
           if ltn_stop then
-            if not(ltn_stop.output and ltn_stop.output.valid and ltn_stop.input and ltn_stop.input.valid and ltn_stop.lampControl and ltn_stop.lampControl.valid) then
+            if not(ltn_stop.output and ltn_stop.output.valid and ltn_stop.input and ltn_stop.input.valid and ltn_stop.lamp_control and ltn_stop.lamp_control.valid) then
               -- I/O entities are corrupted
               log("[LTN] recreating corrupt stop "..tostring(stop.backer_name) )
               global.LogisticTrainStops[stop.unit_number] = nil
@@ -198,8 +229,8 @@ local function updateAllTrains()
 
   -- remove all parked train from logistic stops
   for stopID, stop in pairs (global.LogisticTrainStops) do
-    stop.parkedTrain = nil
-    stop.parkedTrainID = nil
+    stop.parked_train = nil
+    stop.parked_train_id = nil
     UpdateStopOutput(stop)
   end
 
@@ -270,9 +301,8 @@ script.on_init(function()
   if newVersionString then
     newVersion = format("%02d.%02d.%02d", match(newVersionString, "(%d+).(%d+).(%d+)"))
   end
-
-  initializeTrainStops()
   initialize(oldVersion, newVersion)
+  initializeTrainStops()
   updateAllTrains()
   registerEvents()
 
@@ -280,7 +310,6 @@ script.on_init(function()
 end)
 
 script.on_configuration_changed(function(data)
-  initializeTrainStops()
   if data and data.mod_changes[MOD_NAME] then
     -- format version string to "00.00.00"
     local oldVersion, newVersion = nil
@@ -303,6 +332,7 @@ script.on_configuration_changed(function(data)
       printmsg("[LTN] Migration from "..tostring(oldVersionString).." to "..tostring(newVersionString).." complete.")
     end
   end
+  initializeTrainStops()
   updateAllTrains()
   registerEvents()
   log("[LTN] ".. MOD_NAME.." "..tostring(game.active_mods[MOD_NAME]).." configuration updated.")

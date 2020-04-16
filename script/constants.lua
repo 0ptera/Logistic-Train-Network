@@ -7,6 +7,7 @@
 MOD_NAME = "LogisticTrainNetwork"
 
 ISDEPOT = "ltn-depot"
+DEPOT_PRIORITY = "ltn-depot-priority"
 NETWORKID = "ltn-network-id"
 MINTRAINLENGTH = "ltn-min-train-length"
 MAXTRAINLENGTH = "ltn-max-train-length"
@@ -22,6 +23,7 @@ LOCKEDSLOTS = "ltn-locked-slots"
 
 ControlSignals = {
   [ISDEPOT] = {type="virtual", name=ISDEPOT},
+  [DEPOT_PRIORITY] = {type="virtual", name=DEPOT_PRIORITY},
   [NETWORKID] = {type="virtual", name=NETWORKID},
   [MINTRAINLENGTH] = {type="virtual", name=MINTRAINLENGTH},
   [MAXTRAINLENGTH] = {type="virtual", name=MAXTRAINLENGTH},

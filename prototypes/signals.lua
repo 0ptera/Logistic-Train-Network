@@ -21,11 +21,19 @@ data:extend({
   },
   {
     type = "virtual-signal",
+    name = "ltn-depot-priority",
+    icon = "__LogisticTrainNetwork__/graphics/icons/depot-priority.png",
+    icon_size = 32,
+    subgroup = "LTN-signal",
+    order = "a-b"
+  },
+  {
+    type = "virtual-signal",
     name = "ltn-network-id",
     icon = "__LogisticTrainNetwork__/graphics/icons/network-id.png",
     icon_size = 32,
     subgroup = "LTN-signal",
-    order = "a-b"
+    order = "a-c"
   },
   {
     type = "virtual-signal",

@@ -28,8 +28,8 @@ function TrainArrives(train)
     }
 
     -- add train to global.LogisticTrainStops
-    stop.parkedTrain = train
-    stop.parkedTrainID = train.id
+    stop.parked_train = train
+    stop.parked_train_id = train.id
 
     if message_level >= 3 then printmsg({"ltn-message.train-arrived", tostring(trainName), stop.entity.backer_name}, trainForce, false) end
     if debug_log then log("Train ["..train.id.."] "..tostring(trainName).." arrived at LTN-stop ["..stopID.."] "..stop.entity.backer_name) end
@@ -38,13 +38,13 @@ function TrainArrives(train)
     local backDistance = get_distance(train.back_stock.position, train.station.position)
     if debug_log then log("Front Stock Distance: "..frontDistance..", Back Stock Distance: "..backDistance) end
     if frontDistance > backDistance then
-      stop.parkedTrainFacesStop = false
+      stop.parked_train_faces_stop = false
     else
-      stop.parkedTrainFacesStop = true
+      stop.parked_train_faces_stop = true
     end
 
-    if stop.errorCode == 0 then
-      if stop.isDepot then
+    if stop.error_code == 0 then
+      if stop.is_depot then
         -- remove delivery
         RemoveDelivery(train.id)
 
@@ -54,6 +54,7 @@ function TrainArrives(train)
           train = train,
           surface = loco.surface,
           force = trainForce,
+          depot_priority = stop.depot_priority,
           network_id = stop.network_id,
           capacity = capacity,
           fluid_capacity = fluid_capacity
@@ -88,9 +89,9 @@ function TrainArrives(train)
 
       else -- stop is no Depot
         -- set lamp to blue for LTN controlled trains
-        for i=1, #stop.activeDeliveries, 1 do
-          if stop.activeDeliveries[i] == train.id then
-            setLamp(stop, "blue", #stop.activeDeliveries)
+        for i=1, #stop.active_deliveries, 1 do
+          if stop.active_deliveries[i] == train.id then
+            setLamp(stop, "blue", #stop.active_deliveries)
             break
           end
         end
@@ -115,22 +116,22 @@ function TrainLeaves(trainID)
   end
 
   -- train was stopped at LTN depot
-  if stop.isDepot then
+  if stop.is_depot then
     if global.Dispatcher.availableTrains[trainID] then -- trains are normally removed when deliveries are created
       global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[trainID].capacity
       global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[trainID].fluid_capacity
       global.Dispatcher.availableTrains[trainID] = nil
     end
-    if stop.errorCode == 0 then
+    if stop.error_code == 0 then
       setLamp(stop, "green", 1)
     end
 
   -- train was stopped at LTN stop
   else
     -- remove delivery from stop
-    for i=#stop.activeDeliveries, 1, -1 do
-      if stop.activeDeliveries[i] == trainID then
-        table.remove(stop.activeDeliveries, i)
+    for i=#stop.active_deliveries, 1, -1 do
+      if stop.active_deliveries[i] == trainID then
+        table.remove(stop.active_deliveries, i)
       end
     end
 
@@ -164,9 +165,9 @@ function TrainLeaves(trainID)
         end
       end
     end
-    if stop.errorCode == 0 then
-      if #stop.activeDeliveries > 0 then
-        setLamp(stop, "yellow", #stop.activeDeliveries)
+    if stop.error_code == 0 then
+      if #stop.active_deliveries > 0 then
+        setLamp(stop, "yellow", #stop.active_deliveries)
       else
         setLamp(stop, "green", 1)
       end
@@ -174,8 +175,8 @@ function TrainLeaves(trainID)
   end
 
   -- remove train reference
-  stop.parkedTrain = nil
-  stop.parkedTrainID = nil
+  stop.parked_train = nil
+  stop.parked_train_id = nil
   if message_level >= 3 then printmsg({"ltn-message.train-left", tostring(stoppedTrain.name), stop.entity.backer_name}, stoppedTrain.force) end
   if debug_log then log("Train ["..trainID.."] "..tostring(stoppedTrain.trainName).." left LTN-stop ["..stopID.."] "..stop.entity.backer_name) end
   UpdateStopOutput(stop)
@@ -200,17 +201,17 @@ local function update_delivery(old_train_id, new_train)
 
   -- expanded RemoveDelivery(old_train_id) to also update
   for stopID, stop in pairs(global.LogisticTrainStops) do
-    if not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lampControl.valid then
+    if not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lamp_control.valid then
       RemoveStop(stopID)
     else
-      for i=#stop.activeDeliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
-        if stop.activeDeliveries[i] == old_train_id then
+      for i=#stop.active_deliveries, 1, -1 do --trainID should be unique => checking matching stop name not required
+        if stop.active_deliveries[i] == old_train_id then
           if delivery then
-            stop.activeDeliveries[i] = new_train.id -- update train id if delivery exists
+            stop.active_deliveries[i] = new_train.id -- update train id if delivery exists
           else
-            table.remove(stop.activeDeliveries, i) -- otherwise remove entry
-            if #stop.activeDeliveries > 0 then
-              setLamp(stop, "yellow", #stop.activeDeliveries)
+            table.remove(stop.active_deliveries, i) -- otherwise remove entry
+            if #stop.active_deliveries > 0 then
+              setLamp(stop, "yellow", #stop.active_deliveries)
             else
               setLamp(stop, "green", 1)
             end

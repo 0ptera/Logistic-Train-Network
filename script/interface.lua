@@ -43,32 +43,33 @@ Raised every UpdateInterval, after delivery generation
 -> Contains:
 event.logistic_train_stops = {  [stopID],  {
     -- stop data
-    activeDeliveries,
+    active_deliveries,
     entity,
     input,
     output,
-    lampControl,
-    errorCode,
+    lamp_control,
+    error_code,
 
     -- control signals
-    isDepot,
+    is_depot,
+    depot_priority,
     network_id,
-    maxTraincars,
-    minTraincars,
-    trainLimit,
-    provideThreshold,
-    provideStackThreshold,
-    providePriority,
-    requestThreshold,
-    requestStackThreshold,
-    requestPriority,
-    lockedSlots,
-    noWarnings,
+    max_carriages,
+    min_carriages,
+    max_trains,
+    providing_threshold,
+    providing_threshold_stacks,
+    provider_priority,
+    requesting_threshold,
+    requesting_threshold_stacks,
+    requester_priority,
+    locked_slots,
+    no_warnings,
 
     -- parked train data
-    parkedTrain,
-    parkedTrainID,
-    parkedTrainFacesStop,
+    parked_train,
+    parked_train_id,
+    parked_train_faces_stop,
 }}
 
 
@@ -79,7 +80,7 @@ Raised every UpdateInterval, after delivery generation
   event.provided_by_stop = { [stop_id], { [item], count } }
   event.requests_by_stop = { [stop_id], { [item], count } }
   event.deliveries = { [train_id], {force, train, from, to, network_id, started, shipment = { [item], count } } }
-  event.available_trains = { [train_id], { capacity, fluid_capacity, force, network_id, train } }
+  event.available_trains = { [train_id], { capacity, fluid_capacity, force, depot_priority, network_id, train } }
 
 
 on_dispatcher_no_train_found
@@ -91,8 +92,8 @@ Raised when no train was found to handle a request
   (optional) event.item
   (optional) event.from
   (optional) event.from_id
-  (optional) event.minTraincars
-  (optional) event.maxTraincars
+  (optional) event.min_carriages
+  (optional) event.max_carriages
   (optional) event.shipment = { [item], count }
 
 
