@@ -208,11 +208,14 @@ function UpdateStop(stopID, stop)
     -- add parked train to available trains
     if stop.parked_train_id and stop.parked_train.valid then
       if global.Dispatcher.Deliveries[stop.parked_train_id] then
-        if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} is depot with train.id "..stop.parked_train_id.." assigned to delivery" ) end
+        if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."}"..
+          ", depot priority: ".. depot_priority..
+          ", assigned train.id: "..stop.parked_train_id )
+        end
       else
         if not global.Dispatcher.availableTrains[stop.parked_train_id] then
           -- create new available train
-          local loco = get_main_locomotive(stop.parked_train)
+          local loco = Get_Main_Locomotive(stop.parked_train)
           if loco then
             local capacity, fluid_capacity = GetTrainCapacity(stop.parked_train)
             global.Dispatcher.availableTrains[stop.parked_train_id] = {
@@ -454,18 +457,18 @@ function UpdateStopOutput(trainStop)
           if c.condition and c.condition.first_signal then -- loading without mods can make first signal nil?
             if c.type == "item_count" then
               if (c.condition.comparator == "=" and c.condition.constant == 0) then
-                 --train expects to be unloaded of each of this item
+                --train expects to be unloaded of each of this item
                 inventory[c.condition.first_signal.name] = nil
               elseif c.condition.comparator == "≥" then
-                 --train expects to be loaded to x of this item
+                --train expects to be loaded to x of this item
                 inventory[c.condition.first_signal.name] = c.condition.constant
               end
             elseif c.type == "fluid_count" then
               if (c.condition.comparator == "=" and c.condition.constant == 0) then
-                 --train expects to be unloaded of each of this fluid
+                --train expects to be unloaded of each of this fluid
                 fluidInventory[c.condition.first_signal.name] = -1
               elseif c.condition.comparator == "≥" then
-                 --train expects to be loaded to x of this fluid
+                --train expects to be loaded to x of this fluid
                 fluidInventory[c.condition.first_signal.name] = c.condition.constant
               end
             end

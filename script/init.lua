@@ -74,7 +74,7 @@ local function initialize(oldVersion, newVersion)
       local trains = surface.get_trains()
       for _, train in pairs(trains) do
         -- build dictionary
-        local loco = get_main_locomotive(train)
+        local loco = Get_Main_Locomotive(train)
         if loco then
           locoID_to_trainID[loco.unit_number] = train.id
         end
@@ -109,7 +109,7 @@ local function initialize(oldVersion, newVersion)
     end
   end
 
-   -- update to 1.13.1 renamed almost all stop properties
+  -- update to 1.13.1 renamed almost all stop properties
   if oldVersion and oldVersion < "01.13.01" and next(global.LogisticTrainStops) then
     for stopID, stop in pairs(global.LogisticTrainStops) do
       stop.lamp_control = stop.lamp_control or stop.lampControl

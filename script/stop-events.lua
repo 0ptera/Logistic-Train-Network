@@ -35,7 +35,7 @@ function CreateStop(entity)
     posIn = {entity.position.x - 1, entity.position.y - 1 - stop_offset}
     posOut = {entity.position.x - 1, entity.position.y - stop_offset}
     rotOut = 6
-   search_area = {{entity.position.x - 1, entity.position.y - 1 - stop_offset}, {entity.position.x, entity.position.y + 1 - stop_offset}}
+    search_area = {{entity.position.x - 1, entity.position.y - 1 - stop_offset}, {entity.position.x, entity.position.y + 1 - stop_offset}}
   else --invalid orientation
     if message_level >= 1 then printmsg({"ltn-message.error-stop-orientation", tostring(entity.direction)}, entity.force) end
     if debug_log then log("(CreateStop) invalid train stop orientation "..tostring(entity.direction) ) end

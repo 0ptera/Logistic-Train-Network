@@ -4,10 +4,10 @@
  * See LICENSE.md in the project directory for license information.
 --]]
 
-local optera_lib = require("__OpteraLib__.data.utilities")
-
+flib = require('__flib__.data_util')
 require ("prototypes.technology")
 require ("prototypes.recipes")
 require ("prototypes.items")
 require ("prototypes.entities")
 require ("prototypes.signals")
+flib = nil

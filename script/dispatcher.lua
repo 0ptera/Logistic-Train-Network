@@ -319,7 +319,7 @@ local function getStationDistance(stationA, stationB)
     --log(stationPair.." found, distance: "..global.StopDistances[stationPair])
     return global.StopDistances[stationPair]
   else
-    local dist = get_distance(stationA.position, stationB.position)
+    local dist = Get_Distance(stationA.position, stationB.position)
     global.StopDistances[stationPair] = dist
     --log(stationPair.." calculated, distance: "..dist)
     return dist
@@ -354,7 +354,7 @@ local function getFreeTrain(nextStop, min_carriages, max_carriages, type, size)
       if debug_log then
         depot_network_id_string = format("0x%x", band(trainData.network_id) )
         dest_network_id_string = format("0x%x", band(nextStop.network_id) )
-        log("checking train "..tostring(get_train_name(trainData.train))..
+        log("checking train "..tostring(Get_Train_Name(trainData.train))..
           ", force "..tostring(trainData.force.name).."/"..tostring(nextStop.entity.force.name)..
           ", network "..depot_network_id_string.."/"..dest_network_id_string..
           ", priority "..trainData.depot_priority..
@@ -381,7 +381,7 @@ local function getFreeTrain(nextStop, min_carriages, max_carriages, type, size)
             result_train = trainData.train
             result_train_capacity = inventorySize
             if debug_log then
-              log("(getFreeTrain) found train "..tostring(get_train_name(trainData.train))..
+              log("(getFreeTrain) found train "..tostring(Get_Train_Name(trainData.train))..
               ", network: "..depot_network_id_string..
               ", priority: "..trainData.depot_priority..
               ", length: "..min_carriages.."<="..#trainData.train.carriages.."<="..max_carriages..
@@ -400,7 +400,7 @@ local function getFreeTrain(nextStop, min_carriages, max_carriages, type, size)
             result_train = trainData.train
             result_train_capacity = inventorySize
             if debug_log then
-              log("(getFreeTrain) found train "..tostring(get_train_name(trainData.train))..
+              log("(getFreeTrain) found train "..tostring(Get_Train_Name(trainData.train))..
               ", network: "..depot_network_id_string..
               ", priority: "..trainData.depot_priority..
               ", length: "..min_carriages.."<="..#trainData.train.carriages.."<="..max_carriages..

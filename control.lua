@@ -4,9 +4,9 @@
  * See LICENSE.md in the project directory for license information.
 --]]
 
-local get_distance = require("__OpteraLib__.script.misc").get_distance_squared
-local get_main_locomotive = require("__OpteraLib__.script.train").get_main_locomotive
-local get_train_name = require("__OpteraLib__.script.train").get_train_name
+Get_Distance = require("__flib__.misc").get_distance
+Get_Main_Locomotive = require("__flib__.train").get_main_locomotive
+Get_Train_Name = require("__flib__.train").get_backer_name
 
 require "script.constants"
 require "script.settings"
