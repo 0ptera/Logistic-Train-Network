@@ -109,7 +109,7 @@ local function initialize(oldVersion, newVersion)
     end
   end
 
-   -- update to 1.13.1 renamed almost all stop properties
+  -- update to 1.13.1 renamed almost all stop properties
   if oldVersion and oldVersion < "01.13.01" and next(global.LogisticTrainStops) then
     for stopID, stop in pairs(global.LogisticTrainStops) do
       stop.lamp_control = stop.lamp_control or stop.lampControl

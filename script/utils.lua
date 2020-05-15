@@ -29,7 +29,7 @@ function GetTrainCapacity(train)
   if train and train.valid then
     for _,wagon in pairs(train.cargo_wagons) do
       local capacity = global.WagonCapacity[wagon.name] or getCargoWagonCapacity(wagon)
-       inventorySize = inventorySize + capacity
+      inventorySize = inventorySize + capacity
     end
     for _,wagon in pairs(train.fluid_wagons) do
       local capacity = global.WagonCapacity[wagon.name] or getFluidWagonCapacity(wagon)
