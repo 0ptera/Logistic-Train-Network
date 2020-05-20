@@ -21,7 +21,7 @@ ltn_stop_in.minable = nil
 ltn_stop_in.selection_box = {{-0.5, -0.5}, {0.5, 0.5}}
 ltn_stop_in.selection_priority = (ltn_stop_in.selection_priority or 50) + 10 -- increase priority to default + 10
 ltn_stop_in.collision_box = {{-0.15, -0.15}, {0.15, 0.15}}
-ltn_stop_in.collision_mask = {} -- disable all collisions
+ltn_stop_in.collision_mask = {"layer-11"} -- disable collision with other entities
 ltn_stop_in.energy_usage_per_tick = "10W"
 ltn_stop_in.light = { intensity = 1, size = 6 }
 ltn_stop_in.energy_source = {type="void"}
@@ -35,7 +35,7 @@ ltn_stop_out.minable = nil
 ltn_stop_out.selection_box = {{-0.5, -0.5}, {0.5, 0.5}}
 ltn_stop_out.selection_priority = (ltn_stop_out.selection_priority or 50) + 10 -- increase priority to default + 10
 ltn_stop_out.collision_box = {{-0.15, -0.15}, {0.15, 0.15}}
-ltn_stop_out.collision_mask = {} -- disable all collisions
+ltn_stop_out.collision_mask = {"layer-11"} -- disable collision with other entities
 ltn_stop_out.item_slot_count = 50
 ltn_stop_out.sprites = make_4way_animation_from_spritesheet(
   { layers =
@@ -90,7 +90,7 @@ ltn_lamp_control.next_upgrade = nil
 ltn_lamp_control.minable = nil
 ltn_lamp_control.selection_box = {{-0.0, -0.0}, {0.0, 0.0}}
 ltn_lamp_control.collision_box = {{-0.0, -0.0}, {0.0, 0.0}}
-ltn_lamp_control.collision_mask = {} -- disable all collisions
+ltn_lamp_control.collision_mask = {"layer-11"} -- disable collision with other entities
 ltn_lamp_control.item_slot_count = 50
 ltn_lamp_control.flags = {"not-blueprintable", "not-deconstructable"}
 ltn_lamp_control.sprites =

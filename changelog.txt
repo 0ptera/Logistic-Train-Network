@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.13.5
+Date: 2020-05-20
+  Bugfixes:
+    - multiple IO entities could be built on top of another #214
+    - stops could connect to IO entities of different stops
+---------------------------------------------------------------------------------------------------
 Version: 1.13.4
 Date: 2020-05-17
   Bugfixes:

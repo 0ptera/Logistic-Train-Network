@@ -20,22 +20,34 @@ function CreateStop(entity)
     posIn = {entity.position.x + stop_offset, entity.position.y - 1}
     posOut = {entity.position.x - 1 + stop_offset, entity.position.y - 1}
     rotOut = 0
-    search_area = {{entity.position.x - 1 + stop_offset, entity.position.y - 1}, {entity.position.x + 1 + stop_offset, entity.position.y}}
+    search_area = {
+      {entity.position.x + 0.001 - 1 + stop_offset, entity.position.y + 0.001 - 1},
+      {entity.position.x - 0.001 + 1 + stop_offset, entity.position.y - 0.001}
+    }
   elseif entity.direction == 2 then --WE
     posIn = {entity.position.x, entity.position.y + stop_offset}
     posOut = {entity.position.x, entity.position.y - 1 + stop_offset}
     rotOut = 2
-    search_area = {{entity.position.x, entity.position.y - 1 + stop_offset}, {entity.position.x + 1, entity.position.y + 1 + stop_offset}}
+    search_area = {
+      {entity.position.x + 0.001, entity.position.y + 0.001 - 1 + stop_offset},
+      {entity.position.x - 0.001 + 1, entity.position.y - 0.001 + 1 + stop_offset}
+    }
   elseif entity.direction == 4 then --NS
     posIn = {entity.position.x - 1 - stop_offset, entity.position.y}
     posOut = {entity.position.x - stop_offset, entity.position.y}
     rotOut = 4
-    search_area = {{entity.position.x - 1 - stop_offset, entity.position.y}, {entity.position.x + 1 - stop_offset, entity.position.y + 1}}
+    search_area = {
+      {entity.position.x + 0.001 - 1 - stop_offset, entity.position.y + 0.001},
+      {entity.position.x - 0.001 + 1 - stop_offset, entity.position.y - 0.001 + 1}
+    }
   elseif entity.direction == 6 then --EW
     posIn = {entity.position.x - 1, entity.position.y - 1 - stop_offset}
     posOut = {entity.position.x - 1, entity.position.y - stop_offset}
     rotOut = 6
-    search_area = {{entity.position.x - 1, entity.position.y - 1 - stop_offset}, {entity.position.x, entity.position.y + 1 - stop_offset}}
+    search_area = {
+      {entity.position.x + 0.001 - 1, entity.position.y + 0.001 - 1 - stop_offset},
+      {entity.position.x - 0.001, entity.position.y - 0.001 + 1 - stop_offset}
+    }
   else --invalid orientation
     if message_level >= 1 then printmsg({"ltn-message.error-stop-orientation", tostring(entity.direction)}, entity.force) end
     if debug_log then log("(CreateStop) invalid train stop orientation "..tostring(entity.direction) ) end
