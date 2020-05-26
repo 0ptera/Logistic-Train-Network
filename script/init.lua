@@ -74,7 +74,7 @@ local function initialize(oldVersion, newVersion)
       local trains = surface.get_trains()
       for _, train in pairs(trains) do
         -- build dictionary
-        local loco = get_main_locomotive(train)
+        local loco = Get_Main_Locomotive(train)
         if loco then
           locoID_to_trainID[loco.unit_number] = train.id
         end

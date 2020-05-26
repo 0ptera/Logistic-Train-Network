@@ -4,7 +4,7 @@
  * See LICENSE.md in the project directory for license information.
 --]]
 
-local optera_lib = require("__OpteraLib__.data.utilities")
+local flib = require('__flib__.data_util')
 
 local icon_encoded_position = { { icon = "__LogisticTrainNetwork__/graphics/icons/encoded-position.png", icon_size = 32, tint = {r=1, g=1, b=1, a=1} } }
 
@@ -14,7 +14,7 @@ for _, loco in pairs(data.raw["locomotive"]) do
   local signal = {
     type = "virtual-signal",
     name = "ltn-position-"..loco.name,
-    icons = optera_lib.create_icons(loco, icon_encoded_position) or icon_encoded_position,
+    icons = flib.create_icons(loco, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
     subgroup = "ltn-position-signal",
     order = "a"..string.format("%02d", lococount),
@@ -29,7 +29,7 @@ for _, wagon in pairs(data.raw["cargo-wagon"]) do
   local signal = {
     type = "virtual-signal",
     name = "ltn-position-"..wagon.name,
-    icons = optera_lib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
+    icons = flib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
     subgroup = "ltn-position-signal",
     order = "b"..string.format("%02d", wagoncount),
@@ -44,7 +44,7 @@ for _, wagon in pairs(data.raw["fluid-wagon"]) do
   local signal = {
     type = "virtual-signal",
     name = "ltn-position-"..wagon.name,
-    icons = optera_lib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
+    icons = flib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
     subgroup = "ltn-position-signal",
     order = "c"..string.format("%02d", wagoncount_fluid),
@@ -59,7 +59,7 @@ for _, wagon in pairs(data.raw["artillery-wagon"]) do
   local signal = {
     type = "virtual-signal",
     name = "ltn-position-"..wagon.name,
-    icons = optera_lib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
+    icons = flib.create_icons(wagon, icon_encoded_position) or icon_encoded_position,
     icon_size = nil,
     subgroup = "ltn-position-signal",
     order = "d"..string.format("%02d", wagoncount_artillery),
