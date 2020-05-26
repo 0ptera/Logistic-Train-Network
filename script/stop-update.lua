@@ -155,9 +155,9 @@ function UpdateStop(stopID, stop)
         elseif v.signal.name == NOWARN and v.count > 0 then
           no_warnings = true
         elseif v.signal.name == PROVIDED_THRESHOLD then
-           providing_threshold = abs(v.count)
+          providing_threshold = abs(v.count)
         elseif v.signal.name == PROVIDED_STACK_THRESHOLD then
-           providing_threshold_stacks = abs(v.count)
+          providing_threshold_stacks = abs(v.count)
         elseif v.signal.name == PROVIDED_PRIORITY then
           provider_priority = v.count
         elseif v.signal.name == LOCKEDSLOTS and v.count > 0 then

@@ -1,4 +1,25 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.13.5
+Date: 2020-05-20
+  Bugfixes:
+    - multiple IO entities could be built on top of another #214
+    - stops could connect to IO entities of different stops
+---------------------------------------------------------------------------------------------------
+Version: 1.13.4
+Date: 2020-05-17
+  Bugfixes:
+    - Increased selection priority on secondary entities #213
+---------------------------------------------------------------------------------------------------
+Version: 1.13.3
+Date: 2020-05-15
+  Changes:
+    - Updated secondary entity collisions using empty collision tables
+---------------------------------------------------------------------------------------------------
+Version: 1.13.2
+Date: 2020-05-15
+  Changes:
+    - Updated secondary entity collisions using "not-colliding-with-itself"
+---------------------------------------------------------------------------------------------------
 Version: 1.13.1
 Date: 2020-04-16
   Features:
