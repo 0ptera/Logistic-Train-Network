@@ -119,7 +119,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-disable-warnings",
     icon = "__LogisticTrainNetwork__/graphics/icons/disable-warnings.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "d-d"
   },
