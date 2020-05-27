@@ -6,16 +6,16 @@
 
 local ltn_stop = flib.copy_prototype(data.raw["train-stop"]["train-stop"], "logistic-train-stop")
 ltn_stop.icon = "__LogisticTrainNetwork__/graphics/icons/train-stop.png"
-ltn_stop.icon_size = 32
-ltn_stop.icon_mipmaps = nil
+ltn_stop.icon_size = 64
+ltn_stop.icon_mipmaps = 4
 ltn_stop.next_upgrade = nil
 ltn_stop.selection_box = {{-0.6, -0.6}, {0.6, 0.6}}
 -- ltn_stop.collision_box = {{-0.5, -0.1}, {0.5, 0.4}}
 
 local ltn_stop_in = flib.copy_prototype(data.raw["lamp"]["small-lamp"],"logistic-train-stop-input")
 ltn_stop_in.icon = "__LogisticTrainNetwork__/graphics/icons/train-stop.png"
-ltn_stop_in.icon_size = 32
-ltn_stop_in.icon_mipmaps = nil
+ltn_stop_in.icon_size = 64
+ltn_stop_in.icon_mipmaps = 4
 ltn_stop_in.next_upgrade = nil
 ltn_stop_in.minable = nil
 ltn_stop_in.selection_box = {{-0.5, -0.5}, {0.5, 0.5}}

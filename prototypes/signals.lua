@@ -15,7 +15,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-depot",
     icon = "__LogisticTrainNetwork__/graphics/icons/depot.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "a-a"
   },
@@ -23,7 +23,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-depot-priority",
     icon = "__LogisticTrainNetwork__/graphics/icons/depot-priority.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "a-b"
   },
@@ -31,7 +31,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-network-id",
     icon = "__LogisticTrainNetwork__/graphics/icons/network-id.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "a-c"
   },
@@ -39,7 +39,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-min-train-length",
     icon = "__LogisticTrainNetwork__/graphics/icons/min-train-length.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "b-a"
   },
@@ -47,7 +47,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-max-train-length",
     icon = "__LogisticTrainNetwork__/graphics/icons/max-train-length.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "b-b"
   },
@@ -55,7 +55,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-max-trains",
     icon = "__LogisticTrainNetwork__/graphics/icons/max-trains.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "b-c"
   },
@@ -63,7 +63,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-provider-threshold",
     icon = "__LogisticTrainNetwork__/graphics/icons/provider-threshold.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "c-a"
   },
@@ -71,7 +71,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-provider-stack-threshold",
     icon = "__LogisticTrainNetwork__/graphics/icons/provider-stack-threshold.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "c-b"
   },
@@ -79,7 +79,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-provider-priority",
     icon = "__LogisticTrainNetwork__/graphics/icons/provider-priority.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "c-c"
   },
@@ -87,7 +87,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-locked-slots",
     icon = "__LogisticTrainNetwork__/graphics/icons/locked-slot.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "c-d"
   },
@@ -95,7 +95,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-requester-threshold",
     icon = "__LogisticTrainNetwork__/graphics/icons/requester-threshold.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "d-a"
   },
@@ -103,7 +103,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-requester-stack-threshold",
     icon = "__LogisticTrainNetwork__/graphics/icons/requester-stack-threshold.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "d-b"
   },
@@ -111,7 +111,7 @@ data:extend({
     type = "virtual-signal",
     name = "ltn-requester-priority",
     icon = "__LogisticTrainNetwork__/graphics/icons/requester-priority.png",
-    icon_size = 32,
+    icon_size = 64,
     subgroup = "LTN-signal",
     order = "d-c"
   },
