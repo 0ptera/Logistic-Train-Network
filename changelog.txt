@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.13.8
+Date: 2020-05-29
+  Bugfixes:
+    - Checks adjusting requester amounts used stop.backer_name instead of stop.unit_number. https://forums.factorio.com/viewtopic.php?p=496164#p496164
+---------------------------------------------------------------------------------------------------
 Version: 1.13.7
 Date: 2020-05-27
   Features:

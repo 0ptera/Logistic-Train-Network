@@ -275,7 +275,7 @@ function UpdateStop(stopID, stop)
               traincount = stop.parked_train.get_item_count(signal_name)
             end
 
-            if delivery.to == stop.entity.backer_name then
+            if delivery.to_id == stop.entity.unit_number then
               local newcount = count + traincount
               if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
               if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating requested count with train inventory: "..item.." "..count.."+"..traincount.."="..newcount) end
@@ -295,7 +295,7 @@ function UpdateStop(stopID, stop)
 
           else
             -- calculate items +- deliveries
-            if delivery.to == stop.entity.backer_name then
+            if delivery.to_id == stop.entity.unit_number then
               local newcount = count + deliverycount
               if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
               if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating requested count with delivery: "..item.." "..count.."+"..deliverycount.."="..newcount) end
