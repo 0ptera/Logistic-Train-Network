@@ -10,14 +10,14 @@ data:extend({
     name = "ltn-dispatcher-enabled",
     order = "aa",
     setting_type = "runtime-global",
-		default_value = true
+    default_value = true
   },
   {
     type = "int-setting",
     name = "ltn-dispatcher-nth_tick",
     order = "ab",
     setting_type = "runtime-global",
-		default_value = 2,
+    default_value = 2,
     minimum_value = 1,
     maximum_value = 60, -- one stop per second
   },
@@ -26,7 +26,7 @@ data:extend({
     name = "ltn-dispatcher-updates-per-tick",
     order = "ac",
     setting_type = "runtime-global",
-		default_value = 1,
+    default_value = 1,
     minimum_value = 1,
     maximum_value = 100, -- processing too many stops/requests per tick will produce lag spikes
   },
@@ -47,12 +47,12 @@ data:extend({
     minimum_value = 0,
     maximum_value = 2147483647, -- prevent 32bit signed overflow
   },
-	{
+  {
     type = "bool-setting",
     name = "ltn-interface-debug-logfile",
     order = "af",
     setting_type = "runtime-global",
-		default_value = false
+    default_value = false
   },
   {
     type = "int-setting",
