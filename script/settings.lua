@@ -4,7 +4,7 @@
  * See LICENSE.md in the project directory for license information.
 --]]
 
-message_level = tonumber(string.sub(settings.global["ltn-interface-console-level"].value, 1, 1))
+message_level = tonumber(settings.global["ltn-interface-console-level"].value)
 message_filter_age = settings.global["ltn-interface-message-filter-age"].value
 debug_log = settings.global["ltn-interface-debug-logfile"].value
 min_requested = settings.global["ltn-dispatcher-requester-threshold"].value
@@ -29,7 +29,7 @@ default_network = settings.global["ltn-stop-default-network"].value
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if not event then return end
   if event.setting == "ltn-interface-console-level" then
-    message_level = tonumber(string.sub(settings.global["ltn-interface-console-level"].value, 1, 1))
+    message_level = tonumber(settings.global["ltn-interface-console-level"].value)
   end
   if event.setting == "ltn-interface-message-filter-age" then
     message_filter_age = settings.global["ltn-interface-message-filter-age"].value

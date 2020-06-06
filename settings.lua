@@ -35,8 +35,8 @@ data:extend({
     name = "ltn-interface-console-level",
     order = "ad",
     setting_type = "runtime-global",
-    default_value = "2: Notifications",
-    allowed_values =  {"0: Off", "1: Errors & Warnings", "2: Notifications", "3: Detailed Messages"}
+    default_value = "2",
+    allowed_values = {"0", "1", "2", "3"}
   },
   {
     type = "int-setting",
