@@ -17,14 +17,17 @@ function printmsg(msg, force, useFilter)
     for k, v in pairs(msg) do
       if type(v) == "table" then
         msgKey = msgKey..v[1]..", "
+        msg[k][1] = string.gsub(v[1],"item=","img=item/")
+        msg[k][1] = string.gsub(msg[k][1],"fluid=","img=fluid/")
       elseif type(v) == "string" then
         msgKey = msgKey..v..", "
+        msg[k] = string.gsub(v,"item=","img=item/")
+        msg[k] = string.gsub(msg[k],"fluid=","img=fluid/")
       end
     end
   else
     msgKey = msg
   end
-
   -- print message
   if global.messageBuffer[msgKey] == nil or not useFilter then
     if force and force.valid then
