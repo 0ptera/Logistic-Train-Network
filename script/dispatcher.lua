@@ -548,7 +548,7 @@ function ProcessRequest(reqIndex, request)
           if merge_count_req > merge_count_prov then
             merge_deliverySize = merge_count_prov
           end
-          local merge_stacks =  ceil(merge_deliverySize / game.item_prototypes[merge_name].stack_size) -- calculate amount of stacks item count will occupy
+          local merge_stacks = ceil(merge_deliverySize / game.item_prototypes[merge_name].stack_size) -- calculate amount of stacks item count will occupy
 
           -- add to loading list
           loadingList[#loadingList+1] = {type=merge_type, name=merge_name, localname=merge_localname, count=merge_deliverySize, stacks=merge_stacks}
