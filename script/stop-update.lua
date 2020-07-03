@@ -278,16 +278,16 @@ function UpdateStop(stopID, stop)
             if delivery.to_id == stop.entity.unit_number then
               local newcount = count + traincount
               if newcount > 0 then newcount = 0 end --make sure we don't turn it into a provider
-              if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating requested count with train inventory: "..item.." "..count.."+"..traincount.."="..newcount) end
+              if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating requested count with train "..trainID.." inventory: "..item.." "..count.."+"..traincount.."="..newcount) end
               count = newcount
             elseif delivery.from_id == stop.entity.unit_number then
               if traincount <= deliverycount then
                 local newcount = count - (deliverycount - traincount)
                 if newcount < 0 then newcount = 0 end --make sure we don't turn it into a request
-                if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating provided count with train inventory: "..item.." "..count.."-"..deliverycount - traincount.."="..newcount) end
+                if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating provided count with train "..trainID.." inventory: "..item.." "..count.."-"..deliverycount - traincount.."="..newcount) end
                 count = newcount
               else --train loaded more than delivery
-                if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating delivery count with overloaded train inventory: "..item.." "..traincount) end
+                if debug_log then log("(UpdateStop) "..stop.entity.backer_name.." {"..network_id_string.."} updating delivery count with overloaded train "..trainID.." inventory: "..item.." "..traincount) end
                 -- update delivery to new size
                 global.Dispatcher.Deliveries[trainID].shipment[item] = traincount
               end
