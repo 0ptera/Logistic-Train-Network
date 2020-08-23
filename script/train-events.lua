@@ -88,6 +88,27 @@ function TrainArrives(train)
         end
 
       else -- stop is no Depot
+        -- check requester for incorrect shipment
+        local delivery = global.Dispatcher.Deliveries[train.id]
+        if delivery.to_id == stop.entity.unit_number then
+          local requester_wrong_load = false
+          local train_items = train.get_contents()
+          for name, count in pairs(train_items) do
+            local typed_name = "item,"..name
+            if not delivery.shipment[typed_name] then
+              requester_wrong_load = true
+            end
+          end
+          local train_fluids = train.get_fluid_contents()
+          for name, count in pairs(train_fluids) do
+            local typed_name = "fluid,"..name
+            if not delivery.shipment[typed_name] then
+              requester_wrong_load = true
+            end
+          end
+          if requester_wrong_load then create_alert(stop.entity, "requester_wrong_load") end
+        end
+
         -- set lamp to blue for LTN controlled trains
         for i=1, #stop.active_deliveries, 1 do
           if stop.active_deliveries[i] == train.id then
@@ -139,22 +160,70 @@ function TrainLeaves(trainID)
     if stoppedTrain.train.valid and delivery then
       if delivery.from_id == stop.entity.unit_number then
         -- update delivery counts to train inventory
-        local actual_shipment = {}
+        local actual_load = {}
+        local wrong_load = {}
+        local provider_wrong_load = false
+        local provider_undercharge = false
         local train_items = stoppedTrain.train.get_contents()
-        local train_fluids = stoppedTrain.train.get_fluid_contents()
         for name, count in pairs(train_items) do
-          actual_shipment["item,"..name] = count
+          local typed_name = "item,"..name
+          local planned_count = delivery.shipment[typed_name]
+          if planned_count then
+            actual_load[typed_name] = count -- update shipment to actual inventory
+            if count < planned_count then
+              -- underloaded
+              provider_undercharge = true
+            end
+          else
+            -- loaded wrong items
+            wrong_load[typed_name] = count
+            provider_wrong_load = true
+          end
         end
+        local train_fluids = stoppedTrain.train.get_fluid_contents()
         for name, count in pairs(train_fluids) do
-          actual_shipment["fluid,"..name] = count
+          local typed_name = "fluid,"..name
+          local planned_count = delivery.shipment[typed_name]
+          if planned_count then
+            actual_load[typed_name] = count -- update shipment actual inventory
+            if count < planned_count then
+              -- undercharge
+              provider_undercharge = true
+            end
+          else
+            -- loaded wrong fluids
+            wrong_load[typed_name] = count
+            provider_wrong_load = true
+          end
         end
+
         delivery.pickupDone = true -- remove reservations from this delivery
-        script.raise_event(on_delivery_pickup_complete_event, {train_id = trainID, planned_shipment = delivery.shipment, actual_shipment = actual_shipment})
-        delivery.shipment = actual_shipment
+        if provider_undercharge then create_alert(stop.entity, "provider_undercharge") end
+        if provider_wrong_load then create_alert(stop.entity, "provider_wrong_load") end
+        script.raise_event(on_delivery_pickup_complete_event, {train_id = trainID, planned_shipment = delivery.shipment, actual_shipment = actual_load, wrong_load = wrong_load})
+        delivery.shipment = actual_load
 
       elseif delivery.to_id == stop.entity.unit_number then
+        local remaining_load = {}
+        local requester_not_unloaded = false
+        local train_items = stoppedTrain.train.get_contents()
+        for name, count in pairs(train_items) do
+          -- not fully unloaded
+          local typed_name = "item,"..name
+          requester_not_unloaded = true
+          remaining_load[typed_name] = count
+        end
+        local train_fluids = stoppedTrain.train.get_fluid_contents()
+        for name, count in pairs(train_fluids) do
+          -- not fully unloaded
+          local typed_name = "fluid,"..name
+          requester_not_unloaded = true
+          remaining_load[typed_name] = count
+        end
+
         -- signal completed delivery and remove it
-        script.raise_event(on_delivery_completed_event, {train_id = trainID, shipment = delivery.shipment})
+        if requester_not_unloaded then create_alert(stop.entity, "requester_not_unloaded") end
+        script.raise_event(on_delivery_completed_event, {train_id = trainID, shipment = delivery.shipment, remaining_load = remaining_load})
         global.Dispatcher.Deliveries[trainID] = nil
 
         -- reset schedule when ltn-dispatcher-early-schedule-reset is active

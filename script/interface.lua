@@ -103,6 +103,7 @@ Raised when a train leaves provider stop
   event.train_id
   event.planned_shipment= { [item], count } }
   event.actual_shipment = { [item], count } } -- shipment updated to train inventory
+  event.wrong_load = { [item], count } } -- incorrectly loaded items/fluids
 
 
 on_delivery_completed
@@ -110,6 +111,7 @@ Raised when train leaves requester stop
 -> Contains:
   event.train_id
   event.shipment= { [item], count } }
+  event.remaining_load= { [item], count } } -- items/fluids remaining in train after leaving requester
 
 
 on_delivery_failed
