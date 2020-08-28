@@ -471,6 +471,7 @@ function ProcessRequest(reqIndex, request)
     localname = game.fluid_prototypes[iname].localised_name
     -- skip if no trains are available
     if (global.Dispatcher.availableTrains_total_fluid_capacity or 0) == 0 then
+      create_alert(requestStation.entity, "depot-empty", {"ltn-message.empty-depot-fluid"}, requestForce)
       if message_level >= 1 then printmsg({"ltn-message.empty-depot-fluid"}, requestForce, true) end
       if debug_log then log("Skipping request "..to.." {"..to_network_id_string.."}: "..item..". No trains available.") end
       script.raise_event(on_dispatcher_no_train_found_event, {to = to, to_id = toID, network_id = requestStation.network_id, item = item})
@@ -480,6 +481,7 @@ function ProcessRequest(reqIndex, request)
     localname = game.item_prototypes[iname].localised_name
     -- skip if no trains are available
     if (global.Dispatcher.availableTrains_total_capacity or 0) == 0 then
+      create_alert(requestStation.entity, "depot-empty", {"ltn-message.empty-depot-item"}, requestForce)
       if message_level >= 1 then printmsg({"ltn-message.empty-depot-item"}, requestForce, true) end
       if debug_log then log("Skipping request "..to.." {"..to_network_id_string.."}: "..item..". No trains available.") end
       script.raise_event(on_dispatcher_no_train_found_event, {to = to, to_id = toID, network_id = requestStation.network_id, item = item})
@@ -564,6 +566,7 @@ function ProcessRequest(reqIndex, request)
   -- find train
   local selectedTrain, trainInventorySize = getFreeTrain(providerData, min_carriages, max_carriages, loadingList[1].type, totalStacks)
   if not selectedTrain or not trainInventorySize then
+    create_alert(requestStation.entity, "depot-empty", {"ltn-message.no-train-found", from, to, matched_network_id_string, tostring(min_carriages), tostring(max_carriages) }, requestForce)
     if message_level >= 1 then printmsg({"ltn-message.no-train-found", from, to, matched_network_id_string, tostring(min_carriages), tostring(max_carriages) }, requestForce, true) end
     if debug_log then log("No train with "..tostring(min_carriages).." <= length <= "..tostring(max_carriages).." to transport "..tostring(totalStacks).." stacks from "..from.." to "..to.." in network "..matched_network_id_string.." found in Depot.") end
     script.raise_event(on_dispatcher_no_train_found_event, { to = to, to_id = toID, from = from, from_id = fromID, network_id = requestStation.network_id, min_carriages = min_carriages, max_carriages = max_carriages, shipment = loadingList,
