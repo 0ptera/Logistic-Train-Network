@@ -11,6 +11,11 @@ on_delivery_pickup_complete_event = script.generate_event_name()
 on_delivery_completed_event = script.generate_event_name()
 on_delivery_failed_event = script.generate_event_name()
 
+on_provider_missing_cargo_alert = script.generate_event_name()
+on_provider_unscheduled_cargo_alert = script.generate_event_name()
+on_requester_unscheduled_cargo_alert = script.generate_event_name()
+on_requester_remaining_cargo_alert = script.generate_event_name()
+
 -- ltn_interface allows mods to register for update events
 remote.add_interface("logistic-train-network", {
   -- updates for ltn_stops
@@ -26,6 +31,12 @@ remote.add_interface("logistic-train-network", {
   -- update for completing deliveries
   on_delivery_completed = function() return on_delivery_completed_event end,
   on_delivery_failed = function() return on_delivery_failed_event end,
+
+  -- alerts
+  on_provider_missing_cargo = function() return on_provider_missing_cargo_alert end,
+  on_provider_unscheduled_cargo = function() return on_provider_unscheduled_cargo_alert end,
+  on_requester_unscheduled_cargo = function() return on_requester_unscheduled_cargo_alert end,
+  on_requester_remaining_cargo = function() return on_requester_remaining_cargo_alert end,
 })
 
 
@@ -117,5 +128,39 @@ Raised when rolling stock of a train gets removed or the delivery timed out
 -> Contains:
   event.train_id
   event.shipment= { [item], count } }
+
+
+----  Alerts ----
+
+on_provider_missing_cargo
+Raised when trains leave provider with less than planned load
+-> Contains:
+  event.train
+  event.station
+  planned_shipment = { [item], count } }
+  actual_shipment = { [item], count } }
+
+on_provider_unscheduled_cargo
+Raised when trains leave provider with wrong cargo
+-> Contains:
+  event.train
+  event.station
+  planned_shipment = { [item], count } }
+  unscheduled_load = { [item], count } }
+
+on_requester_unscheduled_cargo
+Raised when trains arrive at requester with wrong cargo
+-> Contains:
+  event.train
+  event.station
+  planned_shipment = { [item], count } }
+  unscheduled_load = { [item], count } }
+
+on_requester_remaining_cargo
+Raised when trains leave requester with remaining cargo
+-> Contains:
+  event.train
+  event.station
+  remaining_load = { [item], count } }
 
 --]]
