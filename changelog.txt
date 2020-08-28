@@ -1,9 +1,9 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.14.0
-Date: 2020-08-23
+Date: 2020-08-28
   Features:
     - updated to Factorio 1.0
-    - use Factorio alerts for warning and errors
+    - use Factorio alert system for common warnings and errors
     - added cargo alerts
 ---------------------------------------------------------------------------------------------------
 Version: 1.13.10
