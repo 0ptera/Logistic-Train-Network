@@ -91,7 +91,7 @@ function TrainArrives(train)
       else -- stop is no Depot
         -- check requester for incorrect shipment
         local delivery = global.Dispatcher.Deliveries[train.id]
-        if delivery.to_id == stop.entity.unit_number then
+        if delivery and delivery.to_id == stop.entity.unit_number then
           local requester_unscheduled_cargo = false
           local unscheduled_load = {}
           local train_items = train.get_contents()
