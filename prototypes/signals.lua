@@ -205,6 +205,7 @@ data:extend({
     base_color = {r=0, g=0.34, b=0.6},
     flow_color = {r=0.7, g=0.7, b=0.7},
     hidden = true,
+    auto_barrel = false,
     subgroup = "LTN-signal",
     order = "v0"
   },
@@ -220,6 +221,7 @@ data:extend({
     base_color = {r=0, g=0.34, b=0.6},
     flow_color = {r=0.7, g=0.7, b=0.7},
     hidden = true,
+    auto_barrel = false,
     subgroup = "LTN-signal",
     order = "v1"
   },
@@ -235,6 +237,7 @@ data:extend({
     base_color = {r=0, g=0.34, b=0.6},
     flow_color = {r=0.7, g=0.7, b=0.7},
     hidden = true,
+    auto_barrel = false,
     subgroup = "LTN-signal",
     order = "v2"
   },
@@ -250,6 +253,7 @@ data:extend({
     base_color = {r=0, g=0.34, b=0.6},
     flow_color = {r=0.7, g=0.7, b=0.7},
     hidden = true,
+    auto_barrel = false,
     subgroup = "LTN-signal",
     order = "v3"
   },
