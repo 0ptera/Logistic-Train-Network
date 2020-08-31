@@ -132,6 +132,26 @@ Raised when rolling stock of a train gets removed or the delivery timed out
 
 ----  Alerts ----
 
+on_dispatcher_no_train_found
+Raised when depot was empty
+-> Contains:
+  event.to
+  event.to_id
+  event.network_id
+  event.item
+
+on_dispatcher_no_train_found
+Raised when no matching train was found
+-> Contains:
+  event.to
+  event.to_id
+  event.network_id
+  event.from
+  event.from_id
+  event.min_carriages
+  event.max_carriages
+  event.shipment
+
 on_provider_missing_cargo
 Raised when trains leave provider with less than planned load
 -> Contains:
