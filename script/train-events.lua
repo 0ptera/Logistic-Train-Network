@@ -154,6 +154,7 @@ function TrainLeaves(trainID)
     if stop.error_code == 0 then
       setLamp(stop, "green", 1)
     end
+    if debug_log then log("(TrainLeaves) Train ["..trainID.."] "..tostring(stoppedTrain.name).." left Depot ["..stopID.."] "..stop.entity.backer_name) end
 
   -- train was stopped at LTN stop
   else
@@ -194,8 +195,8 @@ function TrainLeaves(trainID)
           local planned_count = delivery.shipment[typed_name]
           if planned_count then
             actual_load[typed_name] = count -- update shipment actual inventory
-            if count < planned_count then
-              -- undercharge
+            if planned_count-count > 0.1 then -- prevent lsb errors
+              -- underloaded
               provider_missing_cargo = true
             end
           else
@@ -204,8 +205,10 @@ function TrainLeaves(trainID)
             provider_unscheduled_cargo = true
           end
         end
-
         delivery.pickupDone = true -- remove reservations from this delivery
+        if debug_log then log("(TrainLeaves) Train ["..trainID.."] "..tostring(stoppedTrain.name).." left Provider ["..stopID.."] "..stop.entity.backer_name.." cargo: "..serpent.line(actual_load).." unscheduled: "..serpent.line(unscheduled_load) ) end
+        global.StoppedTrains[trainID] = nil
+
         if provider_missing_cargo then
           create_alert(stop.entity, "cargo-alert", {"ltn-message.provider_missing_cargo", stoppedTrain.name, stop_name}, stoppedTrain.force)
           script.raise_event(on_provider_missing_cargo_alert, {train = train, station = stop.entity, planned_shipment = delivery.shipment, actual_shipment = actual_load})
@@ -235,6 +238,7 @@ function TrainLeaves(trainID)
           remaining_load[typed_name] = count
         end
 
+        if debug_log then log("(TrainLeaves) Train ["..trainID.."] "..tostring(stoppedTrain.name).." left Requester ["..stopID.."] "..stop.entity.backer_name.."with left over cargo: "..serpent.line(remaining_load) ) end
         -- signal completed delivery and remove it
         if requester_left_over_cargo then
           create_alert(stop.entity, "cargo-alert", {"ltn-message.requester_left_over_cargo", stoppedTrain.name, stop_name}, stoppedTrain.force)
@@ -249,6 +253,8 @@ function TrainLeaves(trainID)
           schedule.records[1] = NewScheduleRecord(stoppedTrain.train.schedule.records[1].station, "inactivity", depot_inactivity)
           stoppedTrain.train.schedule = schedule
         end
+      else
+        if debug_log then log("(TrainLeaves) Train ["..trainID.."] "..tostring(stoppedTrain.name).." left Stop ["..stopID.."] "..stop.entity.backer_name) end
       end
     end
     if stop.error_code == 0 then
@@ -264,7 +270,6 @@ function TrainLeaves(trainID)
   stop.parked_train = nil
   stop.parked_train_id = nil
   if message_level >= 3 then printmsg({"ltn-message.train-left", tostring(stoppedTrain.name), stop.entity.backer_name}, stoppedTrain.force) end
-  if debug_log then log("Train ["..trainID.."] "..tostring(stoppedTrain.name).." left LTN-stop ["..stopID.."] "..stop.entity.backer_name) end
   UpdateStopOutput(stop)
 
   global.StoppedTrains[trainID] = nil

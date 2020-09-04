@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.14.3
+Date: 2020-09-04
+  Bugfixes:
+    - increased TrainLeaves debug log verbosity
+    - fluid deliveries sometimes incorrectly detected incomplete pickup due to lsb differences #230
+---------------------------------------------------------------------------------------------------
 Version: 1.14.2
 Date: 2020-08-30
   Bugfixes:
