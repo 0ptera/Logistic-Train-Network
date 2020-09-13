@@ -4,7 +4,7 @@
  * See LICENSE.md in the project directory for license information.
 --]]
 
-flib = require('__flib__.data_util')
+flib = require('__flib__.data-util')
 require ("prototypes.technology")
 require ("prototypes.recipes")
 require ("prototypes.items")
