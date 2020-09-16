@@ -134,6 +134,7 @@ end
 -- when called from on_train_created stoppedTrain.train will be invalid
 function TrainLeaves(trainID)
   local stoppedTrain = global.StoppedTrains[trainID] -- checked before every call of TrainLeaves
+  local train = stoppedTrain.train
   local stopID = stoppedTrain.stopID
   local stop = global.LogisticTrainStops[stopID]
   if not stop then
@@ -166,14 +167,14 @@ function TrainLeaves(trainID)
     end
 
     local delivery = global.Dispatcher.Deliveries[trainID]
-    if stoppedTrain.train.valid and delivery then
+    if train.valid and delivery then
       if delivery.from_id == stop.entity.unit_number then
         -- update delivery counts to train inventory
         local actual_load = {}
         local unscheduled_load = {}
         local provider_unscheduled_cargo = false
         local provider_missing_cargo = false
-        local train_items = stoppedTrain.train.get_contents()
+        local train_items = train.get_contents()
         for name, count in pairs(train_items) do
           local typed_name = "item,"..name
           local planned_count = delivery.shipment[typed_name]
@@ -189,7 +190,7 @@ function TrainLeaves(trainID)
             provider_unscheduled_cargo = true
           end
         end
-        local train_fluids = stoppedTrain.train.get_fluid_contents()
+        local train_fluids = train.get_fluid_contents()
         for name, count in pairs(train_fluids) do
           local typed_name = "fluid,"..name
           local planned_count = delivery.shipment[typed_name]
@@ -223,14 +224,14 @@ function TrainLeaves(trainID)
       elseif delivery.to_id == stop.entity.unit_number then
         local remaining_load = {}
         local requester_left_over_cargo = false
-        local train_items = stoppedTrain.train.get_contents()
+        local train_items = train.get_contents()
         for name, count in pairs(train_items) do
           -- not fully unloaded
           local typed_name = "item,"..name
           requester_left_over_cargo = true
           remaining_load[typed_name] = count
         end
-        local train_fluids = stoppedTrain.train.get_fluid_contents()
+        local train_fluids = train.get_fluid_contents()
         for name, count in pairs(train_fluids) do
           -- not fully unloaded
           local typed_name = "fluid,"..name
@@ -250,8 +251,8 @@ function TrainLeaves(trainID)
         -- reset schedule when ltn-dispatcher-early-schedule-reset is active
         if requester_delivery_reset then
           local schedule = {current = 1, records = {}}
-          schedule.records[1] = NewScheduleRecord(stoppedTrain.train.schedule.records[1].station, "inactivity", depot_inactivity)
-          stoppedTrain.train.schedule = schedule
+          schedule.records[1] = NewScheduleRecord(train.schedule.records[1].station, "inactivity", depot_inactivity)
+          train.schedule = schedule
         end
       else
         if debug_log then log("(TrainLeaves) Train ["..trainID.."] "..tostring(stoppedTrain.name).." left Stop ["..stopID.."] "..stop.entity.backer_name) end
