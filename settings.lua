@@ -49,8 +49,15 @@ data:extend({
   },
   {
     type = "bool-setting",
-    name = "ltn-interface-debug-logfile",
+    name = "ltn-interface-factorio-alerts",
     order = "af",
+    setting_type = "runtime-per-user",
+    default_value = true
+  },
+  {
+    type = "bool-setting",
+    name = "ltn-interface-debug-logfile",
+    order = "ag",
     setting_type = "runtime-global",
     default_value = false
   },

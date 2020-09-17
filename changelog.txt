@@ -1,8 +1,11 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.14.5
 Date: 2020-09-16
+  Features:
+    - added user setting to disable alerts
   Bugfixes:
     - on_provider events didn't include LuaTrain
+    - on_requester_unscheduled_cargo_alert.unscheduled_load lacked type prefix
 ---------------------------------------------------------------------------------------------------
 Version: 1.14.4
 Date: 2020-09-13

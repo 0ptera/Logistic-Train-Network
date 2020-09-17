@@ -1,5 +1,6 @@
 --[[ Copyright (c) 2017 Optera
  * Part of Logistics Train Network
+ * localizes and converts global runtime settings
  *
  * See LICENSE.md in the project directory for license information.
 --]]

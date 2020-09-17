@@ -99,7 +99,7 @@ function TrainArrives(train)
             local typed_name = "item,"..name
             if not delivery.shipment[typed_name] then
               requester_unscheduled_cargo = true
-              unscheduled_load[name] = count
+              unscheduled_load[typed_name] = count
             end
           end
           local train_fluids = train.get_fluid_contents()
@@ -107,7 +107,7 @@ function TrainArrives(train)
             local typed_name = "fluid,"..name
             if not delivery.shipment[typed_name] then
               requester_unscheduled_cargo = true
-              unscheduled_load[name] = count
+              unscheduled_load[typed_name] = count
             end
           end
           if requester_unscheduled_cargo then
