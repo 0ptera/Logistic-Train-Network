@@ -10,4 +10,5 @@ require ("prototypes.recipes")
 require ("prototypes.items")
 require ("prototypes.entities")
 require ("prototypes.signals")
+require ("prototypes.hotkeys")
 flib = nil

@@ -18,4 +18,5 @@ require "script.stop-update"
 require "script.dispatcher"
 require "script.stop-events"
 require "script.train-events"
+require "script.hotkey-events"
 require "script.init" -- requires other modules loaded first
