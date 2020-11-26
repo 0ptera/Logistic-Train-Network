@@ -276,9 +276,10 @@ function TrainLeaves(trainID)
   global.StoppedTrains[trainID] = nil
 end
 
+-- local reverse_defines = require('__flib__.reverse-defines')
 
 function OnTrainStateChanged(event)
-  -- log("(OnTrainStateChanged) Train name: "..tostring(Get_Train_Name(event.train))..", train.id:"..tostring(event.train.id).." stop: "..tostring(event.train.station and event.train.station.backer_name)..", state: "..tostring(event.old_state).." > "..tostring(event.train.state))
+  -- log(game.tick.." (OnTrainStateChanged) Train name: "..tostring(Get_Train_Name(event.train))..", train.id:"..tostring(event.train.id).." stop: "..tostring(event.train.station and event.train.station.backer_name)..", state: "..reverse_defines.train_state[event.old_state].." > "..reverse_defines.train_state[event.train.state] )
   local train = event.train
   if train.state == defines.train_state.wait_station and train.station ~= nil and ltn_stop_entity_names[train.station.name] then
     TrainArrives(train)

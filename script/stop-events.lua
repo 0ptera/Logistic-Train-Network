@@ -111,7 +111,7 @@ function CreateStop(entity)
   lampctrl.destructible = false -- don't bother checking if alive
 
   -- connect lamp and control
-  lampctrl.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}}
+  lampctrl.get_control_behavior().parameters = {{index = 1, signal = {type="virtual",name="signal-white"}, count = 1 }}
   input.connect_neighbour({target_entity=lampctrl, wire=defines.wire_type.green})
   input.connect_neighbour({target_entity=lampctrl, wire=defines.wire_type.red})
   input.get_or_create_control_behavior().use_colors = true

@@ -378,7 +378,7 @@ end
 function setLamp(trainStop, color, count)
   -- skip invalid stops and colors
   if trainStop and trainStop.lamp_control.valid and ColorLookup[color] then
-    trainStop.lamp_control.get_control_behavior().parameters = {parameters={{index = 1, signal = {type="virtual",name=ColorLookup[color]}, count = count }}}
+    trainStop.lamp_control.get_control_behavior().parameters = {{index = 1, signal = {type="virtual",name=ColorLookup[color]}, count = count }}
     return true
   end
   return false
@@ -501,7 +501,7 @@ function UpdateStopOutput(trainStop)
       if message_level >= 1 then printmsg({"ltn-message.error-stop-output-truncated", tostring(trainStop.entity.backer_name), tostring(trainStop.parked_train), trainStop.output.get_control_behavior().signals_count, index-#signals}, trainStop.entity.force) end
       if debug_log then log("(UpdateStopOutput) Inventory of train "..tostring(trainStop.parked_train.id).." at stop "..tostring(trainStop.entity.backer_name).." exceeds stop output limit of "..trainStop.output.get_control_behavior().signals_count.." by "..index-#signals.." signals.") end
     end
-    trainStop.output.get_control_behavior().parameters = {parameters=signals}
+    trainStop.output.get_control_behavior().parameters = signals
     if debug_log then log("(UpdateStopOutput) Updating signals for "..tostring(trainStop.entity.backer_name)..": train "..tostring(trainStop.parked_train.id)..": "..index.." signals") end
   else
     trainStop.output.get_control_behavior().parameters = nil
