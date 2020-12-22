@@ -399,7 +399,7 @@ function UpdateStopOutput(trainStop)
     local carriages = trainStop.parked_train.carriages
     local encoded_positions_by_name = {}
     local encoded_positions_by_type = {}
-    local inventory = trainStop.parked_train.get_contents() or {}
+    local inventory = {}
     local fluidInventory = trainStop.parked_train.get_fluid_contents() or {}
 
     if #carriages < 32 then --prevent circuit network integer overflow error
