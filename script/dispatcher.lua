@@ -58,13 +58,21 @@ function OnTick(event)
     local activeDeliveryTrains = ""
     for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
       if not(delivery.train and delivery.train.valid) then
-        if message_level >= 1 then printmsg({"ltn-message.delivery-removed-train-invalid", delivery.from, delivery.to}, delivery.force, false) end
+        local from_entity = global.LogisticTrainStops[delivery.from_id].entity
+        local from_gps = format("%s [gps=%s,%s,%s]", delivery.from, from_entity.position["x"], from_entity.position["y"], from_entity.surface.name)
+        local to_entity = global.LogisticTrainStops[delivery.to_id].entity
+        local to_gps = format("%s [gps=%s,%s,%s]", delivery.to, to_entity.position["x"], to_entity.position["y"], to_entity.surface.name)
+        if message_level >= 1 then printmsg({"ltn-message.delivery-removed-train-invalid", from_gps, to_gps}, delivery.force, false) end
         if debug_log then log("(OnTick) Delivery from "..delivery.from.." to "..delivery.to.." removed. Train no longer valid.") end
 
         script.raise_event(on_delivery_failed_event, {train_id = trainID, shipment = delivery.shipment})
         RemoveDelivery(trainID)
       elseif tick-delivery.started > delivery_timeout then
-        if message_level >= 1 then printmsg({"ltn-message.delivery-removed-timeout", delivery.from, delivery.to, tick-delivery.started}, delivery.force, false) end
+        local from_entity = global.LogisticTrainStops[delivery.from_id].entity
+        local from_gps = format("%s [gps=%s,%s,%s]", delivery.from, from_entity.position["x"], from_entity.position["y"], from_entity.surface.name)
+        local to_entity = global.LogisticTrainStops[delivery.to_id].entity
+        local to_gps = format("%s [gps=%s,%s,%s]", delivery.to, to_entity.position["x"], to_entity.position["y"], to_entity.surface.name)
+        if message_level >= 1 then printmsg({"ltn-message.delivery-removed-timeout", from_gps, to_gps, tick-delivery.started}, delivery.force, false) end
         if debug_log then log("(OnTick) Delivery from "..delivery.from.." to "..delivery.to.." removed. Timed out after "..tick-delivery.started.."/"..delivery_timeout.." ticks.") end
 
         script.raise_event(on_delivery_failed_event, {train_id = trainID, shipment = delivery.shipment})
@@ -433,8 +441,10 @@ function ProcessRequest(reqIndex, request)
     return nil
   end
 
+  local surface_name = requestStation.entity.surface.name
   local to = requestStation.entity.backer_name
   local toRail = requestStation.entity.connected_rail
+  local to_gps = format("%s [gps=%s,%s,%s]",to, requestStation.entity.position["x"], requestStation.entity.position["y"], surface_name)
   local to_network_id_string = format("0x%x", band(requestStation.network_id))
   local item = request.item
   local count = request.count
@@ -492,8 +502,8 @@ function ProcessRequest(reqIndex, request)
   -- get providers ordered by priority
   local providers = getProviders(requestStation, item, count, min_carriages, max_carriages)
   if not providers or #providers < 1 then
-    if requestStation.no_warnings == false and message_level >= 1 then printmsg({"ltn-message.no-provider-found", localname, to_network_id_string}, requestForce, true) end
-    if debug_log then log("No station supplying "..item.." found.") end
+    if requestStation.no_warnings == false and message_level >= 1 then printmsg({"ltn-message.no-provider-found", to_gps, localname, to_network_id_string}, requestForce, true) end
+    if debug_log then log(format("No supply of %s found for Requester %s: surface: %s min length: %s, max length: %s, network-ID: %s", item, to, surface_name, min_carriages, max_carriages, to_network_id_string) ) end
     -- goto skipRequestItem
     return nil
   end
@@ -502,9 +512,10 @@ function ProcessRequest(reqIndex, request)
   local fromID = providerData.entity.unit_number
   local fromRail = providerData.entity.connected_rail
   local from = providerData.entity.backer_name
+  local from_gps = format("%s [gps=%s,%s,%s]", from, providerData.entity.position["x"], providerData.entity.position["y"], surface_name)
   local matched_network_id_string = format("0x%x", band(providerData.network_id))
 
-  if message_level >= 3 then printmsg({"ltn-message.provider-found", from, tostring(providerData.priority), tostring(providerData.activeDeliveryCount), providerData.count, localname}, requestForce, true) end
+  if message_level >= 3 then printmsg({"ltn-message.provider-found", from_gps, tostring(providerData.priority), tostring(providerData.activeDeliveryCount), providerData.count, localname}, requestForce, true) end
   -- if debug_log then
     -- for n, provider in pairs (providers) do
       -- log("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(provider.activeDeliveryCount).." deliveries, "..tostring(provider.count).." "..item.." available.")
@@ -567,7 +578,7 @@ function ProcessRequest(reqIndex, request)
   local selectedTrain, trainInventorySize = getFreeTrain(providerData, min_carriages, max_carriages, loadingList[1].type, totalStacks)
   if not selectedTrain or not trainInventorySize then
     create_alert(requestStation.entity, "depot-empty", {"ltn-message.no-train-found", from, to, matched_network_id_string, tostring(min_carriages), tostring(max_carriages) }, requestForce)
-    if message_level >= 1 then printmsg({"ltn-message.no-train-found", from, to, matched_network_id_string, tostring(min_carriages), tostring(max_carriages) }, requestForce, true) end
+    if message_level >= 1 then printmsg({"ltn-message.no-train-found", from_gps, to_gps, matched_network_id_string, tostring(min_carriages), tostring(max_carriages) }, requestForce, true) end
     if debug_log then log("No train with "..tostring(min_carriages).." <= length <= "..tostring(max_carriages).." to transport "..tostring(totalStacks).." stacks from "..from.." to "..to.." in network "..matched_network_id_string.." found in Depot.") end
     script.raise_event(on_dispatcher_no_train_found_event, { to = to, to_id = toID, from = from, from_id = fromID, network_id = requestStation.network_id, min_carriages = min_carriages, max_carriages = max_carriages, shipment = loadingList,
     })
@@ -606,9 +617,9 @@ function ProcessRequest(reqIndex, request)
   -- create delivery
   if message_level >= 2 then
     if #loadingList == 1 then
-      printmsg({"ltn-message.creating-delivery", from, to, loadingList[1].count, loadingList[1].localname}, requestForce)
+      printmsg({"ltn-message.creating-delivery", from_gps, to_gps, loadingList[1].count, loadingList[1].localname}, requestForce)
     else
-      printmsg({"ltn-message.creating-delivery-merged", from, to, totalStacks}, requestForce)
+      printmsg({"ltn-message.creating-delivery-merged", from_gps, to_gps, totalStacks}, requestForce)
     end
   end
 
@@ -643,7 +654,7 @@ function ProcessRequest(reqIndex, request)
 
     -- subtract Delivery from Provided items and check thresholds
     global.Dispatcher.Provided[loadingListItem][fromID] = global.Dispatcher.Provided[loadingListItem][fromID] - loadingList[i].count
-    local new_provided = global.Dispatcher.Provided[loadingListItem][fromID] - loadingList[i].count
+    local new_provided = global.Dispatcher.Provided[loadingListItem][fromID]
     local new_provided_stacks = 0
     local useProvideStackThreshold = false
     if loadingList[i].type == "item" then

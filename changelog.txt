@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.15.1
+Date: 2021-02-03
+  Features:
+    - added gps rich-text to station names in chat #246
+    - increased verbosity of no-provider-found logfile entry #244
+  Bugfixes:
+    - subtracted delivery from providers twice #250
+---------------------------------------------------------------------------------------------------
 Version: 1.15.0
 Date: 2020-11-26
   Features:
