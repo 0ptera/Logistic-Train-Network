@@ -58,21 +58,30 @@ function OnTick(event)
     local activeDeliveryTrains = ""
     for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
       if not(delivery.train and delivery.train.valid) then
-        local from_entity = global.LogisticTrainStops[delivery.from_id].entity
-        local from_gps = format("%s [gps=%s,%s,%s]", delivery.from, from_entity.position["x"], from_entity.position["y"], from_entity.surface.name)
-        local to_entity = global.LogisticTrainStops[delivery.to_id].entity
-        local to_gps = format("%s [gps=%s,%s,%s]", delivery.to, to_entity.position["x"], to_entity.position["y"], to_entity.surface.name)
-        if message_level >= 1 then printmsg({"ltn-message.delivery-removed-train-invalid", from_gps, to_gps}, delivery.force, false) end
+        local from_entity = global.LogisticTrainStops[delivery.from_id] and global.LogisticTrainStops[delivery.from_id].entity
+        local to_entity = global.LogisticTrainStops[delivery.to_id] and global.LogisticTrainStops[delivery.to_id].entity
+        if message_level >= 1 then
+          printmsg({
+            "ltn-message.delivery-removed-train-invalid",
+            MakeGpsString(from_entity, delivery.from),
+            MakeGpsString(to_entity, delivery.to)
+          }, delivery.force, false)
+        end
         if debug_log then log("(OnTick) Delivery from "..delivery.from.." to "..delivery.to.." removed. Train no longer valid.") end
 
         script.raise_event(on_delivery_failed_event, {train_id = trainID, shipment = delivery.shipment})
         RemoveDelivery(trainID)
       elseif tick-delivery.started > delivery_timeout then
-        local from_entity = global.LogisticTrainStops[delivery.from_id].entity
-        local from_gps = format("%s [gps=%s,%s,%s]", delivery.from, from_entity.position["x"], from_entity.position["y"], from_entity.surface.name)
-        local to_entity = global.LogisticTrainStops[delivery.to_id].entity
-        local to_gps = format("%s [gps=%s,%s,%s]", delivery.to, to_entity.position["x"], to_entity.position["y"], to_entity.surface.name)
-        if message_level >= 1 then printmsg({"ltn-message.delivery-removed-timeout", from_gps, to_gps, tick-delivery.started}, delivery.force, false) end
+        local from_entity = global.LogisticTrainStops[delivery.from_id] and global.LogisticTrainStops[delivery.from_id].entity
+        local to_entity = global.LogisticTrainStops[delivery.to_id] and global.LogisticTrainStops[delivery.to_id].entity
+        if message_level >= 1 then
+          printmsg({
+            "ltn-message.delivery-removed-timeout",
+            MakeGpsString(from_entity, delivery.from),
+            MakeGpsString(to_entity, delivery.to),
+            tick-delivery.started
+          }, delivery.force, false)
+        end
         if debug_log then log("(OnTick) Delivery from "..delivery.from.." to "..delivery.to.." removed. Timed out after "..tick-delivery.started.."/"..delivery_timeout.." ticks.") end
 
         script.raise_event(on_delivery_failed_event, {train_id = trainID, shipment = delivery.shipment})
@@ -444,7 +453,7 @@ function ProcessRequest(reqIndex, request)
   local surface_name = requestStation.entity.surface.name
   local to = requestStation.entity.backer_name
   local toRail = requestStation.entity.connected_rail
-  local to_gps = format("%s [gps=%s,%s,%s]",to, requestStation.entity.position["x"], requestStation.entity.position["y"], surface_name)
+  local to_gps = MakeGpsString(requestStation.entity, to)
   local to_network_id_string = format("0x%x", band(requestStation.network_id))
   local item = request.item
   local count = request.count
@@ -512,7 +521,7 @@ function ProcessRequest(reqIndex, request)
   local fromID = providerData.entity.unit_number
   local fromRail = providerData.entity.connected_rail
   local from = providerData.entity.backer_name
-  local from_gps = format("%s [gps=%s,%s,%s]", from, providerData.entity.position["x"], providerData.entity.position["y"], surface_name)
+  local from_gps = MakeGpsString(providerData.entity, from)
   local matched_network_id_string = format("0x%x", band(providerData.network_id))
 
   if message_level >= 3 then printmsg({"ltn-message.provider-found", from_gps, tostring(providerData.priority), tostring(providerData.activeDeliveryCount), providerData.count, localname}, requestForce, true) end

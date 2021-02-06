@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.15.2
+Date: 2021-02-06
+  Bugfixes:
+    - delivery timout messages accessed position data of stop entities without checking validity #251
+---------------------------------------------------------------------------------------------------
 Version: 1.15.1
 Date: 2021-02-03
   Features:

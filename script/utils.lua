@@ -39,3 +39,12 @@ function GetTrainCapacity(train)
   return inventorySize, fluidCapacity
 end
 
+-- returns gps string from entity or just string if entity is invalid
+function MakeGpsString(entity, name)
+  if entity and entity.valid then
+    return format("%s [gps=%s,%s,%s]", name, entity.position["x"], entity.position["y"], entity.surface.name)
+  else
+    return name
+  end
+end
+
