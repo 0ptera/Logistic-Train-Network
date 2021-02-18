@@ -62,25 +62,25 @@ function CreateStop(entity)
     if ghost.valid then
       if ghost.name == "entity-ghost" then
         if ghost.ghost_name == ltn_stop_input then
-          -- printmsg("reviving ghost input at "..ghost.position.x..", "..ghost.position.y)
+          -- log("reviving ghost input at "..ghost.position.x..", "..ghost.position.y)
           _, input = ghost.revive()
         elseif ghost.ghost_name == ltn_stop_output then
-          -- printmsg("reviving ghost output at "..ghost.position.x..", "..ghost.position.y)
+          -- log("reviving ghost output at "..ghost.position.x..", "..ghost.position.y)
           _, output = ghost.revive()
         elseif ghost.ghost_name == ltn_stop_output_controller then
-          -- printmsg("reviving ghost lamp-control at "..ghost.position.x..", "..ghost.position.y)
+          -- log("reviving ghost lamp-control at "..ghost.position.x..", "..ghost.position.y)
           _, lampctrl = ghost.revive()
         end
       -- something has built I/O already (e.g.) Creative Mode Instant Blueprint
       elseif ghost.name == ltn_stop_input then
         input = ghost
-        --printmsg("Found existing input at "..ghost.position.x..", "..ghost.position.y)
+        -- log("Found existing input at "..ghost.position.x..", "..ghost.position.y)
       elseif ghost.name == ltn_stop_output then
         output = ghost
-        --printmsg("Found existing output at "..ghost.position.x..", "..ghost.position.y)
+        -- log("Found existing output at "..ghost.position.x..", "..ghost.position.y)
       elseif ghost.name == ltn_stop_output_controller then
         lampctrl = ghost
-        --printmsg("Found existing lamp-control at "..ghost.position.x..", "..ghost.position.y)
+        -- log("Found existing lamp-control at "..ghost.position.x..", "..ghost.position.y)
       end
     end
   end
@@ -102,9 +102,10 @@ function CreateStop(entity)
     lampctrl = entity.surface.create_entity
     {
       name = ltn_stop_output_controller,
-      position = input.position, -- use the rounded values of actual input position
+      position = {input.position.x + 0.45, input.position.y + 0.45}, -- slight offset so adjacent lamps won't connect
       force = entity.force
     }
+    -- log("building lamp-control at "..lampctrl.position.x..", "..lampctrl.position.y)
   end
   lampctrl.operable = false -- disable gui
   lampctrl.minable = false
