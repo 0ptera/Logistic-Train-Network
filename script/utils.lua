@@ -1,5 +1,6 @@
 --[[ Copyright (c) 2017 Optera
  * Part of Logistics Train Network
+ * Control stage utility functions
  *
  * See LICENSE.md in the project directory for license information.
 --]]
@@ -41,7 +42,7 @@ end
 
 -- returns gps string from entity or just string if entity is invalid
 function MakeGpsString(entity, name)
-  if entity and entity.valid then
+  if message_include_gps and entity and entity.valid then
     return format("%s [gps=%s,%s,%s]", name, entity.position["x"], entity.position["y"], entity.surface.name)
   else
     return name

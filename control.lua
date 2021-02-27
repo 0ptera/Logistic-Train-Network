@@ -9,11 +9,11 @@ Get_Main_Locomotive = require("__flib__.train").get_main_locomotive
 Get_Train_Name = require("__flib__.train").get_backer_name
 
 require "script.constants"
-require "script.utils"
+require "script.settings"
 require "script.print"
 require "script.alert"
-require "script.settings"
-require "script.hotkey-events"
+require "script.utils" -- requires settings
+require "script.hotkey-events" -- requires print
 
 require "script.interface"
 require "script.stop-update"
