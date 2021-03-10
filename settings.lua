@@ -142,6 +142,14 @@ data:extend({
     default_value = true
   },
   {
+    type = "double-setting",
+    name = "ltn-depot-fluid-cleaning",
+    order = "db",
+    setting_type = "runtime-global",
+    default_value = 0,
+    minimum_value = 0
+  },
+  {
     type = "int-setting",
     name = "ltn-stop-default-network",
     order = "ea",

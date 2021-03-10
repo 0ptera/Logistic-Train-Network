@@ -24,7 +24,8 @@ dispatcher_nth_tick = settings.global["ltn-dispatcher-nth_tick"].value
 if dispatcher_nth_tick > 1 then
   dispatcher_updates_per_tick = 1
 end
-reset_filters = settings.global["ltn-depot-reset-filters"].value
+depot_reset_filters = settings.global["ltn-depot-reset-filters"].value
+depot_fluid_cleaning = settings.global["ltn-depot-fluid-cleaning"].value
 default_network = settings.global["ltn-stop-default-network"].value
 
 
@@ -90,7 +91,10 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
     end
   end
   if event.setting == "ltn-depot-reset-filters" then
-    reset_filters = settings.global["ltn-depot-reset-filters"].value
+    depot_reset_filters = settings.global["ltn-depot-reset-filters"].value
+  end
+  if event.setting == "ltn-depot-cleaning" then
+    depot_fluid_cleaning = settings.global["ltn-depot-fluid-cleaning"].value
   end
   if event.setting == "ltn-stop-default-network" then
     default_network = settings.global["ltn-stop-default-network"].value

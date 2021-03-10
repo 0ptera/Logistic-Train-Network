@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.15.5
+Date: 2021-03-10
+  Features:
+    - trains entering depots with cargo raise an alert
+    - trains entering depots can have fluid residue automatically removed #185
+  Changes:
+    - reset schedules at requester before raising API events #255
+---------------------------------------------------------------------------------------------------
 Version: 1.15.4
 Date: 2021-02-27
   Features:

@@ -49,6 +49,37 @@ function TrainArrives(train)
         -- remove delivery
         RemoveDelivery(train.id)
 
+        -- clean fluid residue
+        local train_items = train.get_contents()
+        local train_fluids = train.get_fluid_contents()
+        if table_size(train_fluids) > 0 and depot_fluid_cleaning > 0 then
+          -- cleaning per wagon
+          for i, wagon in pairs(train.fluid_wagons) do
+            for fluid, count in pairs(wagon.get_fluid_contents()) do
+              if count <= depot_fluid_cleaning then
+                local removed = wagon.remove_fluid({name=fluid, amount=count})
+                if debug_log then log(string.format("Train \"%s\"[%d]: removed %s %f/%f", trainName, i, fluid, removed, count)) end
+              end
+            end
+          end
+          -- cleaning whole train doesn't work in 1.1.26
+          -- for fluid, count in pairs(train_fluids) do
+          --   if count <= depot_fluid_cleaning then
+          --     local removed = train.remove_fluid({name=fluid, amount=count})
+          --     log(string.format("Train %s: removed %s %f/%f", trainName, fluid, removed, count))
+          --   end
+          -- end
+          train_fluids = train.get_fluid_contents()
+        end
+
+        -- check for leftover cargo
+        if table_size(train_items) > 0 then
+          create_alert(stop.entity, "cargo-warning", {"ltn-message.depot_left_over_cargo", trainName, stop_name}, trainForce)
+        end
+        if table_size(train_items) > 0 then
+          create_alert(stop.entity, "cargo-warning", {"ltn-message.depot_left_over_cargo", trainName, stop_name}, trainForce)
+        end
+
         -- make train available for new deliveries
         local capacity, fluid_capacity = GetTrainCapacity(train)
         global.Dispatcher.availableTrains[train.id] = {
@@ -70,18 +101,18 @@ function TrainArrives(train)
         setLamp(stop, "blue", 1)
 
         -- reset filters and bars
-        if reset_filters and train.cargo_wagons then
+        if depot_reset_filters and train.cargo_wagons then
         for n,wagon in pairs(train.cargo_wagons) do
           local inventory = wagon.get_inventory(defines.inventory.cargo_wagon)
           if inventory then
             if inventory.is_filtered() then
-              log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory).." filtered slots.")
+              -- log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory).." filtered slots.")
               for slotIndex=1, #inventory, 1 do
                 inventory.set_filter(slotIndex, nil)
               end
             end
             if inventory.supports_bar and #inventory - inventory.get_bar() > 0 then
-              log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory - inventory.get_bar()).." locked slots.")
+              -- log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory - inventory.get_bar()).." locked slots.")
               inventory.set_bar()
             end
           end
@@ -222,6 +253,13 @@ function TrainLeaves(trainID)
         delivery.shipment = actual_load
 
       elseif delivery.to_id == stop.entity.unit_number then
+        -- reset schedule before API events
+        if requester_delivery_reset then
+          local schedule = {current = 1, records = {}}
+          schedule.records[1] = NewScheduleRecord(train.schedule.records[1].station, "inactivity", depot_inactivity)
+          train.schedule = schedule
+        end
+
         local remaining_load = {}
         local requester_left_over_cargo = false
         local train_items = train.get_contents()
@@ -247,13 +285,6 @@ function TrainLeaves(trainID)
         end
         script.raise_event(on_delivery_completed_event, {train_id = trainID, shipment = delivery.shipment})
         global.Dispatcher.Deliveries[trainID] = nil
-
-        -- reset schedule when ltn-dispatcher-early-schedule-reset is active
-        if requester_delivery_reset then
-          local schedule = {current = 1, records = {}}
-          schedule.records[1] = NewScheduleRecord(train.schedule.records[1].station, "inactivity", depot_inactivity)
-          train.schedule = schedule
-        end
       else
         if debug_log then log("(TrainLeaves) Train ["..trainID.."] "..tostring(stoppedTrain.name).." left Stop ["..stopID.."] "..stop.entity.backer_name) end
       end
