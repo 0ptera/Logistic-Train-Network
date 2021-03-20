@@ -122,16 +122,14 @@ function UpdateStop(stopID, stop)
   local signals = stop.input.get_merged_signals()
   if not signals then return end -- either lamp and lampctrl are not connected or lampctrl has no output signal
 
-  -- log(stop.entity.backer_name.." signals: "..serpent.block(signals))
-
   local signals_filtered = {}
   local signal_type_virtual = "virtual"
   local abs = math.abs
 
   for _,v in pairs(signals) do
-      if v.signal.type ~= signal_type_virtual then
+      if v.signal.name and v.signal.type and v.signal.type ~= signal_type_virtual then
         -- add item and fluid signals to new array
-        signals_filtered[#signals_filtered+1] = v
+        signals_filtered[v.signal] = v.count
       elseif ControlSignals[v.signal.name] then
         -- read out control signals
         if v.signal.name == ISDEPOT and v.count > 0 then
@@ -166,12 +164,6 @@ function UpdateStop(stopID, stop)
       end
   end
   local network_id_string = format("0x%x", band(network_id))
-
-  -- log(stop.entity.backer_name.." filtered signals: "..serpent.block(signals_filtered))
-  -- log("Control Signals: is_depot:"..tostring(is_depot).." network_id:"..network_id.." network_id_string:"..network_id_string
-  -- .." min_carriages:"..min_carriages.." max_carriages:"..max_carriages.." max_trains:"..max_trains
-  -- .." requesting_threshold:"..requesting_threshold.." requester_priority:"..requester_priority.." no_warnings:"..tostring(no_warnings)
-  -- .." providing_threshold:"..providing_threshold.." provider_priority:"..provider_priority.." locked_slots:"..locked_slots)
 
   --update lamp colors when error_code or is_depot changed state
   if stop.error_code ~=0 or stop.is_depot ~= is_depot then
@@ -254,14 +246,10 @@ function UpdateStop(stopID, stop)
       remove_available_train(stop.parked_train_id)
     end
 
-    -- global.Dispatcher.Provided_by_Stop[stopID] = {} -- Provided_by_Stop = {[stopID], {[item], count} }
-    -- global.Dispatcher.Requests_by_Stop[stopID] = {} -- Requests_by_Stop = {[stopID], {[item], count} }
-
-    for i = 1, #signals_filtered, 1 do
-      local signal_type = signals_filtered[i].signal.type
-      local signal_name = signals_filtered[i].signal.name
+    for signal, count in pairs(signals_filtered) do
+      local signal_type = signal.type
+      local signal_name = signal.name
       local item = signal_type..","..signal_name
-      local count = signals_filtered[i].count
 
       for trainID, delivery in pairs (global.Dispatcher.Deliveries) do
         local deliverycount = delivery.shipment[item]
