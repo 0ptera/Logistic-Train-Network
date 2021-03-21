@@ -1,6 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.15.7
+Date: 2021-03-21
+  Bugfixes:
+    - also check signal.name and signal.type for virtual signals
+---------------------------------------------------------------------------------------------------
 Version: 1.15.6
-Date: 2021-03-10
+Date: 2021-03-20
   Bugfixes:
     - skip over nil signal.name or signal.type, how can a signal name be nil in the first place?
 ---------------------------------------------------------------------------------------------------

@@ -127,7 +127,8 @@ function UpdateStop(stopID, stop)
   local abs = math.abs
 
   for _,v in pairs(signals) do
-      if v.signal.name and v.signal.type and v.signal.type ~= signal_type_virtual then
+    if v.signal.name and v.signal.type then
+      if v.signal.type ~= signal_type_virtual then
         -- add item and fluid signals to new array
         signals_filtered[v.signal] = v.count
       elseif ControlSignals[v.signal.name] then
@@ -162,6 +163,7 @@ function UpdateStop(stopID, stop)
           locked_slots = v.count
         end
       end
+    end
   end
   local network_id_string = format("0x%x", band(network_id))
 
