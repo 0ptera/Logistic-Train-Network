@@ -319,14 +319,14 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
   end
   -- sort best matching station to the top
   sort(stations, function(a, b)
-      if a.priority ~= b.priority then --sort by priority, will result in train queues if trainlimit is not set
-        return a.priority > b.priority
-      elseif a.activeDeliveryCount ~= b.activeDeliveryCount then --sort by #deliveries
-        return a.activeDeliveryCount < b.activeDeliveryCount
-      else
-        return a.count > b.count --finally sort by item count
-      end
-    end)
+    if a.priority ~= b.priority then --sort by priority, will result in train queues if trainlimit is not set
+      return a.priority > b.priority
+    elseif a.activeDeliveryCount ~= b.activeDeliveryCount then --sort by #deliveries
+      return a.activeDeliveryCount < b.activeDeliveryCount
+    else
+      return a.count > b.count --finally sort by item count
+    end
+  end)
   return stations
 end
 
@@ -343,19 +343,11 @@ local function getStationDistance(stationA, stationB)
   end
 end
 
--- returns: available train with smallest suitable inventory or largest available inventory
---          capacity of train - locked slots of provider
--- if min_carriages is set, number of locos + wagons has to be bigger
--- if max_carriages is set, number of locos + wagons has to be smaller
-local function getFreeTrain(nextStop, min_carriages, max_carriages, type, size)
-  local result_train = nil
-  local result_train_capacity = nil
-  if min_carriages == nil or min_carriages < 0 then min_carriages = 0 end
-  if max_carriages == nil or max_carriages < 0 then max_carriages = 0 end
-  local largestInventory = 0
-  local smallestInventory = 0
-  local minDistance = math.huge
-  local maxPriority = -math.huge
+-- returns: available trains in depots or nil
+--          filtered by NetworkID, carriages and surface
+--          sorted by priority, capacity - locked slots and distance to provider
+local function getFreeTrains(nextStop, min_carriages, max_carriages, type, size)
+  local filtered_trains = {}
   for trainID, trainData in pairs (global.Dispatcher.availableTrains) do
     if trainData.train.valid and trainData.train.station and trainData.train.station.valid then
       local depot_network_id_string -- filled only when debug_log is enabled
@@ -371,62 +363,28 @@ local function getFreeTrain(nextStop, min_carriages, max_carriages, type, size)
       if debug_log then
         depot_network_id_string = format("0x%x", band(trainData.network_id) )
         dest_network_id_string = format("0x%x", band(nextStop.network_id) )
-        log("checking train "..tostring(Get_Train_Name(trainData.train))..
+        log("(getFreeTrain) checking train "..tostring(Get_Train_Name(trainData.train))..
           ", force "..tostring(trainData.force.name).."/"..tostring(nextStop.entity.force.name)..
           ", network "..depot_network_id_string.."/"..dest_network_id_string..
-          ", priority "..trainData.depot_priority..
+          ", priority: "..trainData.depot_priority..
           ", length: "..min_carriages.."<="..#trainData.train.carriages.."<="..max_carriages..
           ", inventory size: "..inventorySize.."/"..size..
           ", distance: "..getStationDistance(trainData.train.station, nextStop.entity) )
       end
 
-      if trainData.force == nextStop.entity.force -- forces match
-      and trainData.surface == nextStop.entity.surface
+      if inventorySize > 0 -- sending trains without inventory on deliveries would be pointless
+      and trainData.force == nextStop.entity.force -- forces match
+      and trainData.surface == nextStop.entity.surface -- pathing between surfaces is impossible
       and btest(trainData.network_id, nextStop.network_id) -- depot is in the same network as requester and provider
-      and (min_carriages == 0 or #trainData.train.carriages >= min_carriages) and (max_carriages == 0 or #trainData.train.carriages <= max_carriages) -- train length fits
-      and maxPriority <= trainData.depot_priority
+      and (min_carriages == 0 or #trainData.train.carriages >= min_carriages) and (max_carriages == 0 or #trainData.train.carriages <= max_carriages) -- train length fits requester and provider limitations
       then
         local distance = getStationDistance(trainData.train.station, nextStop.entity)
-        if inventorySize >= size then
-          -- train can be used for whole delivery
-          if inventorySize < smallestInventory
-          or (inventorySize == smallestInventory and distance < minDistance)
-          or smallestInventory == 0 then
-            maxPriority = trainData.depot_priority
-            minDistance = distance
-            smallestInventory = inventorySize
-            result_train = trainData.train
-            result_train_capacity = inventorySize
-            if debug_log then
-              log("(getFreeTrain) found train "..tostring(Get_Train_Name(trainData.train))..
-              ", network: "..depot_network_id_string..
-              ", priority: "..trainData.depot_priority..
-              ", length: "..min_carriages.."<="..#trainData.train.carriages.."<="..max_carriages..
-              ", inventory size: "..inventorySize.."/"..size..
-              ", distance: "..distance )
-            end
-          end
-        elseif smallestInventory == 0 and inventorySize > 0 then
-          -- train can be used for partial delivery, use only when no trains for whole delivery available
-          if inventorySize > largestInventory
-          or (inventorySize == largestInventory and distance < minDistance)
-          or largestInventory == 0 then
-            maxPriority = trainData.depot_priority
-            minDistance = distance
-            largestInventory = inventorySize
-            result_train = trainData.train
-            result_train_capacity = inventorySize
-            if debug_log then
-              log("(getFreeTrain) found train "..tostring(Get_Train_Name(trainData.train))..
-              ", network: "..depot_network_id_string..
-              ", priority: "..trainData.depot_priority..
-              ", length: "..min_carriages.."<="..#trainData.train.carriages.."<="..max_carriages..
-              ", inventory size: "..inventorySize.."/"..size..
-              ", distance: "..distance )
-            end
-          end
-        end
-
+        filtered_trains[#filtered_trains+1] = {
+          train = trainData.train,
+          inventory_size = inventorySize,
+          depot_priority = trainData.depot_priority,
+          provider_distance = distance,
+        }
       end
     else
       -- remove invalid train from global.Dispatcher.availableTrains
@@ -436,7 +394,30 @@ local function getFreeTrain(nextStop, min_carriages, max_carriages, type, size)
     end
   end
 
-  return result_train, result_train_capacity
+  -- return nil instead of empty table
+  if next(filtered_trains) == nil then return nil end
+
+  -- sort best matching train to top
+  sort(filtered_trains, function(a, b)
+    if a.depot_priority ~= b.depot_priority then
+      --sort by priority
+      return a.depot_priority > b.depot_priority
+    elseif a.inventory_size ~= b.inventory_size and a.inventory_size >= size then
+      --sort inventories capable of whole deliveries
+      -- return not(b.inventory_size => size and a.inventory_size > b.inventory_size)
+      return b.inventory_size < size or a.inventory_size < b.inventory_size
+    elseif a.inventory_size ~= b.inventory_size and a.inventory_size < size then
+      --sort inventories for partial deliveries
+      -- return not(b.inventory_size >= size or b.inventory_size > a.inventory_size)
+      return b.inventory_size < size and b.inventory_size < a.inventory_size
+    else
+      -- sort by distance to provider
+      return a.provider_distance < b.provider_distance
+    end
+  end)
+  if debug_log then log ("(getFreeTrain) sorted trains: "..serpent.block(filtered_trains)) end
+
+  return filtered_trains
 end
 
 -- parse single request from global.Dispatcher.Request={stopID, item, age, count}
@@ -556,7 +537,7 @@ function ProcessRequest(reqIndex, request)
   local totalStacks = stacks
   if debug_log then log("created new order "..from.." >> "..to..": "..deliverySize.." "..item.." in "..stacks.."/"..totalStacks.." stacks, min length: "..min_carriages.." max length: "..max_carriages) end
 
-  -- find possible mergable items, fluids can't be merged in a sane way
+  -- find possible mergeable items, fluids can't be merged in a sane way
   if itype ~= "fluid" then
     for merge_item, merge_count_req in pairs(global.Dispatcher.Requests_by_Stop[toID]) do
       local merge_type, merge_name = match(merge_item, match_string)
@@ -584,8 +565,8 @@ function ProcessRequest(reqIndex, request)
   end
 
   -- find train
-  local selectedTrain, trainInventorySize = getFreeTrain(providerData, min_carriages, max_carriages, loadingList[1].type, totalStacks)
-  if not selectedTrain or not trainInventorySize then
+  local free_trains = getFreeTrains(providerData, min_carriages, max_carriages, itype, totalStacks)
+  if not free_trains then
     create_alert(requestStation.entity, "depot-empty", {"ltn-message.no-train-found", from, to, matched_network_id_string, tostring(min_carriages), tostring(max_carriages) }, requestForce)
     if message_level >= 1 then printmsg({"ltn-message.no-train-found", from_gps, to_gps, matched_network_id_string, tostring(min_carriages), tostring(max_carriages) }, requestForce, true) end
     if debug_log then log("No train with "..tostring(min_carriages).." <= length <= "..tostring(max_carriages).." to transport "..tostring(totalStacks).." stacks from "..from.." to "..to.." in network "..matched_network_id_string.." found in Depot.") end
@@ -595,13 +576,16 @@ function ProcessRequest(reqIndex, request)
     return nil
   end
 
+  local selectedTrain = free_trains[1].train
+  local trainInventorySize = free_trains[1].inventory_size
+
   if message_level >= 3 then printmsg({"ltn-message.train-found", from, to, matched_network_id_string, tostring(trainInventorySize), tostring(totalStacks) }, requestForce) end
   if debug_log then log("Train to transport "..tostring(trainInventorySize).."/"..tostring(totalStacks).." stacks from "..from.." to "..to.." in network "..matched_network_id_string.." found in Depot.") end
 
   -- recalculate delivery amount to fit in train
   if trainInventorySize < totalStacks then
     -- recalculate partial shipment
-    if loadingList[1].type == "fluid" then
+    if itype == "fluid" then
       -- fluids are simple
       loadingList[1].count = trainInventorySize
     else

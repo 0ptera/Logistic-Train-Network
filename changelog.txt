@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.16.0
+Date: 2021-03-26
+  Changes:
+    - find free trains using table.sort
+  Bugfixes:
+    - depot priority should be properly working now
+---------------------------------------------------------------------------------------------------
 Version: 1.15.7
 Date: 2021-03-21
   Bugfixes:
