@@ -28,7 +28,7 @@ ltn_stop_in.energy_source = {type="void"}
 
 local ltn_stop_out = flib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"],"logistic-train-stop-output")
 ltn_stop_out.icon = "__LogisticTrainNetwork__/graphics/icons/output.png"
-ltn_stop_out.icon_size = 32
+ltn_stop_out.icon_size = 64
 ltn_stop_out.icon_mipmaps = nil
 ltn_stop_out.next_upgrade = nil
 ltn_stop_out.minable = nil
@@ -43,7 +43,7 @@ ltn_stop_out.sprites = make_4way_animation_from_spritesheet(
       {
         filename = "__LogisticTrainNetwork__/graphics/entity/output.png",
         width = 58,
-        height = 52,
+        height = 51,
         frame_count = 1,
         shift = util.by_pixel(0, 5),
         hr_version =
