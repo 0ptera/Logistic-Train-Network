@@ -6,7 +6,7 @@
 
 local flib = require('__flib__.data-util')
 
-local icon_encoded_position = { { icon = "__LogisticTrainNetwork__/graphics/icons/encoded-position.png", icon_size = 32, tint = {r=1, g=1, b=1, a=1} } }
+local icon_encoded_position = { { icon = "__LogisticTrainNetwork__/graphics/icons/encoded-position.png", icon_size = 64, tint = {r=1, g=1, b=1, a=1} } }
 
 local lococount = 0
 for _, loco in pairs(data.raw["locomotive"]) do
