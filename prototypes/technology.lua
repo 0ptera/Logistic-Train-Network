@@ -8,8 +8,9 @@ data:extend({
   {
     type = "technology",
     name = "logistic-train-network",
-    icon = "__LogisticTrainNetwork__/thumbnail.png",
-    icon_size = 144,
+    icon = "__LogisticTrainNetwork__/graphics/technology/ltn_technology.png",
+    icon_size = 256,
+    icon_mipmaps = 4,
     prerequisites = {"automated-rail-transportation", "circuit-network"},
     effects =
     {
