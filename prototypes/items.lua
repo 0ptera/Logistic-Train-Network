@@ -16,7 +16,7 @@ ltn_stop_in.flags = {"hidden"}
 local ltn_stop_out = flib.copy_prototype(data.raw["item"]["constant-combinator"],"logistic-train-stop-output")
 ltn_stop_out.flags = {"hidden"}
 ltn_stop_out.icon = "__LogisticTrainNetwork__/graphics/icons/output.png"
-ltn_stop_out.icon_size = 32
+ltn_stop_out.icon_size = 64
 ltn_stop_out.icon_mipmaps = nil
 
 local ltn_lamp_control = flib.copy_prototype(data.raw["item"]["constant-combinator"],"logistic-train-stop-lamp-control")
