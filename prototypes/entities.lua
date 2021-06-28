@@ -43,7 +43,7 @@ ltn_stop_out.sprites = make_4way_animation_from_spritesheet(
       {
         filename = "__LogisticTrainNetwork__/graphics/entity/output.png",
         width = 58,
-        height = 51,
+        height = 52,
         frame_count = 1,
         shift = util.by_pixel(0, 5),
         hr_version =
