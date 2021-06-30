@@ -93,7 +93,7 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if event.setting == "ltn-depot-reset-filters" then
     depot_reset_filters = settings.global["ltn-depot-reset-filters"].value
   end
-  if event.setting == "ltn-depot-cleaning" then
+  if event.setting == "ltn-depot-fluid-cleaning" then
     depot_fluid_cleaning = settings.global["ltn-depot-fluid-cleaning"].value
   end
   if event.setting == "ltn-stop-default-network" then

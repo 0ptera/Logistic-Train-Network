@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.16.3
+Date: 2021-06-30
+  Bugfixes:
+    - changes to ltn-depot-fluid-cleaning where not applied #269
+    - trains entering depots with fluids also raise an alert
+---------------------------------------------------------------------------------------------------
 Version: 1.16.2
 Date: 2021-06-28
   Bugfixes:

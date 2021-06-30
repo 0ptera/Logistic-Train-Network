@@ -58,7 +58,7 @@ function TrainArrives(train)
             for fluid, count in pairs(wagon.get_fluid_contents()) do
               if count <= depot_fluid_cleaning then
                 local removed = wagon.remove_fluid({name=fluid, amount=count})
-                if debug_log then log(string.format("Train \"%s\"[%d]: removed %s %f/%f", trainName, i, fluid, removed, count)) end
+                if debug_log then log(string.format("Train \"%s\"[%d]: Depot fluid removal %s %f/%f", trainName, i, fluid, removed, count)) end
               end
             end
           end
@@ -76,7 +76,7 @@ function TrainArrives(train)
         if table_size(train_items) > 0 then
           create_alert(stop.entity, "cargo-warning", {"ltn-message.depot_left_over_cargo", trainName, stop_name}, trainForce)
         end
-        if table_size(train_items) > 0 then
+        if table_size(train_fluids) > 0 then
           create_alert(stop.entity, "cargo-warning", {"ltn-message.depot_left_over_cargo", trainName, stop_name}, trainForce)
         end
 
