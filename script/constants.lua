@@ -74,3 +74,8 @@ band = bit32.band
 min = math.min
 ceil = math.ceil
 sort = table.sort
+
+-- train signals types
+TRAIN_CARGO = "ltn-train-cargo"
+TRAIN_FLUID = "ltn-train-fluid"
+TRAIN_ARTILLERY = "ltn-train-artillery"

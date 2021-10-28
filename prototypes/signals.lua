@@ -149,6 +149,24 @@ data:extend({
     order = "ltn4[ltn-position-signal-artillery-wagon]"
   },
   {
+    type = "item-subgroup",
+    name = "ltn-train-signal-cargo",
+    group = "signals",
+    order = "ltn4[ltn-train-signal-cargo]"
+  },
+  {
+    type = "item-subgroup",
+    name = "ltn-train-signal-fluid",
+    group = "signals",
+    order = "ltn4[ltn-train-signal-fluid]"
+  },
+  {
+    type = "item-subgroup",
+    name = "ltn-train-signal-artillery",
+    group = "signals",
+    order = "ltn4[ltn-train-signal-artillery]"
+  },
+  {
     type = "virtual-signal",
     name = "ltn-position-any-locomotive",
     -- localised_name = {"virtual-signal-name.ltn-position-any", {"entity-name.locomotive"}},

@@ -94,7 +94,7 @@ function TrainArrives(train)
         end
 
         -- make train available for new deliveries
-        local capacity, fluid_capacity = GetTrainCapacity(train)
+        local capacity, fluid_capacity, artillery = GetTrainCapacity(train)
         global.Dispatcher.availableTrains[train.id] = {
           train = train,
           surface = loco.surface,
@@ -102,10 +102,12 @@ function TrainArrives(train)
           depot_priority = stop.depot_priority,
           network_id = stop.network_id,
           capacity = capacity,
-          fluid_capacity = fluid_capacity
+          fluid_capacity = fluid_capacity,
+          artillery = artillery,
         }
         global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity + capacity
         global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity + fluid_capacity
+        global.Dispatcher.availableTrains_total_artillery_capacity = global.Dispatcher.availableTrains_total_artillery_capacity + artillery
         -- log("added available train "..train.id..", inventory: "..tostring(global.Dispatcher.availableTrains[train.id].capacity)..", fluid capacity: "..tostring(global.Dispatcher.availableTrains[train.id].fluid_capacity))
 
         -- reset schedule
@@ -199,6 +201,7 @@ function TrainLeaves(trainID)
     if global.Dispatcher.availableTrains[trainID] then -- trains are normally removed when deliveries are created
       global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[trainID].capacity
       global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[trainID].fluid_capacity
+      global.Dispatcher.availableTrains_total_artillery_capacity = global.Dispatcher.availableTrains_total_artillery_capacity - global.Dispatcher.availableTrains[trainID].artillery
       global.Dispatcher.availableTrains[trainID] = nil
     end
     if stop.error_code == 0 then
