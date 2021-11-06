@@ -171,7 +171,7 @@ function CreateStop(entity)
 end
 
 function OnEntityCreated(event)
-  local entity = event.created_entity or event.entity
+  local entity = event.created_entity or event.entity or event.destination
   if not entity or not entity.valid then return end
 
   if ltn_stop_entity_names[entity.name] then

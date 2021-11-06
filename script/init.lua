@@ -255,7 +255,8 @@ local function registerEvents()
   -- always track built/removed train stops for duplicate name list
   script.on_event( defines.events.on_built_entity, OnEntityCreated, filters_on_built )
   script.on_event( defines.events.on_robot_built_entity, OnEntityCreated, filters_on_built )
-  script.on_event( {defines.events.script_raised_built, defines.events.script_raised_revive}, OnEntityCreated )
+  script.on_event( {defines.events.script_raised_built, defines.events.script_raised_revive, defines.events.on_entity_cloned}, OnEntityCreated )
+
 
   script.on_event( defines.events.on_pre_player_mined_item, OnEntityRemoved, filters_on_mined )
   script.on_event( defines.events.on_robot_pre_mined, OnEntityRemoved, filters_on_mined )
