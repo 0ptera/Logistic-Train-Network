@@ -94,30 +94,32 @@ function TrainArrives(train)
         global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity + capacity
         global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity + fluid_capacity
         -- log("added available train "..train.id..", inventory: "..tostring(global.Dispatcher.availableTrains[train.id].capacity)..", fluid capacity: "..tostring(global.Dispatcher.availableTrains[train.id].fluid_capacity))
+
         -- reset schedule
         local schedule = {current = 1, records = {}}
         schedule.records[1] = NewScheduleRecord(stop_name, "inactivity", depot_inactivity)
         train.schedule = schedule
-        setLamp(stop, "blue", 1)
 
         -- reset filters and bars
         if depot_reset_filters and train.cargo_wagons then
-        for n,wagon in pairs(train.cargo_wagons) do
-          local inventory = wagon.get_inventory(defines.inventory.cargo_wagon)
-          if inventory then
-            if inventory.is_filtered() then
-              -- log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory).." filtered slots.")
-              for slotIndex=1, #inventory, 1 do
-                inventory.set_filter(slotIndex, nil)
+          for n,wagon in pairs(train.cargo_wagons) do
+            local inventory = wagon.get_inventory(defines.inventory.cargo_wagon)
+            if inventory then
+              if inventory.is_filtered() then
+                -- log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory).." filtered slots.")
+                for slotIndex=1, #inventory, 1 do
+                  inventory.set_filter(slotIndex, nil)
+                end
               end
-            end
-            if inventory.supports_bar and #inventory - inventory.get_bar() > 0 then
-              -- log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory - inventory.get_bar()).." locked slots.")
-              inventory.set_bar()
+              if inventory.supports_bar and #inventory - inventory.get_bar() > 0 then
+                -- log("Cargo-Wagon["..tostring(n).."]: reseting "..tostring(#inventory - inventory.get_bar()).." locked slots.")
+                inventory.set_bar()
+              end
             end
           end
         end
-        end
+
+        setLamp(stop, "blue", 1)
 
       else -- stop is no Depot
         -- check requester for incorrect shipment

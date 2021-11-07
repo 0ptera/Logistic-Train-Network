@@ -208,22 +208,8 @@ function UpdateStop(stopID, stop)
         end
       else
         if not global.Dispatcher.availableTrains[stop.parked_train_id] then
-          -- create new available train
-          local loco = Get_Main_Locomotive(stop.parked_train)
-          if loco then
-            local capacity, fluid_capacity = GetTrainCapacity(stop.parked_train)
-            global.Dispatcher.availableTrains[stop.parked_train_id] = {
-              train = stop.parked_train,
-              surface = loco.surface,
-              force = loco.force,
-              depot_priority = depot_priority,
-              network_id = network_id,
-              capacity = capacity,
-              fluid_capacity = fluid_capacity
-            }
-            global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity + capacity
-            global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity + fluid_capacity
-          end
+          -- full arrival handling in case ltn-depot signal was turned on with an already parked train
+          TrainArrives(stop.parked_train)
         else
           -- update properties from depot
           global.Dispatcher.availableTrains[stop.parked_train_id].network_id = network_id

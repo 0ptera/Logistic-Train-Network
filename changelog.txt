@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.16.5
+Date: 2021-11-07
+  Features:
+    - use rail_direction for temp stops #275
+  Bugfixes:
+    - schedules did not always reset when using conditional Depot Signals
+---------------------------------------------------------------------------------------------------
 Version: 1.16.4
 Date: 2021-11-06
   Bugfixes:

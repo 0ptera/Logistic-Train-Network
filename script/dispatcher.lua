@@ -206,8 +206,8 @@ local condition_wait_empty = {type = "empty", compare_type = "and" }
 local condition_finish_loading = {type = "inactivity", compare_type = "and", ticks = 120 }
 -- local condition_stop_timeout -- set in settings.lua to capture changes
 
-function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverride, rail)
-  local record = {station = stationName, wait_conditions = {}, rail = rail}
+function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverride, rail, rail_direction)
+  local record = {station = stationName, wait_conditions = {}, rail = rail, rail_direction = rail_direction}
 
   if rail then
     record.temporary = true
@@ -433,7 +433,8 @@ function ProcessRequest(reqIndex, request)
 
   local surface_name = requestStation.entity.surface.name
   local to = requestStation.entity.backer_name
-  local toRail = requestStation.entity.connected_rail
+  local to_rail = requestStation.entity.connected_rail
+  local to_rail_direction = requestStation.entity.connected_rail_direction
   local to_gps = MakeGpsString(requestStation.entity, to)
   local to_network_id_string = format("0x%x", band(requestStation.network_id))
   local item = request.item
@@ -500,7 +501,8 @@ function ProcessRequest(reqIndex, request)
 
   local providerData = providers[1] -- only one delivery/request is created so use only the best provider
   local fromID = providerData.entity.unit_number
-  local fromRail = providerData.entity.connected_rail
+  local from_rail = providerData.entity.connected_rail
+  local from_rail_direction = providerData.entity.connected_rail_direction
   local from = providerData.entity.backer_name
   local from_gps = MakeGpsString(providerData.entity, from)
   local matched_network_id_string = format("0x%x", band(providerData.network_id))
@@ -623,14 +625,14 @@ function ProcessRequest(reqIndex, request)
   schedule.records[#schedule.records + 1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", depot_inactivity)
 
   -- force train to go to the station we pick by setting a temporary waypoint on the rail that the station is connected to
-  if fromRail then
+  if from_rail and from_rail_direction then
     -- wait time 0 is interpreted as waypoint without stopping by Factorio
-    schedule.records[#schedule.records + 1] = NewScheduleRecord(nil, "time", 0, nil, 0, fromRail)
+    schedule.records[#schedule.records + 1] = NewScheduleRecord(nil, "time", 0, nil, 0, from_rail, from_rail_direction)
   end
   schedule.records[#schedule.records + 1] = NewScheduleRecord(from, "item_count", "≥", loadingList)
 
-  if toRail then
-    schedule.records[#schedule.records + 1] = NewScheduleRecord(nil, "time", 0, nil, 0, toRail)
+  if to_rail and to_rail_direction then
+    schedule.records[#schedule.records + 1] = NewScheduleRecord(nil, "time", 0, nil, 0, to_rail, to_rail_direction)
   end
   schedule.records[#schedule.records + 1] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
 
