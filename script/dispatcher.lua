@@ -206,12 +206,8 @@ local condition_wait_empty = {type = "empty", compare_type = "and" }
 local condition_finish_loading = {type = "inactivity", compare_type = "and", ticks = 120 }
 -- local condition_stop_timeout -- set in settings.lua to capture changes
 
-function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverride, rail, rail_direction)
-  local record = {station = stationName, wait_conditions = {}, rail = rail, rail_direction = rail_direction}
-
-  if rail then
-    record.temporary = true
-  end
+function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverride)
+  local record = {station = stationName, wait_conditions = {} }
 
   if condType == "time" then
     record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp }
@@ -223,7 +219,7 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
       local condFluid = nil
       if itemlist[i].type == "fluid" then
         condFluid = "fluid_count"
-        -- workaround for leaving with fluid residue, can time out trains
+        -- workaround for leaving with fluid residue due to Factorio rounding down to 0
         if condComp == "=" and countOverride == 0 then
           waitEmpty = true
         end
@@ -270,6 +266,11 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
   return record
 end
 
+-- NewScheduleRecord: returns new schedule_record for waypoints
+function NewTempScheduleRecord(rail, rail_direction)
+  local record = {wait_conditions = {}, rail = rail, rail_direction = rail_direction, temporary = true}
+  return record
+end
 
 ---- ProcessRequest ----
 
@@ -624,15 +625,18 @@ function ProcessRequest(reqIndex, request)
   local schedule = {current = 1, records = {}}
   schedule.records[#schedule.records + 1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", depot_inactivity)
 
-  -- force train to go to the station we pick by setting a temporary waypoint on the rail that the station is connected to
+  -- make train go to specific stations by setting a temporary waypoint on the rail the station is connected to
   if from_rail and from_rail_direction then
-    -- wait time 0 is interpreted as waypoint without stopping by Factorio
-    schedule.records[#schedule.records + 1] = NewScheduleRecord(nil, "time", 0, nil, 0, from_rail, from_rail_direction)
+    schedule.records[#schedule.records + 1] = NewTempScheduleRecord(from_rail, from_rail_direction)
+  else
+    if debug_log then log("(ProcessRequest) Warning: creating schedule without temporary stop for provider.") end
   end
   schedule.records[#schedule.records + 1] = NewScheduleRecord(from, "item_count", "≥", loadingList)
 
   if to_rail and to_rail_direction then
-    schedule.records[#schedule.records + 1] = NewScheduleRecord(nil, "time", 0, nil, 0, to_rail, to_rail_direction)
+    schedule.records[#schedule.records + 1] = NewTempScheduleRecord(to_rail, to_rail_direction)
+  else
+    if debug_log then log("(ProcessRequest) Warning: creating schedule without temporary stop for requester.") end
   end
   schedule.records[#schedule.records + 1] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
 
