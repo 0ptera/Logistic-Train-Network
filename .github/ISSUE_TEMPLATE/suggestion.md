@@ -1,6 +1,6 @@
 ---
 name: Suggestion
-about: Create a report to help us improve
+about: Don't forget to add question or enhancement lable
 title: ''
 labels:
 assignees:
