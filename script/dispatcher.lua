@@ -288,7 +288,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
     local stop = global.LogisticTrainStops[stopID]
     if stop and stop.entity.valid then
       local matched_networks = band(requestStation.network_id, stop.network_id)
-      -- log("DEBUG: comparing 0x"..string.format("%x", band(requestStation.network_id)).." & 0x"..string.format("%x", band(stop.network_id)).." = 0x"..string.format("%x", band(matched_networks)) )
+      -- log("DEBUG: comparing 0x"..format("%x", band(requestStation.network_id)).." & 0x"..format("%x", band(stop.network_id)).." = 0x"..format("%x", band(matched_networks)) )
 
       if stop.entity.force == force
       and stop.entity.surface == surface

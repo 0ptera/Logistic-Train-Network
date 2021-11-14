@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.16.6
+Date: 2021-11-14
+  Bugfixes:
+    - trains leaving requester didn't fully clean all delivery tables
+    - trains entering depot with existing delivery raise on_delivery_failed #277
+---------------------------------------------------------------------------------------------------
 Version: 1.16.5
 Date: 2021-11-07
   Features:

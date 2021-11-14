@@ -32,22 +32,33 @@ function TrainArrives(train)
     stop.parked_train = train
     stop.parked_train_id = train.id
 
-    if message_level >= 3 then printmsg({"ltn-message.train-arrived", tostring(trainName), stop_name}, trainForce, false) end
-    if debug_log then log("Train ["..train.id.."] "..tostring(trainName).." arrived at LTN-stop ["..stopID.."] "..stop_name) end
-
     local frontDistance = Get_Distance(train.front_stock.position, train.station.position)
     local backDistance = Get_Distance(train.back_stock.position, train.station.position)
-    if debug_log then log("Front Stock Distance: "..frontDistance..", Back Stock Distance: "..backDistance) end
     if frontDistance > backDistance then
       stop.parked_train_faces_stop = false
     else
       stop.parked_train_faces_stop = true
     end
 
+    if message_level >= 3 then printmsg({"ltn-message.train-arrived", tostring(trainName), stop_name}, trainForce, false) end
+    if debug_log then log(format("(TrainArrives) Train [%d] \"%s\": arrived at LTN-stop [%d] \"%s\"; train_faces_stop: %s", train.id, trainName, stopID, stop_name, stop.parked_train_faces_stop )) end
+
     if stop.error_code == 0 then
       if stop.is_depot then
-        -- remove delivery
-        RemoveDelivery(train.id)
+        local delivery = global.Dispatcher.Deliveries[train.id]
+        if delivery then
+          -- delivery should have been removed when leaving requester. Handle like delivery timeout.
+          if message_level >= 1 then
+            printmsg({
+              "ltn-message.delivery-removed-depot",
+              MakeGpsString(from_entity, delivery.from),
+              MakeGpsString(to_entity, delivery.to)
+            }, delivery.force, false)
+          end
+          if debug_log then log(format("(TrainArrives) Train [%d] \"%s\": Entered Depot with active Delivery. Failing Delivery and reseting train.", train.id, trainName)) end
+          script.raise_event(on_delivery_failed_event, {train_id = train.id, shipment = delivery.shipment})
+          RemoveDelivery(train.id)
+        end
 
         -- clean fluid residue
         local train_items = train.get_contents()
@@ -58,7 +69,7 @@ function TrainArrives(train)
             for fluid, count in pairs(wagon.get_fluid_contents()) do
               if count <= depot_fluid_cleaning then
                 local removed = wagon.remove_fluid({name=fluid, amount=count})
-                if debug_log then log(string.format("Train \"%s\"[%d]: Depot fluid removal %s %f/%f", trainName, i, fluid, removed, count)) end
+                if debug_log then log(format("(TrainArrives) Train \"%s\"[%d]: Depot fluid removal %s %f/%f", trainName, i, fluid, removed, count)) end
               end
             end
           end
@@ -66,7 +77,7 @@ function TrainArrives(train)
           -- for fluid, count in pairs(train_fluids) do
           --   if count <= depot_fluid_cleaning then
           --     local removed = train.remove_fluid({name=fluid, amount=count})
-          --     log(string.format("Train %s: removed %s %f/%f", trainName, fluid, removed, count))
+          --     log(format("Train %s: removed %s %f/%f", trainName, fluid, removed, count))
           --   end
           -- end
           train_fluids = train.get_fluid_contents()
@@ -172,7 +183,7 @@ function TrainLeaves(trainID)
   local stop = global.LogisticTrainStops[stopID]
   if not stop then
     -- stop became invalid
-    if debug_log then log("(TrainLeaves) StopID: "..tostring(stopID).." wasn't found in global.LogisticTrainStops") end
+    if debug_log then log(format("(TrainLeaves) Error: StopID [%d] wasn't found in global.LogisticTrainStops", stopID )) end
     global.StoppedTrains[trainID] = nil
     return
   end
@@ -188,7 +199,7 @@ function TrainLeaves(trainID)
     if stop.error_code == 0 then
       setLamp(stop, "green", 1)
     end
-    if debug_log then log("(TrainLeaves) Train ["..trainID.."] "..tostring(stoppedTrain.name).." left Depot ["..stopID.."] "..stop.entity.backer_name) end
+    if debug_log then log(format("(TrainLeaves) Train [%d] \"%s\": left Depot [%d] \"%s\".", trainID, stoppedTrain.name, stopID, stop.entity.backer_name )) end
 
   -- train was stopped at LTN stop
   else
@@ -240,7 +251,7 @@ function TrainLeaves(trainID)
           end
         end
         delivery.pickupDone = true -- remove reservations from this delivery
-        if debug_log then log("(TrainLeaves) Train ["..trainID.."] "..tostring(stoppedTrain.name).." left Provider ["..stopID.."] "..stop.entity.backer_name.." cargo: "..serpent.line(actual_load).." unscheduled: "..serpent.line(unscheduled_load) ) end
+        if debug_log then log(format("(TrainLeaves) Train [%d] \"%s\": left Provider [%d] \"%s\"; cargo: %s; unscheduled: %s ", trainID, stoppedTrain.name, stopID, stop.entity.backer_name, serpent.line(actual_load), serpent.line(unscheduled_load) )) end
         global.StoppedTrains[trainID] = nil
 
         if provider_missing_cargo then
@@ -279,16 +290,16 @@ function TrainLeaves(trainID)
           remaining_load[typed_name] = count
         end
 
-        if debug_log then log("(TrainLeaves) Train ["..trainID.."] "..tostring(stoppedTrain.name).." left Requester ["..stopID.."] "..stop.entity.backer_name.."with left over cargo: "..serpent.line(remaining_load) ) end
+        if debug_log then log(format("(TrainLeaves) Train [%d] \"%s\": left Requester [%d] \"%s\" with left over cargo: %s", trainID, stoppedTrain.name, stopID, stop.entity.backer_name, serpent.line(remaining_load))) end
         -- signal completed delivery and remove it
         if requester_left_over_cargo then
           create_alert(stop.entity, "cargo-alert", {"ltn-message.requester_left_over_cargo", stoppedTrain.name, stop_name}, stoppedTrain.force)
           script.raise_event(on_requester_remaining_cargo_alert, {train = train, station = stop.entity, remaining_load = remaining_load})
         end
         script.raise_event(on_delivery_completed_event, {train_id = trainID, shipment = delivery.shipment})
-        global.Dispatcher.Deliveries[trainID] = nil
+        RemoveDelivery(trainID)
       else
-        if debug_log then log("(TrainLeaves) Train ["..trainID.."] "..tostring(stoppedTrain.name).." left Stop ["..stopID.."] "..stop.entity.backer_name) end
+        if debug_log then log(format("(TrainLeaves) Train [%d] \"%s\": left LTN-stop [%d] \"%s\".", trainID, stoppedTrain.name, stopID, stop.entity.backer_name)) end
       end
     end
     if stop.error_code == 0 then

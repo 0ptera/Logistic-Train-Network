@@ -124,7 +124,7 @@ Raised when train leaves requester stop
 
 
 on_delivery_failed
-Raised when rolling stock of a train gets removed or the delivery timed out
+Raised when rolling stock of a train gets removed, the delivery timed out, train enters depot stop with active delivery
 -> Contains:
   event.train_id
   event.shipment= { [item], count } }
