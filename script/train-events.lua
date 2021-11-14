@@ -46,7 +46,8 @@ function TrainArrives(train)
 
     if stop.error_code == 0 then
       if stop.is_depot then
-        -- remove delivery
+        -- remove delivery but remember it for later
+        local delivery = global.Dispatcher.Deliveries[train.id]
         RemoveDelivery(train.id)
 
         -- clean fluid residue
@@ -121,6 +122,12 @@ function TrainArrives(train)
 
         setLamp(stop, "blue", 1)
 
+        end
+        -- if train had a delivery fire completed event
+        log("Train arrives at depot: "..train.id.." : "..serpent.block(delivery))
+        if delivery then
+          script.raise_event(on_delivery_completed_event, {train_id = train.id, shipment = delivery.shipment})
+        end
       else -- stop is no Depot
         -- check requester for incorrect shipment
         local delivery = global.Dispatcher.Deliveries[train.id]
