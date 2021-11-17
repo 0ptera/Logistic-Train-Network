@@ -266,9 +266,11 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
   return record
 end
 
+local temp_wait_condition = {{type = "time", compare_type = "and", ticks = 0}}
+
 -- NewScheduleRecord: returns new schedule_record for waypoints
 function NewTempScheduleRecord(rail, rail_direction)
-  local record = {wait_conditions = {}, rail = rail, rail_direction = rail_direction, temporary = true}
+  local record = {wait_conditions = temp_wait_condition, rail = rail, rail_direction = rail_direction, temporary = true}
   return record
 end
 
