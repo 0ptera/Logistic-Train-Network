@@ -173,7 +173,10 @@ local function initializeTrainStops()
     if not stop then
       log("[LTN] removing empty stop entry "..tostring(stopID) )
       global.LogisticTrainStops[stopID] = nil
-    elseif not(stop.entity and stop.entity.valid) then
+    elseif stop.entity and stop.entity.valid then
+      -- valid stop, check icon -> image conversion
+      check_stop_name(stop.entity)
+    else
       -- stop entity is corrupt/missing remove I/O entities
       log("[LTN] removing corrupt stop "..tostring(stopID) )
       if stop.input and stop.input.valid then
@@ -264,6 +267,7 @@ local function registerEvents()
   script.on_event( defines.events.script_raised_destroy, OnEntityRemoved )
 
   script.on_event( {defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared }, OnSurfaceRemoved )
+  script.on_event( defines.events.on_entity_renamed, stop_renamed_event )
 
   if global.LogisticTrainStops and next(global.LogisticTrainStops) then
     -- script.on_event(defines.events.on_tick, OnTick)

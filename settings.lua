@@ -156,4 +156,12 @@ data:extend({
     setting_type = "runtime-global",
     default_value = -1, -- any
   },
+  {
+    type = "string-setting",
+    name = "ltn-icon-texts",
+    order = "fa",
+    setting_type = "runtime-global",
+    default_value = "off",
+    allowed_values = {"off", "icons", "images"}
+  },
 })

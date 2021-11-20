@@ -485,3 +485,38 @@ function UpdateStopOutput(trainStop)
   end
 end
 
+-- check name of train stop for rich text and replace icons with images or vice versa
+function check_stop_name(stop)
+  if icon_texts == "icons" then
+    stop.backer_name = string.gsub(stop.backer_name, "img=item/", "item=")
+    stop.backer_name = string.gsub(stop.backer_name, "img=entity/", "entity=")
+    stop.backer_name = string.gsub(stop.backer_name, "img=technology/", "technology=")
+    stop.backer_name = string.gsub(stop.backer_name, "img=recipe/", "recipe=")
+    stop.backer_name = string.gsub(stop.backer_name, "img=item-group/", "item-group=")
+    stop.backer_name = string.gsub(stop.backer_name, "img=fluid/", "fluid=")
+    stop.backer_name = string.gsub(stop.backer_name, "img=tile/", "tile=")
+    stop.backer_name = string.gsub(stop.backer_name, "img=virtual-signal/", "virtual-signal=")
+    stop.backer_name = string.gsub(stop.backer_name, "img=achievement/", "achievement=")
+  elseif icon_texts == "images" then
+    stop.backer_name = string.gsub(stop.backer_name, "item=", "img=item/")
+    stop.backer_name = string.gsub(stop.backer_name, "entity=", "img=entity/")
+    stop.backer_name = string.gsub(stop.backer_name, "technology=", "img=technology/")
+    stop.backer_name = string.gsub(stop.backer_name, "recipe=", "img=recipe/")
+    stop.backer_name = string.gsub(stop.backer_name, "item-group=", "img=item-group/")
+    stop.backer_name = string.gsub(stop.backer_name, "fluid=", "img=fluid/")
+    stop.backer_name = string.gsub(stop.backer_name, "tile=", "img=tile/")
+    stop.backer_name = string.gsub(stop.backer_name, "virtual-signal=", "img=virtual-signal/")
+    stop.backer_name = string.gsub(stop.backer_name, "achievement=", "img=achievement/")
+  end
+end
+
+-- check stop names when they are renamed
+function stop_renamed_event(event)
+  -- don't check scripts to avoid getting into a renaming war
+  if event.by_script then return end
+  if event.entity and event.entity.valid then
+    if event.entity.name == "logistic-train-stop" or event.entity.name == "ltn-port" then
+      check_stop_name(event.entity)
+    end
+  end
+end
