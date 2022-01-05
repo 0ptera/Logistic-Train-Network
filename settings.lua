@@ -38,10 +38,17 @@ data:extend({
     default_value = "2",
     allowed_values = {"0", "1", "2", "3"}
   },
+    {
+      type = "bool-setting",
+      name = "ltn-interface-console-icons",
+      order = "ae",
+      setting_type = "runtime-global",
+      default_value = false,
+    },
   {
     type = "int-setting",
     name = "ltn-interface-message-filter-age",
-    order = "ae",
+    order = "af",
     setting_type = "runtime-global",
     default_value = 18000,
     minimum_value = 0,
@@ -50,21 +57,21 @@ data:extend({
   {
     type = "bool-setting",
     name = "ltn-interface-message-gps",
-    order = "af",
+    order = "ag",
     setting_type = "runtime-global",
     default_value = true
   },
   {
     type = "bool-setting",
     name = "ltn-interface-factorio-alerts",
-    order = "ag",
+    order = "ah",
     setting_type = "runtime-per-user",
     default_value = true
   },
   {
     type = "bool-setting",
     name = "ltn-interface-debug-logfile",
-    order = "ah",
+    order = "ai",
     setting_type = "runtime-global",
     default_value = false
   },
