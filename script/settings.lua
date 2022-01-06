@@ -6,6 +6,7 @@
 --]]
 
 message_level = tonumber(settings.global["ltn-interface-console-level"].value)
+message_rich_text_icons_only = settings.global["ltn-interface-message-rich-text-icons-only"].value
 message_filter_age = settings.global["ltn-interface-message-filter-age"].value
 message_include_gps = settings.global["ltn-interface-message-gps"].value
 debug_log = settings.global["ltn-interface-debug-logfile"].value
@@ -33,6 +34,9 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   if not event then return end
   if event.setting == "ltn-interface-console-level" then
     message_level = tonumber(settings.global["ltn-interface-console-level"].value)
+  end
+  if event.setting == "ltn-interface-message-rich-text-icons-only" then
+   message_rich_text_icons_only = settings.global["ltn-interface-message-rich-text-icons-only"].value
   end
   if event.setting == "ltn-interface-message-filter-age" then
     message_filter_age = settings.global["ltn-interface-message-filter-age"].value

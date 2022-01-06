@@ -38,6 +38,13 @@ data:extend({
     default_value = "2",
     allowed_values = {"0", "1", "2", "3"}
   },
+    {
+      type = "bool-setting",
+      name = "ltn-interface-message-rich-text-icons-only",
+      order = "ada",
+      setting_type = "runtime-global",
+      default_value = false
+    },
   {
     type = "int-setting",
     name = "ltn-interface-message-filter-age",
