@@ -496,7 +496,7 @@ function ProcessRequest(reqIndex, request)
   -- get providers ordered by priority
   local providers = getProviders(requestStation, item, count, min_carriages, max_carriages)
   if not providers or #providers < 1 then
-    if requestStation.no_warnings == false and message_level >= 1 then printmsg({"ltn-message.no-provider-found", to_gps, (message_icons and "[img=" .. itype .. "/" .. iname .. "]" or ""), localname, to_network_id_string}, requestForce, true) end
+    if requestStation.no_warnings == false and message_level >= 1 then printmsg({"ltn-message.no-provider-found", to_gps, "[img=" .. itype .. "/" .. iname .. "]" or ""), localname, to_network_id_string}, requestForce, true) end
     if debug_log then log(format("No supply of %s found for Requester %s: surface: %s min length: %s, max length: %s, network-ID: %s", item, to, surface_name, min_carriages, max_carriages, to_network_id_string) ) end
     -- goto skipRequestItem
     return nil
