@@ -108,7 +108,7 @@ function TrainArrives(train)
 
         -- reset schedule
         local schedule = {current = 1, records = {}}
-        schedule.records[1] = NewScheduleRecord(stop_name, "inactivity", depot_inactivity)
+        schedule.records[1] = NewScheduleRecord(stop, "inactivity", depot_inactivity)
         train.schedule = schedule
 
         -- reset filters and bars
@@ -268,9 +268,15 @@ function TrainLeaves(trainID)
       elseif delivery.to_id == stop.entity.unit_number then
         -- reset schedule before API events
         if requester_delivery_reset then
-          local schedule = {current = 1, records = {}}
-          schedule.records[1] = NewScheduleRecord(train.schedule.records[1].station, "inactivity", depot_inactivity)
-          train.schedule = schedule
+          local nextStation = train.path_end_stop
+          if nextStation then
+            local nextStop = global.LogisticTrainStops[nextStation.unit_number]
+            if nextStop then
+              local schedule = {current = 1, records = {}}
+              schedule.records[1] = NewScheduleRecord(nextStop, "inactivity", depot_inactivity)
+              train.schedule = schedule
+            end
+          end
         end
 
         local remaining_load = {}

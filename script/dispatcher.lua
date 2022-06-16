@@ -206,8 +206,12 @@ local condition_wait_empty = {type = "empty", compare_type = "and" }
 local condition_finish_loading = {type = "inactivity", compare_type = "and", ticks = 120 }
 -- local condition_stop_timeout -- set in settings.lua to capture changes
 
-function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverride)
-  local record = {station = stationName, wait_conditions = {} }
+function NewScheduleRecord(stop, condType, condComp, itemlist, countOverride)
+  local record = {station = stop.entity.backer_name, wait_conditions = {} }
+  local schedule_cc_for_stop = schedule_cc
+  if stop.require_circuit_control and stop.require_circuit_control ~= 0 then
+    schedule_cc_for_stop = stop.require_circuit_control > 0
+  end
 
   if condType == "time" then
     record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp }
@@ -242,7 +246,7 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
     end
 
     -- with circuit control enabled keep trains waiting until red = 0 and force them out with green ≥ 1
-    if schedule_cc then
+    if schedule_cc_for_stop then
       record.wait_conditions[#record.wait_conditions+1] = condition_circuit_red
       record.wait_conditions[#record.wait_conditions+1] = condition_circuit_green
     end
@@ -250,7 +254,7 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
     if stop_timeout > 0 then -- send stuck trains away when stop_timeout is set
       record.wait_conditions[#record.wait_conditions+1] = condition_stop_timeout
       -- should it also wait for red = 0?
-      if schedule_cc then
+      if schedule_cc_for_stop then
         record.wait_conditions[#record.wait_conditions+1] = condition_circuit_red
       end
     end
@@ -258,7 +262,7 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
   elseif condType == "inactivity" then
     record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp }
     -- with circuit control enabled keep trains waiting until red = 0 and force them out with green ≥ 1
-    if schedule_cc then
+    if schedule_cc_for_stop then
       record.wait_conditions[#record.wait_conditions+1] = condition_circuit_red
       record.wait_conditions[#record.wait_conditions+1] = condition_circuit_green
     end
@@ -315,6 +319,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
             min_carriages = stop.min_carriages,
             max_carriages = stop.max_carriages,
             locked_slots = stop.locked_slots,
+            require_circuit_control = stop.require_circuit_control,
           }
         end
       end
@@ -625,7 +630,7 @@ function ProcessRequest(reqIndex, request)
   -- local selectedTrain = global.Dispatcher.availableTrains[trainID].train
   local depot = global.LogisticTrainStops[selectedTrain.station.unit_number]
   local schedule = {current = 1, records = {}}
-  schedule.records[#schedule.records + 1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", depot_inactivity)
+  schedule.records[#schedule.records + 1] = NewScheduleRecord(depot, "inactivity", depot_inactivity)
 
   -- make train go to specific stations by setting a temporary waypoint on the rail the station is connected to
   if from_rail and from_rail_direction then
@@ -633,14 +638,14 @@ function ProcessRequest(reqIndex, request)
   else
     if debug_log then log("(ProcessRequest) Warning: creating schedule without temporary stop for provider.") end
   end
-  schedule.records[#schedule.records + 1] = NewScheduleRecord(from, "item_count", "≥", loadingList)
+  schedule.records[#schedule.records + 1] = NewScheduleRecord(providerData, "item_count", "≥", loadingList)
 
   if to_rail and to_rail_direction then
     schedule.records[#schedule.records + 1] = NewTempScheduleRecord(to_rail, to_rail_direction)
   else
     if debug_log then log("(ProcessRequest) Warning: creating schedule without temporary stop for requester.") end
   end
-  schedule.records[#schedule.records + 1] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
+  schedule.records[#schedule.records + 1] = NewScheduleRecord(requestStation, "item_count", "=", loadingList, 0)
 
   -- log("DEBUG: schedule = "..serpent.block(schedule))
   selectedTrain.schedule = schedule

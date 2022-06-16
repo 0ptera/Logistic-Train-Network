@@ -123,6 +123,14 @@ data:extend({
     subgroup = "LTN-signal",
     order = "d-d"
   },
+  {
+    type = "virtual-signal",
+    name = "ltn-require-circuit-control",
+    icon = "__LogisticTrainNetwork__/graphics/icons/require-circuit-control.png",
+    icon_size = 64,
+    subgroup = "LTN-signal",
+    order = "d-f"
+  },
 
   {
     type = "item-subgroup",

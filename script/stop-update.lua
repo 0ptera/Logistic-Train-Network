@@ -78,6 +78,7 @@ function UpdateStop(stopID, stop)
   stop.provider_priority = 0
   stop.locked_slots = 0
   stop.depot_priority = 0
+  stop.require_circuit_control = 0
 
   -- skip short circuited stops
   if detectShortCircuit(stop) then
@@ -117,6 +118,7 @@ function UpdateStop(stopID, stop)
   local providing_threshold_stacks = 0
   local provider_priority = 0
   local locked_slots = 0
+  local require_circuit_control = 0
 
   -- get circuit values 0.16.24
   local signals = stop.input.get_merged_signals()
@@ -161,6 +163,8 @@ function UpdateStop(stopID, stop)
           provider_priority = v.count
         elseif v.signal.name == LOCKEDSLOTS and v.count > 0 then
           locked_slots = v.count
+        elseif v.signal.name == REQUIRE_CIRCUIT_CONTROL and v.count ~= 0 then
+          require_circuit_control = v.count
         end
       end
     end
@@ -198,6 +202,7 @@ function UpdateStop(stopID, stop)
     stop.is_depot = true
     stop.depot_priority = depot_priority
     stop.network_id = network_id
+    stop.require_circuit_control = require_circuit_control
 
     -- add parked train to available trains
     if stop.parked_train_id and stop.parked_train.valid then
@@ -346,6 +351,7 @@ function UpdateStop(stopID, stop)
     stop.max_trains = max_trains
     stop.locked_slots = locked_slots
     stop.no_warnings = no_warnings
+    stop.require_circuit_control = require_circuit_control
   end
 end
 
