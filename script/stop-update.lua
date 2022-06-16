@@ -370,13 +370,22 @@ function UpdateStopOutput(trainStop)
   local signals = {}
   local index = 0
 
+  local legacy_output_behavior = settings.global["ltn-legacy-output-behavior"].value
+
   if trainStop.parked_train and trainStop.parked_train.valid then
     -- get train composition
     local carriages = trainStop.parked_train.carriages
     local encoded_positions_by_name = {}
     local encoded_positions_by_type = {}
-    local inventory = trainStop.parked_train.get_contents() or {}
-    local fluidInventory = trainStop.parked_train.get_fluid_contents() or {}
+    local inventory
+    local fluidInventory
+    if legacy_output_behavior then
+      inventory = trainStop.parked_train.get_contents() or {}
+      fluidInventory = trainStop.parked_train.get_fluid_contents() or {}
+    else
+      inventory = {}
+      fluidInventory = {}
+    end
 
     if #carriages < 32 then --prevent circuit network integer overflow error
       if trainStop.parked_train_faces_stop then --train faces forwards >> iterate normal
@@ -434,7 +443,11 @@ function UpdateStopOutput(trainStop)
             if c.type == "item_count" then
               if (c.condition.comparator == "=" and c.condition.constant == 0) then
                 --train expects to be unloaded of each of this item
-                inventory[c.condition.first_signal.name] = nil
+                if legacy_output_behavior then
+                  inventory[c.condition.first_signal.name] = nil
+                else
+                  inventory[c.condition.first_signal.name] = -1
+                end
               elseif c.condition.comparator == "≥" then
                 --train expects to be loaded to x of this item
                 inventory[c.condition.first_signal.name] = c.condition.constant

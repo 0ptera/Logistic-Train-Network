@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.16.8
+By: viidi.
+Date: 2022-06-17
+  Bugfixes:
+    - output combinator only returns the query. When delivery, returns -1. Can be disabled for backward compatible. Disabled by default.
+---------------------------------------------------------------------------------------------------
 Version: 1.16.7
 Date: 2021-11-17
   Bugfixes:
