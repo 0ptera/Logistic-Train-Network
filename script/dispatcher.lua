@@ -315,6 +315,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
             min_carriages = stop.min_carriages,
             max_carriages = stop.max_carriages,
             locked_slots = stop.locked_slots,
+            use_strict_equals = stop.use_strict_equals,
           }
         end
       end
@@ -509,6 +510,10 @@ function ProcessRequest(reqIndex, request)
   local from = providerData.entity.backer_name
   local from_gps = MakeGpsString(providerData.entity, from)
   local matched_network_id_string = format("0x%x", band(providerData.network_id))
+  local use_strict_equals = schedule_strict_equals
+  if providerData.use_strict_equals and providerData.use_strict_equals ~= 0 then
+    use_strict_equals = providerData.use_strict_equals > 0
+  end
 
   if message_level >= 3 then printmsg({"ltn-message.provider-found", from_gps, tostring(providerData.priority), tostring(providerData.activeDeliveryCount), providerData.count, localname}, requestForce, true) end
   -- if debug_log then
@@ -633,7 +638,7 @@ function ProcessRequest(reqIndex, request)
   else
     if debug_log then log("(ProcessRequest) Warning: creating schedule without temporary stop for provider.") end
   end
-  schedule.records[#schedule.records + 1] = NewScheduleRecord(from, "item_count", "≥", loadingList)
+  schedule.records[#schedule.records + 1] = NewScheduleRecord(from, "item_count", use_strict_equals and "=" or "≥", loadingList)
 
   if to_rail and to_rail_direction then
     schedule.records[#schedule.records + 1] = NewTempScheduleRecord(to_rail, to_rail_direction)

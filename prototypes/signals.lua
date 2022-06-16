@@ -123,6 +123,14 @@ data:extend({
     subgroup = "LTN-signal",
     order = "d-d"
   },
+  {
+    type = "virtual-signal",
+    name = "ltn-dispatcher-schedule-strict-equals",
+    icon = "__LogisticTrainNetwork__/graphics/icons/strict-equals.png",
+    icon_size = 64,
+    subgroup = "LTN-signal",
+    order = "d-e"
+  },
 
   {
     type = "item-subgroup",

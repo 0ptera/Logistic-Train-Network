@@ -20,6 +20,7 @@ PROVIDED_THRESHOLD = "ltn-provider-threshold"
 PROVIDED_STACK_THRESHOLD = "ltn-provider-stack-threshold"
 PROVIDED_PRIORITY = "ltn-provider-priority"
 LOCKEDSLOTS = "ltn-locked-slots"
+STRICT_EQUALS = "ltn-dispatcher-schedule-strict-equals"
 
 ControlSignals = {
   [ISDEPOT] = {type="virtual", name=ISDEPOT},
@@ -36,6 +37,7 @@ ControlSignals = {
   [PROVIDED_STACK_THRESHOLD] = {type="virtual", name=PROVIDED_STACK_THRESHOLD},
   [PROVIDED_PRIORITY] = {type="virtual", name=PROVIDED_PRIORITY},
   [LOCKEDSLOTS] = {type="virtual", name=LOCKEDSLOTS},
+  [STRICT_EQUALS] = {type="virtual", name=STRICT_EQUALS},
 }
 
 ltn_stop_entity_names = { -- ltn stop entity.name with I/O entity offset away from tracks in tiles

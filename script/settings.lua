@@ -12,6 +12,7 @@ debug_log = settings.global["ltn-interface-debug-logfile"].value
 min_requested = settings.global["ltn-dispatcher-requester-threshold"].value
 min_provided = settings.global["ltn-dispatcher-provider-threshold"].value
 schedule_cc = settings.global["ltn-dispatcher-schedule-circuit-control"].value
+schedule_strict_equals = settings.global["ltn-dispatcher-schedule-strict-equals"].value
 depot_inactivity = settings.global["ltn-dispatcher-depot-inactivity(s)"].value * 60
 stop_timeout = settings.global["ltn-dispatcher-stop-timeout(s)"].value * 60
 condition_stop_timeout = {type = "time", compare_type = "or", ticks = stop_timeout }
@@ -51,6 +52,9 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   end
   if event.setting == "ltn-dispatcher-schedule-circuit-control" then
     schedule_cc = settings.global["ltn-dispatcher-schedule-circuit-control"].value
+  end
+  if event.setting == "ltn-dispatcher-schedule-strict-equals" then
+    schedule_strict_equals = settings.global["ltn-dispatcher-schedule-strict-equals"].value
   end
   if event.setting == "ltn-dispatcher-depot-inactivity(s)" then
     depot_inactivity = settings.global["ltn-dispatcher-depot-inactivity(s)"].value * 60

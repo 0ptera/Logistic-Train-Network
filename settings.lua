@@ -94,6 +94,13 @@ data:extend({
     default_value = false
   },
   {
+    type = "bool-setting",
+    name = "ltn-dispatcher-schedule-strict-equals",
+    order = "ca",
+    setting_type = "runtime-global",
+    default_value = false,
+  },
+  {
     type = "int-setting",
     name = "ltn-dispatcher-depot-inactivity(s)",
     order = "cb",

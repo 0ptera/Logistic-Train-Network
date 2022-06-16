@@ -78,6 +78,7 @@ function UpdateStop(stopID, stop)
   stop.provider_priority = 0
   stop.locked_slots = 0
   stop.depot_priority = 0
+  stop.use_strict_equals = 0
 
   -- skip short circuited stops
   if detectShortCircuit(stop) then
@@ -117,6 +118,7 @@ function UpdateStop(stopID, stop)
   local providing_threshold_stacks = 0
   local provider_priority = 0
   local locked_slots = 0
+  local use_strict_equals = 0
 
   -- get circuit values 0.16.24
   local signals = stop.input.get_merged_signals()
@@ -161,6 +163,8 @@ function UpdateStop(stopID, stop)
           provider_priority = v.count
         elseif v.signal.name == LOCKEDSLOTS and v.count > 0 then
           locked_slots = v.count
+        elseif v.signal.name == STRICT_EQUALS then
+          use_strict_equals = v.count
         end
       end
     end
@@ -346,6 +350,7 @@ function UpdateStop(stopID, stop)
     stop.max_trains = max_trains
     stop.locked_slots = locked_slots
     stop.no_warnings = no_warnings
+    stop.use_strict_equals = use_strict_equals
   end
 end
 
@@ -435,7 +440,7 @@ function UpdateStopOutput(trainStop)
               if (c.condition.comparator == "=" and c.condition.constant == 0) then
                 --train expects to be unloaded of each of this item
                 inventory[c.condition.first_signal.name] = nil
-              elseif c.condition.comparator == "≥" then
+              elseif c.condition.comparator == "≥" or c.condition.comparator == "=" then
                 --train expects to be loaded to x of this item
                 inventory[c.condition.first_signal.name] = c.condition.constant
               end
@@ -443,7 +448,7 @@ function UpdateStopOutput(trainStop)
               if (c.condition.comparator == "=" and c.condition.constant == 0) then
                 --train expects to be unloaded of each of this fluid
                 fluidInventory[c.condition.first_signal.name] = -1
-              elseif c.condition.comparator == "≥" then
+              elseif c.condition.comparator == "≥" or c.condition.comparator == "=" then
                 --train expects to be loaded to x of this fluid
                 fluidInventory[c.condition.first_signal.name] = c.condition.constant
               end
