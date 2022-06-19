@@ -71,5 +71,6 @@ match = string.match
 match_string = "([^,]+),([^,]+)"
 btest = bit32.btest
 band = bit32.band
+min = math.min
 ceil = math.ceil
 sort = table.sort

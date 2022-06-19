@@ -601,7 +601,7 @@ function ProcessRequest(reqIndex, request)
           loadingList[i].stacks = loadingList[i].stacks - (totalStacks - trainInventorySize)
           totalStacks = trainInventorySize
           local newcount = loadingList[i].stacks * game.item_prototypes[loadingList[i].name].stack_size
-          loadingList[i].count = newcount
+          loadingList[i].count = min(newcount, loadingList[i].count)
           break
         else
           -- remove item and try again

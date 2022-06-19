@@ -1,9 +1,14 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.16.9
+Date: 2022-06-19
+  Bugfixes:
+    - additional merged delivery stack size check #271
+---------------------------------------------------------------------------------------------------
 Version: 1.16.8
 Date: 2022-06-19
   Features:
     - show cargo as rich text in no-provider-found, provider-found, creating-delivery #283
-    - added map-setting: Providers output existing cargo (default on), workaround for inserters stuck with items # 272, #294
+    - added map-setting: Providers output existing cargo (default on), workaround for inserters stuck with items #272, #294
 ---------------------------------------------------------------------------------------------------
 Version: 1.16.7
 Date: 2021-11-17
