@@ -39,6 +39,7 @@ function TrainArrives(train)
     else
       stop.parked_train_faces_stop = true
     end
+    local is_provider = false
 
     if message_level >= 3 then printmsg({"ltn-message.train-arrived", tostring(trainName), stop_name}, trainForce, false) end
     if debug_log then log(format("(TrainArrives) Train [%d] \"%s\": arrived at LTN-stop [%d] \"%s\"; train_faces_stop: %s", train.id, trainName, stopID, stop_name, stop.parked_train_faces_stop )) end
@@ -135,28 +136,31 @@ function TrainArrives(train)
       else -- stop is no Depot
         -- check requester for incorrect shipment
         local delivery = global.Dispatcher.Deliveries[train.id]
-        if delivery and delivery.to_id == stop.entity.unit_number then
-          local requester_unscheduled_cargo = false
-          local unscheduled_load = {}
-          local train_items = train.get_contents()
-          for name, count in pairs(train_items) do
-            local typed_name = "item,"..name
-            if not delivery.shipment[typed_name] then
-              requester_unscheduled_cargo = true
-              unscheduled_load[typed_name] = count
+        if delivery then
+          is_provider = delivery.from_id == stop.entity.unit_number
+          if delivery.to_id == stop.entity.unit_number then
+            local requester_unscheduled_cargo = false
+            local unscheduled_load = {}
+            local train_items = train.get_contents()
+            for name, count in pairs(train_items) do
+              local typed_name = "item,"..name
+              if not delivery.shipment[typed_name] then
+                requester_unscheduled_cargo = true
+                unscheduled_load[typed_name] = count
+              end
             end
-          end
-          local train_fluids = train.get_fluid_contents()
-          for name, count in pairs(train_fluids) do
-            local typed_name = "fluid,"..name
-            if not delivery.shipment[typed_name] then
-              requester_unscheduled_cargo = true
-              unscheduled_load[typed_name] = count
+            local train_fluids = train.get_fluid_contents()
+            for name, count in pairs(train_fluids) do
+              local typed_name = "fluid,"..name
+              if not delivery.shipment[typed_name] then
+                requester_unscheduled_cargo = true
+                unscheduled_load[typed_name] = count
+              end
             end
-          end
-          if requester_unscheduled_cargo then
-            create_alert(stop.entity, "cargo-alert", {"ltn-message.requester_unscheduled_cargo", trainName, stop_name}, trainForce)
-            script.raise_event(on_requester_unscheduled_cargo_alert, {train = train, station = stop.entity, planned_shipment = delivery.shipment, unscheduled_load = unscheduled_load})
+            if requester_unscheduled_cargo then
+              create_alert(stop.entity, "cargo-alert", {"ltn-message.requester_unscheduled_cargo", trainName, stop_name}, trainForce)
+              script.raise_event(on_requester_unscheduled_cargo_alert, {train = train, station = stop.entity, planned_shipment = delivery.shipment, unscheduled_load = unscheduled_load})
+            end
           end
         end
 
@@ -170,7 +174,7 @@ function TrainArrives(train)
       end
     end
 
-    UpdateStopOutput(stop)
+    UpdateStopOutput(stop, is_provider and not(provider_show_existing_cargo) )
   end
 end
 

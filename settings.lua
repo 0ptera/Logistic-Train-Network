@@ -156,4 +156,11 @@ data:extend({
     setting_type = "runtime-global",
     default_value = -1, -- any
   },
+  {
+    type = "bool-setting",
+    name = "ltn-provider-show-existing-cargo",
+    order = "eb",
+    setting_type = "runtime-global",
+    default_value = true
+  },
 })

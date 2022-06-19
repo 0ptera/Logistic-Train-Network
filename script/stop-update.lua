@@ -361,7 +361,7 @@ function setLamp(trainStop, color, count)
 end
 
 
-function UpdateStopOutput(trainStop)
+function UpdateStopOutput(trainStop, ignore_existing_cargo)
   -- skip invalid stop outputs
   if not trainStop.output.valid then
     return
@@ -375,8 +375,8 @@ function UpdateStopOutput(trainStop)
     local carriages = trainStop.parked_train.carriages
     local encoded_positions_by_name = {}
     local encoded_positions_by_type = {}
-    local inventory = trainStop.parked_train.get_contents() or {}
-    local fluidInventory = trainStop.parked_train.get_fluid_contents() or {}
+    local inventory = not(ignore_existing_cargo) and trainStop.parked_train.get_contents() or {}
+    local fluidInventory = not(ignore_existing_cargo) and trainStop.parked_train.get_fluid_contents() or {}
 
     if #carriages < 32 then --prevent circuit network integer overflow error
       if trainStop.parked_train_faces_stop then --train faces forwards >> iterate normal
@@ -425,8 +425,6 @@ function UpdateStopOutput(trainStop)
 
     if not trainStop.is_depot then
       -- Update normal stations
-      local loadingList = {}
-      local fluidLoadingList = {}
       local conditions = trainStop.parked_train.schedule.records[trainStop.parked_train.schedule.current].wait_conditions
       if conditions ~= nil then
         for _, c in pairs(conditions) do
