@@ -42,6 +42,10 @@ end
 
 -- returns gps string from entity or just string if entity is invalid
 function MakeGpsString(entity, name)
+  if message_hide_rich_items then
+    name = string.gsub(name, "%[item=", "[img=item/")
+    name = string.gsub(name, "%[fluid=", "[img=fluid/")
+  end
   if message_include_gps and entity and entity.valid then
     return format("%s [gps=%s,%s,%s]", name, entity.position["x"], entity.position["y"], entity.surface.name)
   else

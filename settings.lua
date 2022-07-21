@@ -56,15 +56,22 @@ data:extend({
   },
   {
     type = "bool-setting",
-    name = "ltn-interface-factorio-alerts",
+    name = "ltn-interface-message-hide-rich-items",
     order = "ag",
+    setting_type = "runtime-global",
+    default_value = false
+  },
+  {
+    type = "bool-setting",
+    name = "ltn-interface-factorio-alerts",
+    order = "ah",
     setting_type = "runtime-per-user",
     default_value = true
   },
   {
     type = "bool-setting",
     name = "ltn-interface-debug-logfile",
-    order = "ah",
+    order = "ai",
     setting_type = "runtime-global",
     default_value = false
   },

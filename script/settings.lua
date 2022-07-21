@@ -8,6 +8,7 @@
 message_level = tonumber(settings.global["ltn-interface-console-level"].value)
 message_filter_age = settings.global["ltn-interface-message-filter-age"].value
 message_include_gps = settings.global["ltn-interface-message-gps"].value
+message_hide_rich_items = settings.global["ltn-interface-message-hide-rich-items"].value
 debug_log = settings.global["ltn-interface-debug-logfile"].value
 min_requested = settings.global["ltn-dispatcher-requester-threshold"].value
 min_provided = settings.global["ltn-dispatcher-provider-threshold"].value
@@ -40,6 +41,9 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
   end
   if event.setting == "ltn-interface-message-gps" then
     message_include_gps = settings.global["ltn-interface-message-gps"].value
+  end
+  if event.setting == "ltn-interface-message-hide-rich-items" then
+    message_hide_rich_items = settings.global["ltn-interface-message-hide-rich-items"].value
   end
   if event.setting == "ltn-interface-debug-logfile" then
     debug_log = settings.global["ltn-interface-debug-logfile"].value
