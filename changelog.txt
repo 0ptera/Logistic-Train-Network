@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.16.10
+Date: 2022-07-22
+  Features:
+    - use RichText [train-stop=uid] for stations
+    - use RichText [train=uid] for trains
+  Changes:
+    - GPS tags disabled by default, was too spammy
+---------------------------------------------------------------------------------------------------
 Version: 1.16.9
 Date: 2022-06-19
   Bugfixes:

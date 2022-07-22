@@ -63,8 +63,8 @@ function OnTick(event)
         if message_level >= 1 then
           printmsg({
             "ltn-message.delivery-removed-train-invalid",
-            MakeGpsString(from_entity, delivery.from),
-            MakeGpsString(to_entity, delivery.to)
+            Make_Stop_RichText(from_entity) or delivery.from,
+            Make_Stop_RichText(to_entity) or delivery.to
           }, delivery.force, false)
         end
         if debug_log then log("(OnTick) Delivery from "..delivery.from.." to "..delivery.to.." removed. Train no longer valid.") end
@@ -77,8 +77,8 @@ function OnTick(event)
         if message_level >= 1 then
           printmsg({
             "ltn-message.delivery-removed-timeout",
-            MakeGpsString(from_entity, delivery.from),
-            MakeGpsString(to_entity, delivery.to),
+            Make_Stop_RichText(from_entity) or delivery.from,
+            Make_Stop_RichText(to_entity) or delivery.to,
             tick-delivery.started
           }, delivery.force, false)
         end
@@ -438,7 +438,7 @@ function ProcessRequest(reqIndex, request)
   local to = requestStation.entity.backer_name
   local to_rail = requestStation.entity.connected_rail
   local to_rail_direction = requestStation.entity.connected_rail_direction
-  local to_gps = MakeGpsString(requestStation.entity, to)
+  local to_gps = Make_Stop_RichText(requestStation.entity) or to
   local to_network_id_string = format("0x%x", band(requestStation.network_id))
   local item = request.item
   local count = request.count
@@ -507,7 +507,7 @@ function ProcessRequest(reqIndex, request)
   local from_rail = providerData.entity.connected_rail
   local from_rail_direction = providerData.entity.connected_rail_direction
   local from = providerData.entity.backer_name
-  local from_gps = MakeGpsString(providerData.entity, from)
+  local from_gps = Make_Stop_RichText(providerData.entity) or from
   local matched_network_id_string = format("0x%x", band(providerData.network_id))
 
   if message_level >= 3 then printmsg({"ltn-message.provider-found", from_gps, tostring(providerData.priority), tostring(providerData.activeDeliveryCount), providerData.count, "[" .. itype .. "=" .. iname .. "]"}, requestForce, true) end
@@ -584,7 +584,7 @@ function ProcessRequest(reqIndex, request)
   local selectedTrain = free_trains[1].train
   local trainInventorySize = free_trains[1].inventory_size
 
-  if message_level >= 3 then printmsg({"ltn-message.train-found", from, to, matched_network_id_string, tostring(trainInventorySize), tostring(totalStacks) }, requestForce) end
+  if message_level >= 3 then printmsg({"ltn-message.train-found", from_gps, to_gps, matched_network_id_string, tostring(trainInventorySize), tostring(totalStacks) }, requestForce) end
   if debug_log then log("Train to transport "..tostring(trainInventorySize).."/"..tostring(totalStacks).." stacks from "..from.." to "..to.." in network "..matched_network_id_string.." found in Depot.") end
 
   -- recalculate delivery amount to fit in train

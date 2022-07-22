@@ -52,7 +52,7 @@ data:extend({
     name = "ltn-interface-message-gps",
     order = "af",
     setting_type = "runtime-global",
-    default_value = true
+    default_value = false
   },
   {
     type = "bool-setting",

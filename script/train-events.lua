@@ -41,7 +41,8 @@ function TrainArrives(train)
     end
     local is_provider = false
 
-    if message_level >= 3 then printmsg({"ltn-message.train-arrived", tostring(trainName), stop_name}, trainForce, false) end
+    -- if message_level >= 3 then printmsg({"ltn-message.train-arrived", tostring(trainName), stop_name}, trainForce, false) end
+    if message_level >= 3 then printmsg({"ltn-message.train-arrived", Make_Train_RichText(train, trainName), format("[train-stop=%d]", stopID)}, trainForce, false) end
     if debug_log then log(format("(TrainArrives) Train [%d] \"%s\": arrived at LTN-stop [%d] \"%s\"; train_faces_stop: %s", train.id, trainName, stopID, stop_name, stop.parked_train_faces_stop )) end
 
     if stop.error_code == 0 then
@@ -52,8 +53,8 @@ function TrainArrives(train)
           if message_level >= 1 then
             printmsg({
               "ltn-message.delivery-removed-depot",
-              MakeGpsString(from_entity, delivery.from),
-              MakeGpsString(to_entity, delivery.to)
+              Make_Stop_RichText(from_entity) or delivery.from,
+              Make_Stop_RichText(to_entity) or delivery.to
             }, delivery.force, false)
           end
           if debug_log then log(format("(TrainArrives) Train [%d] \"%s\": Entered Depot with active Delivery. Failing Delivery and reseting train.", train.id, trainName)) end
@@ -318,7 +319,8 @@ function TrainLeaves(trainID)
   -- remove train reference
   stop.parked_train = nil
   stop.parked_train_id = nil
-  if message_level >= 3 then printmsg({"ltn-message.train-left", tostring(stoppedTrain.name), stop.entity.backer_name}, stoppedTrain.force) end
+  -- if message_level >= 3 then printmsg({"ltn-message.train-left", tostring(stoppedTrain.name), stop.entity.backer_name}, stoppedTrain.force) end
+  if message_level >= 3 then printmsg({"ltn-message.train-left", Make_Train_RichText(train, stoppedTrain.name), format("[train-stop=%d]", stopID)}, stoppedTrain.force, false) end
   UpdateStopOutput(stop)
 
   global.StoppedTrains[trainID] = nil
