@@ -267,7 +267,7 @@ function TrainLeaves(trainID)
           create_alert(stop.entity, "cargo-alert", {"ltn-message.provider_unscheduled_cargo", stoppedTrain.name, stop_name}, stoppedTrain.force)
           script.raise_event(on_provider_unscheduled_cargo_alert, {train = train, station = stop.entity, planned_shipment = delivery.shipment, unscheduled_load = unscheduled_load})
         end
-        script.raise_event(on_delivery_pickup_complete_event, {train_id = trainID, planned_shipment = delivery.shipment, actual_shipment = actual_load})
+        script.raise_event(on_delivery_pickup_complete_event, {train = train, train_id = trainID, planned_shipment = delivery.shipment, actual_shipment = actual_load})
         delivery.shipment = actual_load
 
       elseif delivery.to_id == stop.entity.unit_number then
@@ -301,7 +301,7 @@ function TrainLeaves(trainID)
           create_alert(stop.entity, "cargo-alert", {"ltn-message.requester_left_over_cargo", stoppedTrain.name, stop_name}, stoppedTrain.force)
           script.raise_event(on_requester_remaining_cargo_alert, {train = train, station = stop.entity, remaining_load = remaining_load})
         end
-        script.raise_event(on_delivery_completed_event, {train_id = trainID, shipment = delivery.shipment})
+        script.raise_event(on_delivery_completed_event, {train = train, train_id = trainID, shipment = delivery.shipment})
         RemoveDelivery(trainID)
       else
         if debug_log then log(format("(TrainLeaves) Train [%d] \"%s\": left LTN-stop [%d] \"%s\".", trainID, stoppedTrain.name, stopID, stop.entity.backer_name)) end

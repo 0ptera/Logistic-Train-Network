@@ -111,6 +111,7 @@ Raised when no train was found to handle a request
 on_delivery_pickup_complete
 Raised when a train leaves provider stop
 -> Contains:
+  event.train
   event.train_id
   event.planned_shipment= { [item], count } }
   event.actual_shipment = { [item], count } } -- shipment updated to train inventory
@@ -119,6 +120,7 @@ Raised when a train leaves provider stop
 on_delivery_completed
 Raised when train leaves requester stop
 -> Contains:
+  event.train
   event.train_id
   event.shipment= { [item], count } }
 
