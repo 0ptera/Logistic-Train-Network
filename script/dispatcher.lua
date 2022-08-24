@@ -301,7 +301,11 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
       and (stop.max_carriages == 0 or min_length == 0 or stop.max_carriages >= min_length) then --check if provider can actually service trains from requester
         local activeDeliveryCount = #stop.active_deliveries
         local from_network_id_string = format("0x%x", band(stop.network_id))
-        if activeDeliveryCount and (stop.max_trains == 0 or activeDeliveryCount < stop.max_trains) then
+        local max_trains = -1 -- try to use train limit set via signal, then vanilla train limit (minus vanilla trains going there).
+        if stop.max_trains > 0 then max_trains = stop.max_trains
+        elseif stop.entity.trains_limit ~= nil then max_trains = stop.entity.trains_limit - stop.entity.trains_count
+        end
+        if activeDeliveryCount and (max_trains == -1 or activeDeliveryCount < max_trains) then
           if debug_log then log("found "..count.."("..tostring(stop.providing_threshold)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.provider_priority..", active Deliveries: "..activeDeliveryCount.." min_carriages: "..stop.min_carriages..", max_carriages: "..stop.max_carriages..", locked Slots: "..stop.locked_slots) end
           stations[#stations +1] = {
             entity = stop.entity,
@@ -455,8 +459,12 @@ function ProcessRequest(reqIndex, request)
     return nil
   end
 
-  if requestStation.max_trains > 0 and #requestStation.active_deliveries >= requestStation.max_trains then
-    if debug_log then log(requestStation.entity.backer_name.." Request station train limit reached: "..#requestStation.active_deliveries.."("..requestStation.max_trains..")" ) end
+  local max_trains = -1 -- try to use train limit set via signal, then vanilla train limit (minus vanilla trains going there)
+  if requestStation.max_trains > 0 then max_trains = requestStation.max_trains
+  elseif requestStation.entity.trains_limit ~= nil then max_trains = requestStation.entity.trains_limit - requestStation.entity.trains_count
+  end
+  if max_trains > -1 and #requestStation.active_deliveries >= max_trains then
+    if debug_log then log(requestStation.entity.backer_name.." Request station train limit reached: "..#requestStation.active_deliveries.."("..max_trains..")" ) end
     -- goto skipRequestItem -- reached train limit
     return nil
   end
