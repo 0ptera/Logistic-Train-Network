@@ -23,7 +23,7 @@ end
 
 local function scaled_icon(icon, second)
    local size = icon.icon_size or 32
-   local shift = icon.shift or {x = 0, y = 0}
+   local shift = icon.shift or {0, 0}
    -- empty icon scales things up 32 times bigger and we want half size
    local scale = (icon.scale or 32 / size) / 64
    local dx
@@ -40,8 +40,8 @@ local function scaled_icon(icon, second)
      scale = scale,
      -- empty icon scales things up 32 times bigger and we want half size
      shift = {
-       x = shift.x / 64 + dx,
-       y = shift.y / 64,
+       shift[1] / 64 + dx,
+       shift[2] / 64,
      },
    }
 end
