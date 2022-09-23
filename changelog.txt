@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.17.0
+Date: 2022-09-23
+  Features:
+    - added event on_delivery_created #304
+  Changes:
+    - added LuaTrain to on_delivery_pickup_complete #298
+    - added LuaTrain to on_delivery_completed #298
+---------------------------------------------------------------------------------------------------
 Version: 1.16.10
 Date: 2022-07-22
   Features:

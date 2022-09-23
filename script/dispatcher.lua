@@ -688,7 +688,6 @@ function ProcessRequest(reqIndex, request)
     from_id = fromID,
     to = to,
     to_id = toID,
-    -- networkID = providerData.network_id,
     network_id = providerData.network_id,
     shipment = shipment}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[selectedTrain.id].capacity
@@ -712,6 +711,16 @@ function ProcessRequest(reqIndex, request)
       end
     end
   end
+
+  script.raise_event(on_delivery_created_event, {
+    train_id = selectedTrain.id,
+    train = selectedTrain,
+    from = from,
+    from_id = fromID,
+    to = to,
+    to_id = toID,
+    shipment = shipment
+  })
 
   -- return train ID = delivery ID
   return selectedTrain.id

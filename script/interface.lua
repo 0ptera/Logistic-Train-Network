@@ -7,6 +7,7 @@
 on_stops_updated_event = script.generate_event_name()
 on_dispatcher_updated_event = script.generate_event_name()
 on_dispatcher_no_train_found_event = script.generate_event_name()
+on_delivery_created_event = script.generate_event_name()
 on_delivery_pickup_complete_event = script.generate_event_name()
 on_delivery_completed_event = script.generate_event_name()
 on_delivery_failed_event = script.generate_event_name()
@@ -24,6 +25,7 @@ remote.add_interface("logistic-train-network", {
   -- updates for dispatcher
   on_dispatcher_updated = function() return on_dispatcher_updated_event end,
   on_dispatcher_no_train_found = function() return on_dispatcher_no_train_found_event end,
+  on_delivery_created = function() return on_delivery_created_event end,
 
   -- update for updated deliveries after leaving provider
   on_delivery_pickup_complete = function() return on_delivery_pickup_complete_event end,
@@ -108,19 +110,33 @@ Raised when no train was found to handle a request
   (optional) event.shipment = { [item], count }
 
 
+on_delivery_created
+Raised after dispatcher assigned delivery to a train
+    event.train_id
+    event.train
+    event.from
+    event.from_id
+    event.to
+    event.to_id
+    event.shipment = { [item], count }
+  })
+
+
 on_delivery_pickup_complete
 Raised when a train leaves provider stop
 -> Contains:
   event.train_id
-  event.planned_shipment= { [item], count } }
-  event.actual_shipment = { [item], count } } -- shipment updated to train inventory
+  event.train
+  event.planned_shipment= { [item], count }
+  event.actual_shipment = { [item], count } -- shipment updated to train inventory
 
 
 on_delivery_completed
 Raised when train leaves requester stop
 -> Contains:
   event.train_id
-  event.shipment= { [item], count } }
+  event.train
+  event.shipment= { [item], count }
 
 
 on_delivery_failed
