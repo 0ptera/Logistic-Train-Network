@@ -15,9 +15,11 @@ require "script.alert"
 require "script.utils" -- requires settings
 require "script.hotkey-events" -- requires print
 
-require "script.interface"
 require "script.stop-update"
 require "script.dispatcher"
 require "script.stop-events"
 require "script.train-events"
+require "script.interface" -- ties into other modules
 require "script.init" -- requires other modules loaded first
+
+if script.active_mods["gvv"] then require("__gvv__.gvv")() end

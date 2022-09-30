@@ -276,6 +276,13 @@ end
 
 ---- ProcessRequest ----
 
+-- TODO this should include the force in question
+local function isConnectedSurface(surface1, surface2)
+  if surface1 == surface2 then return true end
+  local s1_connections = global.ConnectedSurfaces[surface1.index]
+  return s1_connections and s1_connections[surface2.index]
+end
+
 -- return a list ordered priority > #active_deliveries > item-count of {entity, network_id, priority, activeDeliveryCount, item, count, providing_threshold, providing_threshold_stacks, min_carriages, max_carriages, locked_slots}
 local function getProviders(requestStation, item, req_count, min_length, max_length)
   local stations = {}
@@ -294,7 +301,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
       -- log("DEBUG: comparing 0x"..format("%x", band(requestStation.network_id)).." & 0x"..format("%x", band(stop.network_id)).." = 0x"..format("%x", band(matched_networks)) )
 
       if stop.entity.force == force
-      and stop.entity.surface == surface
+      and isConnectedSurface(surface, stop.entity.surface)
       and matched_networks ~= 0
       -- and count >= stop.providing_threshold
       and (stop.min_carriages == 0 or max_length == 0 or stop.min_carriages <= max_length)
@@ -628,14 +635,20 @@ function ProcessRequest(reqIndex, request)
   schedule.records[#schedule.records + 1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", depot_inactivity)
 
   -- make train go to specific stations by setting a temporary waypoint on the rail the station is connected to
-  if from_rail and from_rail_direction then
+  -- schedules cannot have temporary stops on a different surface, those need to be added when the delivery is updated with a train on a different surface
+  if from_rail and from_rail_direction
+    and depot.entity.surface == from_rail.surface
+  then
     schedule.records[#schedule.records + 1] = NewTempScheduleRecord(from_rail, from_rail_direction)
   else
     if debug_log then log("(ProcessRequest) Warning: creating schedule without temporary stop for provider.") end
   end
   schedule.records[#schedule.records + 1] = NewScheduleRecord(from, "item_count", "≥", loadingList)
 
-  if to_rail and to_rail_direction then
+  if to_rail and to_rail_direction
+    and depot.entity.surface == to_rail.surface
+    and (from_rail and to_rail.surface == from_rail.surface)
+  then
     schedule.records[#schedule.records + 1] = NewTempScheduleRecord(to_rail, to_rail_direction)
   else
     if debug_log then log("(ProcessRequest) Warning: creating schedule without temporary stop for requester.") end
@@ -713,6 +726,7 @@ function ProcessRequest(reqIndex, request)
   end
 
   script.raise_event(on_delivery_created_event, {
+    force = requestForce,
     train_id = selectedTrain.id,
     train = selectedTrain,
     from = from,

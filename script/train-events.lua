@@ -398,6 +398,12 @@ local function update_delivery(old_train_id, new_train)
   global.Dispatcher.Deliveries[old_train_id] = nil
 end
 
+function ReassignDelivery(old_train_id, new_train)
+  update_delivery(old_train_id, new_train)
+
+  -- TODO add missing temporary stops for delivery.from_id or delivery.to_id if they are on the same surface as new_train, now
+end
+
 function OnTrainCreated(event)
   -- log("(on_train_created) Train name: "..tostring(Get_Train_Name(event.train))..", train.id:"..tostring(event.train.id)..", .old_train_id_1:"..tostring(event.old_train_id_1)..", .old_train_id_2:"..tostring(event.old_train_id_2)..", state: "..tostring(event.train.state))
   -- on_train_created always sets train.state to 9 manual, scripts have to set the train back to its former state.

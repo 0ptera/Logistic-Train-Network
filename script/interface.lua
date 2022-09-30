@@ -17,6 +17,29 @@ on_provider_unscheduled_cargo_alert = script.generate_event_name()
 on_requester_unscheduled_cargo_alert = script.generate_event_name()
 on_requester_remaining_cargo_alert = script.generate_event_name()
 
+-- TODO this should be per force
+local connect_surfaces = function(surface1, surface2)
+  local connections = global.ConnectedSurfaces
+
+  connections[surface1.index] = connections[surface1.index] or {}
+  connections[surface1.index][surface2.index] = true
+
+  connections[surface2.index] = connections[surface2.index] or {}
+  connections[surface2.index][surface1.index] = true
+end
+
+-- TODO this should be per force
+local disconnect_surfaces = function(surface1, surface2)
+  local connections = global.ConnectedSurfaces
+
+  if connections[surface1.index] then
+    connections[surface1.index][surface2.index] = nil
+  end
+  if connections[surface2.index] then
+    connections[surface2.index][surface1.index] = nil
+  end
+end
+
 -- ltn_interface allows mods to register for update events
 remote.add_interface("logistic-train-network", {
   -- updates for ltn_stops
@@ -39,6 +62,31 @@ remote.add_interface("logistic-train-network", {
   on_provider_unscheduled_cargo = function() return on_provider_unscheduled_cargo_alert end,
   on_requester_unscheduled_cargo = function() return on_requester_unscheduled_cargo_alert end,
   on_requester_remaining_cargo = function() return on_requester_remaining_cargo_alert end,
+
+  -- Logically combines surfaces into one LTN, that is, deliveries will be created between providers on one surface and requesters on the other.
+  -- The connection is bi-directional but not transitive, i.e. A -> B implies B -> A, but A -> B and B -> C does not imply A -> C and requires a separate call to this function.
+  -- LTN has no notion of how a train actually moves between surfaces.
+  -- It is the caller's responsibility to modify the train schedule accordingly, most appropriately in an on_delivery_created_event.
+  -- Trains will be sourced from the provider surface only and should return to it after leaving the requester.
+  connect_surfaces = connect_surfaces, -- function(surface1 :: LuaSurface, surface2 :: LuaSurface)
+
+  -- Disconnects two surfaces previously connected via connect_surfaces.
+  -- Active deliveries will not be affected.
+  -- Calling this function for two surfaces that are not connected has no effect.
+  -- Deleted surfaces are handled automatically.
+  disconnect_surfaces = disconnect_surfaces, -- function(surface1 :: LuaSurface, surface2 :: LuaSurface)
+
+  -- TODO handle on_surface_deleted
+
+  -- Re-assigns a delivery to a different train.
+  -- Scripts should call this function if they create a train based on another train, for example when moving a train to a different surface.
+  -- It is the caller's responsibility to make sure that the new train's schedule matches the old one's before calling this function.
+  -- Calling this function with an old_train_id that is not executing a delivery has no effect.
+  -- It is not necessary to call this function when coupling trains via script, LTN is already aware of that through Factorio events.
+  reassign_delivery = ReassignDelivery,
+
+  -- Allow to keep surfaces mostly separate with a few explicit deliveries between them without the need to set the network_id explicitly on each stop on both surfaces.
+  -- TODO set_surface_default_network_id(surface :: LuaSurface, uint network_id)
 })
 
 

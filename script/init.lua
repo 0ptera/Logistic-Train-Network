@@ -31,9 +31,10 @@ local function initialize(oldVersion, newVersion)
   global.Dispatcher.Requests_by_Stop = global.Dispatcher.Requests_by_Stop or {} -- dictionary [stopID]; used to keep track of already handled requests
   global.Dispatcher.RequestAge = global.Dispatcher.RequestAge or {}
   global.Dispatcher.Deliveries = global.Dispatcher.Deliveries or {}
-
+  
   ---- initialize stops
   global.LogisticTrainStops = global.LogisticTrainStops or {}
+  global.ConnectedSurfaces = global.ConnectedSurfaces or {}
 
   -- clean obsolete global
   global.Dispatcher.Requested = nil
