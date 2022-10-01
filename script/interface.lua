@@ -18,8 +18,12 @@ on_requester_unscheduled_cargo_alert = script.generate_event_name()
 on_requester_remaining_cargo_alert = script.generate_event_name()
 
 -- TODO this should be per force
-local connect_surfaces = function(surface1, surface2)
-  local connections = global.ConnectedSurfaces
+local connect_surfaces = function(force, surface1, surface2)
+  local connections = global.ConnectedSurfaces[force.index]
+  if not connections then
+    connections = {}
+    global.ConnectedSurfaces[force.index] = connections
+  end
 
   connections[surface1.index] = connections[surface1.index] or {}
   connections[surface1.index][surface2.index] = true
@@ -29,8 +33,14 @@ local connect_surfaces = function(surface1, surface2)
 end
 
 -- TODO this should be per force
-local disconnect_surfaces = function(surface1, surface2)
-  local connections = global.ConnectedSurfaces
+local disconnect_surfaces = function(force, surface1, surface2)
+  global.ConnectedSurfaces = {}
+  if true then return end
+
+  local connections = global.ConnectedSurfaces[force.index]
+  if not connections then
+    return
+  end
 
   if connections[surface1.index] then
     connections[surface1.index][surface2.index] = nil

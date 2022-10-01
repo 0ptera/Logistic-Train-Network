@@ -277,9 +277,11 @@ end
 ---- ProcessRequest ----
 
 -- TODO this should include the force in question
-local function isConnectedSurface(surface1, surface2)
+local function isConnectedSurface(force, surface1, surface2)
   if surface1 == surface2 then return true end
-  local s1_connections = global.ConnectedSurfaces[surface1.index]
+
+  local force_connections = global.ConnectedSurfaces[force.index]
+  local s1_connections = force_connections and force_connections[surface1.index]
   return s1_connections and s1_connections[surface2.index]
 end
 
@@ -301,7 +303,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
       -- log("DEBUG: comparing 0x"..format("%x", band(requestStation.network_id)).." & 0x"..format("%x", band(stop.network_id)).." = 0x"..format("%x", band(matched_networks)) )
 
       if stop.entity.force == force
-      and isConnectedSurface(surface, stop.entity.surface)
+      and isConnectedSurface(force, surface, stop.entity.surface)
       and matched_networks ~= 0
       -- and count >= stop.providing_threshold
       and (stop.min_carriages == 0 or max_length == 0 or stop.min_carriages <= max_length)
@@ -729,8 +731,10 @@ function ProcessRequest(reqIndex, request)
     force = requestForce,
     train_id = selectedTrain.id,
     train = selectedTrain,
+    from_stop = global.LogisticTrainStops[fromID].entity,
     from = from,
     from_id = fromID,
+    to_stop = global.LogisticTrainStops[toID].entity,
     to = to,
     to_id = toID,
     shipment = shipment
