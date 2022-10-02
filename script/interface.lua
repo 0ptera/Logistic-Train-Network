@@ -17,38 +17,49 @@ on_provider_unscheduled_cargo_alert = script.generate_event_name()
 on_requester_unscheduled_cargo_alert = script.generate_event_name()
 on_requester_remaining_cargo_alert = script.generate_event_name()
 
--- TODO this should be per force
-local connect_surfaces = function(force, surface1, surface2)
-  local connections = global.ConnectedSurfaces[force.index]
-  if not connections then
-    connections = {}
-    global.ConnectedSurfaces[force.index] = connections
-  end
-
-  connections[surface1.index] = connections[surface1.index] or {}
-  connections[surface1.index][surface2.index] = true
-
-  connections[surface2.index] = connections[surface2.index] or {}
-  connections[surface2.index][surface1.index] = true
-end
-
--- TODO this should be per force
-local disconnect_surfaces = function(force, surface1, surface2)
+local function clear_all_surface_connections()
   global.ConnectedSurfaces = {}
-  if true then return end
+end
 
-  local connections = global.ConnectedSurfaces[force.index]
-  if not connections then
-    return
-  end
+local function sorted_pair(number1, number2)
+  return (number1 < number2) and (number1..'|'..number2) or (number2..'|'..number1)
+end
 
-  if connections[surface1.index] then
-    connections[surface1.index][surface2.index] = nil
+local function lazy_subtable(a_table, key)
+  local subtable = a_table[key]
+  if not subtable then
+    subtable = {}
+    a_table[key] = subtable
   end
-  if connections[surface2.index] then
-    connections[surface2.index][surface1.index] = nil
+  return subtable
+end
+
+local function disconnect_surfaces(entity1, entity2)
+  local surface_pair_key = sorted_pair(entity1.surface.index, entity2.surface.index)
+  local surface_connections = global.ConnectedSurfaces[surface_pair_key]
+
+  if surface_connections then
+    surface_connections[sorted_pair(entity1.unit_number, entity2.unit_number)] = nil
   end
 end
+
+local function connect_surfaces(entity1, entity2, network_id)
+  if entity1.surface == entity2.surface then
+    error("the given entities must not be on the same surface")
+  end
+
+  local surface_pair_key = sorted_pair(entity1.surface.index, entity2.surface.index)
+  local surface_connections = lazy_subtable(global.ConnectedSurfaces, surface_pair_key)
+
+  local entity_pair_key = sorted_pair(entity1.unit_number, entity2.unit_number)
+  surface_connections[entity_pair_key] = {
+    entity1 = entity1,
+    entity2 = entity2,
+    network_id = network_id,
+  }
+end
+
+
 
 -- ltn_interface allows mods to register for update events
 remote.add_interface("logistic-train-network", {
@@ -73,18 +84,29 @@ remote.add_interface("logistic-train-network", {
   on_requester_unscheduled_cargo = function() return on_requester_unscheduled_cargo_alert end,
   on_requester_remaining_cargo = function() return on_requester_remaining_cargo_alert end,
 
-  -- Logically combines surfaces into one LTN, that is, deliveries will be created between providers on one surface and requesters on the other.
-  -- The connection is bi-directional but not transitive, i.e. A -> B implies B -> A, but A -> B and B -> C does not imply A -> C and requires a separate call to this function.
+  -- Designates two entities on different surfaces as forming a surface connection.
+  -- Logically those surfaces are combined into one LTN, that is, deliveries will be created between providers on one surface and requesters on the other.
+  -- The connection has a network_id that acts as an additional mask that is applied to potential providers,
+  -- so using -1 here would apply no further restrictions and using 0 would make the connection unusable.
+  -- The connection is bi-directional but not transitive, i.e. surface A -> B implies B -> A, but A -> B and B -> C does not imply A -> C.
   -- LTN has no notion of how a train actually moves between surfaces.
   -- It is the caller's responsibility to modify the train schedule accordingly, most appropriately in an on_delivery_created_event.
+  -- Its field 'surface_connections' will be the table of connections that had a matching network_id and force.
+  -- For intra-surface deliveries that field will be an empty table.
   -- Trains will be sourced from the provider surface only and should return to it after leaving the requester.
-  connect_surfaces = connect_surfaces, -- function(surface1 :: LuaSurface, surface2 :: LuaSurface)
+  -- This is to avoid creating an imbalance in the train pools per surface.
+  connect_surfaces = connect_surfaces, -- function(entity1 :: LuaEntity, entity2 :: LuaEntity)
 
-  -- Disconnects two surfaces previously connected via connect_surfaces.
+  -- Explicitly severs the surface connection that is formed by the two given entities.
   -- Active deliveries will not be affected.
-  -- Calling this function for two surfaces that are not connected has no effect.
-  -- Deleted surfaces are handled automatically.
-  disconnect_surfaces = disconnect_surfaces, -- function(surface1 :: LuaSurface, surface2 :: LuaSurface)
+  -- Calling this function for two entities that are not connected has no effect.
+  -- It is not necessary to call this function if one or both of the entities are deleted.
+  disconnect_surfaces = disconnect_surfaces, -- function(entity1 :: LuaEntity, entity2 :: LuaEntity)
+
+  -- Clears all surface connections.
+  -- Active deliveries will not be affected
+  -- This function exists mostly for debugging purposes, so there is no event that is raised afterwards.
+  clear_all_surface_connections = clear_all_surface_connections,
 
   -- TODO handle on_surface_deleted
 

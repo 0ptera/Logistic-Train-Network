@@ -276,13 +276,35 @@ end
 
 ---- ProcessRequest ----
 
--- TODO this should include the force in question
-local function isConnectedSurface(force, surface1, surface2)
-  if surface1 == surface2 then return true end
+local function sorted_pair(number1, number2)
+  return (number1 < number2) and (number1..'|'..number2) or (number2..'|'..number1)
+end
 
-  local force_connections = global.ConnectedSurfaces[force.index]
-  local s1_connections = force_connections and force_connections[surface1.index]
-  return s1_connections and s1_connections[surface2.index]
+-- TODO this should include the force in question
+local function find_surface_connections(surface1, surface2, force, network_id)
+  if surface1 == surface2 then return {} end -- non-nil but empty == directly connected
+
+  local surface_pair_key = sorted_pair(surface1.index, surface2.index)
+  local surface_connections = global.ConnectedSurfaces[surface_pair_key]
+  if not surface_connections then return nil end
+
+  local matching_connections = {}
+  local count=0
+  for entity_pair_key, connection in pairs(surface_connections) do
+    if connection.entity1.valid
+    and connection.entity2.valid then
+      if btest(network_id, connection.network_id)
+      and connection.entity1.force == force
+      and connection.entity2.force == force then
+        count = count + 1
+        matching_connections[count] = connection
+      end
+    else
+      surface_connections[entity_pair_key] = nil -- cleanup invalid connections
+    end
+  end
+
+  return count > 0 and matching_connections or nil
 end
 
 -- return a list ordered priority > #active_deliveries > item-count of {entity, network_id, priority, activeDeliveryCount, item, count, providing_threshold, providing_threshold_stacks, min_carriages, max_carriages, locked_slots}
@@ -303,28 +325,31 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
       -- log("DEBUG: comparing 0x"..format("%x", band(requestStation.network_id)).." & 0x"..format("%x", band(stop.network_id)).." = 0x"..format("%x", band(matched_networks)) )
 
       if stop.entity.force == force
-      and isConnectedSurface(force, surface, stop.entity.surface)
       and matched_networks ~= 0
       -- and count >= stop.providing_threshold
       and (stop.min_carriages == 0 or max_length == 0 or stop.min_carriages <= max_length)
       and (stop.max_carriages == 0 or min_length == 0 or stop.max_carriages >= min_length) then --check if provider can actually service trains from requester
-        local activeDeliveryCount = #stop.active_deliveries
-        local from_network_id_string = format("0x%x", band(stop.network_id))
-        if activeDeliveryCount and (stop.max_trains == 0 or activeDeliveryCount < stop.max_trains) then
-          if debug_log then log("found "..count.."("..tostring(stop.providing_threshold)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.provider_priority..", active Deliveries: "..activeDeliveryCount.." min_carriages: "..stop.min_carriages..", max_carriages: "..stop.max_carriages..", locked Slots: "..stop.locked_slots) end
-          stations[#stations +1] = {
-            entity = stop.entity,
-            network_id = matched_networks,
-            priority = stop.provider_priority,
-            activeDeliveryCount = activeDeliveryCount,
-            item = item,
-            count = count,
-            providing_threshold = stop.providing_threshold,
-            providing_threshold_stacks = stop.providing_threshold_stacks,
-            min_carriages = stop.min_carriages,
-            max_carriages = stop.max_carriages,
-            locked_slots = stop.locked_slots,
-          }
+        local surface_connections = find_surface_connections(surface, stop.entity.surface, force, matched_networks)
+        if surface_connections then -- for normal intra-surface deliveries this is an empty table - which is considered "true"
+          local activeDeliveryCount = #stop.active_deliveries
+          local from_network_id_string = format("0x%x", band(stop.network_id))
+          if activeDeliveryCount and (stop.max_trains == 0 or activeDeliveryCount < stop.max_trains) then
+            if debug_log then log("found "..count.."("..tostring(stop.providing_threshold)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.provider_priority..", active Deliveries: "..activeDeliveryCount.." min_carriages: "..stop.min_carriages..", max_carriages: "..stop.max_carriages..", locked Slots: "..stop.locked_slots) end
+            stations[#stations +1] = {
+              entity = stop.entity,
+              network_id = matched_networks,
+              priority = stop.provider_priority,
+              activeDeliveryCount = activeDeliveryCount,
+              item = item,
+              count = count,
+              providing_threshold = stop.providing_threshold,
+              providing_threshold_stacks = stop.providing_threshold_stacks,
+              min_carriages = stop.min_carriages,
+              max_carriages = stop.max_carriages,
+              locked_slots = stop.locked_slots,
+              surface_connections = surface_connections,
+            }
+          end
         end
       end
     end
@@ -639,8 +664,7 @@ function ProcessRequest(reqIndex, request)
   -- make train go to specific stations by setting a temporary waypoint on the rail the station is connected to
   -- schedules cannot have temporary stops on a different surface, those need to be added when the delivery is updated with a train on a different surface
   if from_rail and from_rail_direction
-    and depot.entity.surface == from_rail.surface
-  then
+  and depot.entity.surface == from_rail.surface then
     schedule.records[#schedule.records + 1] = NewTempScheduleRecord(from_rail, from_rail_direction)
   else
     if debug_log then log("(ProcessRequest) Warning: creating schedule without temporary stop for provider.") end
@@ -648,9 +672,8 @@ function ProcessRequest(reqIndex, request)
   schedule.records[#schedule.records + 1] = NewScheduleRecord(from, "item_count", "≥", loadingList)
 
   if to_rail and to_rail_direction
-    and depot.entity.surface == to_rail.surface
-    and (from_rail and to_rail.surface == from_rail.surface)
-  then
+  and depot.entity.surface == to_rail.surface
+  and (from_rail and to_rail.surface == from_rail.surface) then
     schedule.records[#schedule.records + 1] = NewTempScheduleRecord(to_rail, to_rail_direction)
   else
     if debug_log then log("(ProcessRequest) Warning: creating schedule without temporary stop for requester.") end
@@ -731,13 +754,14 @@ function ProcessRequest(reqIndex, request)
     force = requestForce,
     train_id = selectedTrain.id,
     train = selectedTrain,
-    from_stop = global.LogisticTrainStops[fromID].entity,
+    from_stop = providerData.entity,
     from = from,
     from_id = fromID,
-    to_stop = global.LogisticTrainStops[toID].entity,
+    to_stop = requestStation.entity,
     to = to,
     to_id = toID,
-    shipment = shipment
+    surface_connections = providerData.surface_connections,
+    shipment = shipment,
   })
 
   -- return train ID = delivery ID
