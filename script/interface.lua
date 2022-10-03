@@ -17,9 +17,6 @@ on_provider_unscheduled_cargo_alert = script.generate_event_name()
 on_requester_unscheduled_cargo_alert = script.generate_event_name()
 on_requester_remaining_cargo_alert = script.generate_event_name()
 
-
-
-
 -- ltn_interface allows mods to register for update events
 remote.add_interface("logistic-train-network", {
   -- updates for ltn_stops
@@ -47,11 +44,13 @@ remote.add_interface("logistic-train-network", {
   -- Logically those surfaces are combined into one LTN, that is, deliveries will be created between providers on one surface and requesters on the other.
   -- The connection has a network_id that acts as an additional mask that is applied to potential providers,
   -- so using -1 here would apply no further restrictions and using 0 would make the connection unusable.
+  -- Both entities must be from the same force as the requester and the provider for deliveries to go through the connection.
   -- The connection is bi-directional but not transitive, i.e. surface A -> B implies B -> A, but A -> B and B -> C does not imply A -> C.
+  -- Calling this function again with the same two entities will effectively update the network_id of the connection.
   --
   -- LTN has no notion of how a train actually moves between surfaces.
   -- It is the caller's responsibility to modify the train schedule accordingly, most appropriately in an on_delivery_created_event.
-  -- Its field 'surface_connections' will be the table of connections that had a matching network_id and force.
+  -- Its field 'surface_connections' will be the table of connections { entity1, entity2, network_id } that had a matching network_id and force.
   -- For intra-surface deliveries that field will be an empty table.
   --
   -- Trains will be sourced from the provider surface only and should return to it after leaving the requester.
@@ -66,8 +65,8 @@ remote.add_interface("logistic-train-network", {
 
   -- Clears all surface connections.
   -- Active deliveries will not be affected
-  -- This function exists mostly for debugging purposes, there is no event that is raised to tell other mods about this.
-  -- TODO remove this?
+  -- This function exists mostly for debugging purposes, there is no event that is raised to notify connection owners.
+  -- TODO remove this or raise a corresponding event?
   clear_all_surface_connections = ClearAllSurfaceConnections,
 
   -- Re-assigns a delivery to a different train.

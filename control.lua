@@ -22,5 +22,3 @@ require "script.train-events"
 require "script.surface-connections"
 require "script.interface" -- ties into other modules
 require "script.init" -- requires other modules loaded first
-
-if script.active_mods["gvv"] then require("__gvv__.gvv")() end
