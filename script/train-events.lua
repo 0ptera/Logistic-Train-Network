@@ -396,12 +396,62 @@ local function update_delivery(old_train_id, new_train)
     TrainLeaves(old_train_id) -- removal only, new train is added when on_train_state_changed fires with wait_station afterwards
   end
   global.Dispatcher.Deliveries[old_train_id] = nil
+
+  return delivery
+end
+
+local temp_wait_condition = {{type = "time", compare_type = "and", ticks = 0}}
+
+local function new_temporary_stop(train, stop_id)
+  local stop = global.LogisticTrainStops[stop_id]
+  if not stop or not stop.entity.valid then return nil end -- the actual station is gone, don't add anything
+
+  local rail = stop.entity.connected_rail
+  local rail_direction = stop.entity.connected_rail_direction
+  if not rail or not rail_direction then return nil end
+
+  local train_surface = train.carriages[1].surface -- locomotive might not work here, a new train on another surface could still be incomplete
+  if train_surface ~= stop.entity.surface then return nil end -- the engine does not allow this
+
+  return { wait_conditions = temp_wait_condition, rail = rail, rail_direction = rail_direction, temporary = true }
 end
 
 function ReassignDelivery(old_train_id, new_train)
-  update_delivery(old_train_id, new_train)
+  local delivery = update_delivery(old_train_id, new_train)
+  if not delivery then return end
 
-  -- TODO add missing temporary stops for delivery.from_id or delivery.to_id if they are on the same surface as new_train, now
+  local current = new_train.schedule.current
+  local previous_is_temp_stop = false
+  local new_records = {}
+  local count = 0
+
+  local function add_record(record)
+    if record then
+      count = count + 1
+      new_records[count] = record
+    end
+  end
+
+  for old_position, old_record in pairs(new_train.schedule.records) do
+    -- only add temporary stops in front of logistic stops that haven't been reached, yet
+
+    if old_record.station == delivery.from and old_position >= current and not previous_is_temp_stop then
+      add_record(new_temporary_stop(new_train, delivery.from_id))
+    end
+
+    if old_record.station == delivery.to and old_position >= current and not previous_is_temp_stop then
+      add_record(new_temporary_stop(new_train, delivery.to_id))
+    end
+
+    add_record(old_record)
+
+    previous_is_temp_stop = old_record.temporary
+  end
+
+  new_train.schedule = {
+    current = current,
+    records = new_records,
+  }
 end
 
 function OnTrainCreated(event)

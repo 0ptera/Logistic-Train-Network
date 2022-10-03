@@ -280,9 +280,9 @@ local function sorted_pair(number1, number2)
   return (number1 < number2) and (number1..'|'..number2) or (number2..'|'..number1)
 end
 
--- TODO this should include the force in question
+-- return a list of matching { entity1, entity2, network_id } each connecting the two surfaces. The list will be empty if surface1 == surface2 and it will be nil if there are no matching connections.
 local function find_surface_connections(surface1, surface2, force, network_id)
-  if surface1 == surface2 then return {} end -- non-nil but empty == directly connected
+  if surface1 == surface2 then return {} end
 
   local surface_pair_key = sorted_pair(surface1.index, surface2.index)
   local surface_connections = global.ConnectedSurfaces[surface_pair_key]
