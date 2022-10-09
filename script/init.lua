@@ -260,7 +260,7 @@ local function registerEvents()
 
   script.on_event( defines.events.on_pre_player_mined_item, OnEntityRemoved, filters_on_mined )
   script.on_event( defines.events.on_robot_pre_mined, OnEntityRemoved, filters_on_mined )
-  script.on_event( defines.events.on_entity_died, function(event) OnEntityRemoved(event, true) end, filters_on_mined )
+  script.on_event( defines.events.on_entity_died, OnEntityRemoved, filters_on_mined )
   script.on_event( defines.events.script_raised_destroy, OnEntityRemoved )
 
   script.on_event( {defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared }, OnSurfaceRemoved )

@@ -181,7 +181,7 @@ end
 
 
 -- stop removed
-function RemoveStop(stopID, ghosts)
+function RemoveStop(stopID, create_ghosts)
   local stop = global.LogisticTrainStops[stopID]
 
   -- clean lookup tables
@@ -201,7 +201,7 @@ function RemoveStop(stopID, ghosts)
   -- destroy IO entities, broken IO entities should be sufficiently handled in initializeTrainStops()
   if stop then
     if stop.input and stop.input.valid then
-      if ghosts then
+      if create_ghosts then
         stop.input.destructible = true
         stop.input.die()
       else
@@ -209,7 +209,7 @@ function RemoveStop(stopID, ghosts)
       end
     end
     if stop.output and stop.output.valid then
-      if ghosts then
+      if create_ghosts then
         stop.output.destructible = true
         stop.output.die()
       else
@@ -235,7 +235,7 @@ function RemoveStop(stopID, ghosts)
   end
 end
 
-function OnEntityRemoved(event, ghosts)
+function OnEntityRemoved(event)
   local entity = event.entity
   if not entity or not entity.valid then return end
 
@@ -254,7 +254,7 @@ function OnEntityRemoved(event, ghosts)
     end
 
   elseif ltn_stop_entity_names[entity.name] then
-    RemoveStop(entity.unit_number, ghosts)
+    RemoveStop(entity.unit_number, true)
   end
 end
 
