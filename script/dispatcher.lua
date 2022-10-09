@@ -751,17 +751,16 @@ function ProcessRequest(reqIndex, request)
   end
 
   script.raise_event(on_delivery_created_event, {
-    force = requestForce,
     train_id = selectedTrain.id,
     train = selectedTrain,
-    from_stop = providerData.entity,
     from = from,
     from_id = fromID,
-    to_stop = requestStation.entity,
+    from_stop = providerData.entity,
     to = to,
     to_id = toID,
-    surface_connections = providerData.surface_connections,
+    to_stop = requestStation.entity,
     shipment = shipment,
+    surface_connections = providerData.surface_connections,
   })
 
   -- return train ID = delivery ID
