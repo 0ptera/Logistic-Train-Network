@@ -235,7 +235,7 @@ function RemoveStop(stopID, create_ghosts)
   end
 end
 
-function OnEntityRemoved(event)
+function OnEntityRemoved(event, create_ghosts)
   local entity = event.entity
   if not entity or not entity.valid then return end
 
@@ -254,7 +254,7 @@ function OnEntityRemoved(event)
     end
 
   elseif ltn_stop_entity_names[entity.name] then
-    RemoveStop(entity.unit_number, true)
+    RemoveStop(entity.unit_number, create_ghosts)
   end
 end
 
