@@ -66,7 +66,7 @@ remote.add_interface("logistic-train-network", {
   -- Clears all surface connections.
   -- Active deliveries will not be affected
   -- This function exists mostly for debugging purposes, there is no event that is raised to notify connection owners.
-  -- TODO remove this or raise a corresponding event?
+  -- TODO remove this or raise a corresponding event? Turn it into a /command?
   clear_all_surface_connections = ClearAllSurfaceConnections,
 
   -- Re-assigns a delivery to a different train.
@@ -74,14 +74,10 @@ remote.add_interface("logistic-train-network", {
   -- It is the caller's responsibility to make sure that the new train's schedule matches the old one's before calling this function.
   -- Otherwise LTN won't be able to add missing temporary stops for logistic stops that are now on the same surface as the train.
   -- Calling this function with an old_train_id that is not executing a delivery has no effect.
+  -- If it is the function will return a truthy value.
   -- It is not necessary to call this function when coupling trains via script, LTN is already aware of that through Factorio events.
-  reassign_delivery = ReassignDelivery,
-
-  -- TODO Is this worth it? It's a stretch goal and a completely separate feature in either case
-  -- Allows to keep surfaces mostly separate with a few explicit deliveries between them without the need to set the network_id explicitly on each stop on both surfaces.
-  -- set_surface_default_network_id(surface :: LuaSurface, uint network_id)
+  reassign_delivery = ReassignDelivery, -- function(old_train_id :: unit, new_train :: LuaTrain) :: boolean
 })
-
 
 --[[ register events from LTN:
 if remote.interfaces["logistic-train-network"] then

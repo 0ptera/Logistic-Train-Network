@@ -418,7 +418,7 @@ end
 
 function ReassignDelivery(old_train_id, new_train)
   local delivery = update_delivery(old_train_id, new_train)
-  if not delivery then return end
+  if not delivery then return false end
 
   local current = new_train.schedule.current
   local previous_is_temp_stop = false
@@ -452,6 +452,7 @@ function ReassignDelivery(old_train_id, new_train)
     current = current,
     records = new_records,
   }
+  return true
 end
 
 function OnTrainCreated(event)
