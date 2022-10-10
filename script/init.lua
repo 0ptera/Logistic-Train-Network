@@ -4,7 +4,66 @@
  * See LICENSE.md in the project directory for license information.
 --]]
 
+require "script.constants"
+
 ---- INITIALIZATION ----
+
+local function addTrainSignals(loco)
+  local cargocount = 0
+  local fluidcount = 0
+  local artillerycount = 0
+  for _, wagon in pairs(game.entity_prototypes) do
+    if wagon.type == "cargo-wagon" then
+      cargocount = cargocount + 1
+      signal = TRAIN_CARGO.."-"..loco.."-"..wagon.name
+      global.TrainSignals[signal] = {
+        locomotive = loco,
+        wagon = wagon.name,
+        type = "cargo",
+      }
+    elseif wagon.type == "fluid-wagon" then
+      fluidcount = fluidcount + 1
+      signal = TRAIN_FLUID.."-"..loco.."-"..wagon.name
+      global.TrainSignals[signal] = {
+        locomotive = loco,
+        wagon = wagon.name,
+        type = "fluid",
+      }
+    elseif wagon.type == "artillery-wagon" then
+      artillerycount = artillerycount + 1
+      signal = TRAIN_ARTILLERY.."-"..loco.."-"..wagon.name
+      global.TrainSignals[signal] = {
+        locomotive = loco,
+        wagon = wagon.name,
+        type = "artillery",
+      }
+    end
+  end
+  if cargocount > 1 then
+    signal = TRAIN_CARGO.."-"..loco.."-any"
+    global.TrainSignals[signal] = {
+      locomotive = loco,
+      wagon = "any",
+      type = "cargo",
+    }
+  end
+  if fluidcount > 1 then
+    signal = TRAIN_FLUID.."-"..loco.."-any"
+    global.TrainSignals[signal] = {
+      locomotive = loco,
+      wagon = "any",
+      type = "fluid",
+    }
+  end
+  if artillerycount > 1 then
+    signal = TRAIN_ARTILLERY.."-"..loco.."-any"
+    global.TrainSignals[signal] = {
+      locomotive = loco,
+      wagon = "any",
+      type = "artillery",
+    }
+  end
+end
 
 local function initialize(oldVersion, newVersion)
   --log("oldVersion: "..tostring(oldVersion)..", newVersion: "..tostring(newVersion))
@@ -25,6 +84,7 @@ local function initialize(oldVersion, newVersion)
   global.Dispatcher.availableTrains = global.Dispatcher.availableTrains or {}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity or 0
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity or 0
+  global.Dispatcher.availableTrains_total_artillery_capacity = global.Dispatcher.availableTrains_total_artillery_capacity or 0
   global.Dispatcher.Provided = global.Dispatcher.Provided or {}                 -- dictionary [type,name] used to quickly find available items
   global.Dispatcher.Provided_by_Stop = global.Dispatcher.Provided_by_Stop or {} -- dictionary [stopID]; used only by interface
   global.Dispatcher.Requests = global.Dispatcher.Requests or {}                 -- array of requests sorted by priority and age; used to loop over all requests
@@ -34,6 +94,19 @@ local function initialize(oldVersion, newVersion)
 
   ---- initialize stops
   global.LogisticTrainStops = global.LogisticTrainStops or {}
+
+  -- create a list of train signals
+  global.TrainSignals = {}
+  local lococount = 0
+  for _, loco in pairs(game.entity_prototypes) do
+     if loco.type == "locomotive" then
+        lococount = lococount + 1
+        addTrainSignals(loco.name)
+     end
+  end
+  if lococount > 1 then
+     addTrainSignals("any")
+  end
 
   -- clean obsolete global
   global.Dispatcher.Requested = nil
@@ -225,6 +298,7 @@ local function updateAllTrains()
   }
   global.Dispatcher.availableTrains_total_capacity = 0
   global.Dispatcher.availableTrains_total_fluid_capacity = 0
+  global.Dispatcher.availableTrains_total_artillery_capacity = 0
   global.Dispatcher.availableTrains = {}
 
   -- remove all parked train from logistic stops

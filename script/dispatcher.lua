@@ -115,7 +115,7 @@ function OnTick(event)
 
   elseif global.tick_state == 3 then -- parse requests and dispatch trains
     if dispatcher_enabled then
-      if debug_log then log("(OnTick) Available train capacity: "..global.Dispatcher.availableTrains_total_capacity.." item stacks, "..global.Dispatcher.availableTrains_total_fluid_capacity.. " fluid capacity.") end
+      if debug_log then log("(OnTick) Available train capacity: "..global.Dispatcher.availableTrains_total_capacity.." item stacks, "..global.Dispatcher.availableTrains_total_fluid_capacity.. " fluid capacity, "..global.Dispatcher.availableTrains_total_artillery_capacity.." artillery capacity.") end
       for i = 1, dispatcher_updates_per_tick, 1 do
         -- reset on invalid index
         if global.tick_request_index and not global.Dispatcher.Requests[global.tick_request_index] then
@@ -203,7 +203,9 @@ end
 local condition_circuit_red = {type = "circuit", compare_type = "and", condition = {comparator = "=", first_signal = {type = "virtual", name = "signal-red"}, constant = 0} }
 local condition_circuit_green = {type = "circuit", compare_type = "or", condition = {comparator = "≥", first_signal = {type = "virtual", name = "signal-green"}, constant = 1} }
 local condition_wait_empty = {type = "empty", compare_type = "and" }
+local condition_wait_full = {type = "full", compare_type = "or" }
 local condition_finish_loading = {type = "inactivity", compare_type = "and", ticks = 120 }
+local condition_inactive = {type = "inactivity", compare_type = "or", ticks = 600 }
 -- local condition_stop_timeout -- set in settings.lua to capture changes
 
 function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverride)
@@ -257,6 +259,44 @@ function NewScheduleRecord(stationName, condType, condComp, itemlist, countOverr
 
   elseif condType == "inactivity" then
     record.wait_conditions[#record.wait_conditions+1] = {type = condType, compare_type = "and", ticks = condComp }
+    -- with circuit control enabled keep trains waiting until red = 0 and force them out with green ≥ 1
+    if schedule_cc then
+      record.wait_conditions[#record.wait_conditions+1] = condition_circuit_red
+      record.wait_conditions[#record.wait_conditions+1] = condition_circuit_green
+    end
+
+  elseif condType == "circuit" then
+    if condComp then
+      -- provider
+      record.wait_conditions[#record.wait_conditions+1] = {
+         type = "circuit",
+         compare_type = "and",
+         condition = {comparator = "!=", first_signal = {type = "virtual", name = itemlist}, constant = 0},
+      }
+      if global.TrainSignals[itemlist].type == "artillery" then
+        if schedule_cc then
+          record.wait_conditions[#record.wait_conditions+1] = condition_circuit_red
+        end
+        record.wait_conditions[#record.wait_conditions+1] = condition_wait_full
+      end
+    else
+      --requester
+      if global.TrainSignals[itemlist].type == "artillery" then
+        record.wait_conditions[#record.wait_conditions+1] = condition_wait_empty
+        if schedule_cc then
+          record.wait_conditions[#record.wait_conditions+1] = condition_circuit_red
+        end
+        record.wait_conditions[#record.wait_conditions+1] = condition_inactive
+        if schedule_cc then
+          record.wait_conditions[#record.wait_conditions+1] = condition_circuit_red
+        end
+      end
+      record.wait_conditions[#record.wait_conditions+1] = {
+        type = "circuit",
+        compare_type = "or",
+        condition = {comparator = "!=", first_signal = {type = "virtual", name = itemlist}, constant = 0},
+      }
+    end
     -- with circuit control enabled keep trains waiting until red = 0 and force them out with green ≥ 1
     if schedule_cc then
       record.wait_conditions[#record.wait_conditions+1] = condition_circuit_red
@@ -359,8 +399,10 @@ local function getFreeTrains(nextStop, min_carriages, max_carriages, type, size)
       if type == "item" then
         -- subtract locked slots from every cargo wagon
         inventorySize = trainData.capacity - (nextStop.locked_slots * #trainData.train.cargo_wagons)
-      else
+      elseif type == "fluid" then
         inventorySize = trainData.fluid_capacity
+      else
+        inventorySize = GetTrainSignalCount(trainData.train, type)
       end
 
       if debug_log then
@@ -463,34 +505,47 @@ function ProcessRequest(reqIndex, request)
 
   -- find providers for requested item
   local itype, iname = match(item, match_string)
-  if not (itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname])) then
+  if not (itype and iname and (game.item_prototypes[iname] or game.fluid_prototypes[iname] or game.virtual_signal_prototypes[iname])) then
     if message_level >= 1 then printmsg({"ltn-message.error-parse-item", item}, requestForce) end
     if debug_log then log("(ProcessRequests) could not parse "..item) end
     -- goto skipRequestItem
     return nil
   end
 
+  -- skip if no trains are available
   local localname
+  local capacity
+  local msg
   if itype == "fluid" then
     localname = game.fluid_prototypes[iname].localised_name
-    -- skip if no trains are available
-    if (global.Dispatcher.availableTrains_total_fluid_capacity or 0) == 0 then
-      create_alert(requestStation.entity, "depot-empty", {"ltn-message.empty-depot-fluid"}, requestForce)
-      if message_level >= 1 then printmsg({"ltn-message.empty-depot-fluid"}, requestForce, true) end
-      if debug_log then log("Skipping request "..to.." {"..to_network_id_string.."}: "..item..". No trains available.") end
-      script.raise_event(on_dispatcher_no_train_found_event, {to = to, to_id = toID, network_id = requestStation.network_id, item = item})
-      return nil
-    end
-  else
+    capacity = global.Dispatcher.availableTrains_total_fluid_capacity or 0
+    msg = "ltn-message.empty-depot-fluid"
+  elseif itype == "item" then
     localname = game.item_prototypes[iname].localised_name
-    -- skip if no trains are available
-    if (global.Dispatcher.availableTrains_total_capacity or 0) == 0 then
-      create_alert(requestStation.entity, "depot-empty", {"ltn-message.empty-depot-item"}, requestForce)
-      if message_level >= 1 then printmsg({"ltn-message.empty-depot-item"}, requestForce, true) end
-      if debug_log then log("Skipping request "..to.." {"..to_network_id_string.."}: "..item..". No trains available.") end
-      script.raise_event(on_dispatcher_no_train_found_event, {to = to, to_id = toID, network_id = requestStation.network_id, item = item})
-      return nil
+    capacity = global.Dispatcher.availableTrains_total_capacity or 0
+    msg = "ltn-message.empty-depot-item"
+  elseif itype == "virtual" then
+    local signal = game.virtual_signal_prototypes[iname]
+    localname = signal.localised_name
+    signal_type = global.TrainSignals[iname].type
+    if signal_type == "cargo" then
+      capacity = global.Dispatcher.availableTrains_total_capacity or 0
+      msg =  "ltn-message.empty-depot-item"
+    elseif signal_type == "fluid" then
+      capacity = global.Dispatcher.availableTrains_total_fluid_capacity or 0
+      msg =  "ltn-message.empty-depot-fluid"
+    elseif signal_type == "artillery" then
+      capacity = global.Dispatcher.availableTrains_total_artillery_capacity or 0
+      msg =  "ltn-message.empty-depot-artillery"
     end
+  end
+  if capacity == 0 then
+    -- no suitable train
+    create_alert(requestStation.entity, "depot-empty", {msg}, requestForce)
+    if message_level >= 1 then printmsg({msg}, requestForce, true) end
+    if debug_log then log("Skipping request "..to.." {"..to_network_id_string.."}: "..item..". No trains available.") end
+    script.raise_event(on_dispatcher_no_train_found_event, {to = to, to_id = toID, network_id = requestStation.network_id, item = item})
+    return nil
   end
 
   -- get providers ordered by priority
@@ -524,7 +579,7 @@ function ProcessRequest(reqIndex, request)
   end
 
   local stacks = deliverySize -- for fluids stack = tanker capacity
-  if itype ~= "fluid" then
+  if itype == "item" then
     stacks = ceil(deliverySize / game.item_prototypes[iname].stack_size) -- calculate amount of stacks item count will occupy
   end
 
@@ -542,8 +597,8 @@ function ProcessRequest(reqIndex, request)
   local totalStacks = stacks
   if debug_log then log("created new order "..from.." >> "..to..": "..deliverySize.." "..item.." in "..stacks.."/"..totalStacks.." stacks, min length: "..min_carriages.." max length: "..max_carriages) end
 
-  -- find possible mergeable items, fluids can't be merged in a sane way
-  if itype ~= "fluid" then
+  -- find possible mergeable items, fluids and trains can't be merged in a sane way
+  if itype == "item" then
     for merge_item, merge_count_req in pairs(global.Dispatcher.Requests_by_Stop[toID]) do
       local merge_type, merge_name = match(merge_item, match_string)
       if merge_type and merge_name and game.item_prototypes[merge_name] then
@@ -570,7 +625,12 @@ function ProcessRequest(reqIndex, request)
   end
 
   -- find train
-  local free_trains = getFreeTrains(providerData, min_carriages, max_carriages, itype, totalStacks)
+  local free_trains
+  if itype == "virtual" then
+    free_trains = getFreeTrains(providerData, min_carriages, max_carriages, iname, totalStacks)
+  else
+    free_trains = getFreeTrains(providerData, min_carriages, max_carriages, itype, totalStacks)
+  end
   if not free_trains then
     create_alert(requestStation.entity, "depot-empty", {"ltn-message.no-train-found", from, to, matched_network_id_string, tostring(min_carriages), tostring(max_carriages) }, requestForce)
     if message_level >= 1 then printmsg({"ltn-message.no-train-found", from_gps, to_gps, matched_network_id_string, tostring(min_carriages), tostring(max_carriages) }, requestForce, true) end
@@ -590,8 +650,8 @@ function ProcessRequest(reqIndex, request)
   -- recalculate delivery amount to fit in train
   if trainInventorySize < totalStacks then
     -- recalculate partial shipment
-    if itype == "fluid" then
-      -- fluids are simple
+    if (itype == "fluid") or (itype == "virtual") then
+      -- fluids and trains are simple
       loadingList[1].count = trainInventorySize
     else
       -- items need a bit more math
@@ -633,14 +693,22 @@ function ProcessRequest(reqIndex, request)
   else
     if debug_log then log("(ProcessRequest) Warning: creating schedule without temporary stop for provider.") end
   end
-  schedule.records[#schedule.records + 1] = NewScheduleRecord(from, "item_count", "≥", loadingList)
+  if itype == "virtual" then
+    schedule.records[#schedule.records + 1] = NewScheduleRecord(from, "circuit", true, iname)
+  else
+    schedule.records[#schedule.records + 1] = NewScheduleRecord(from, "item_count", "≥", loadingList)
+  end
 
   if to_rail and to_rail_direction then
     schedule.records[#schedule.records + 1] = NewTempScheduleRecord(to_rail, to_rail_direction)
   else
     if debug_log then log("(ProcessRequest) Warning: creating schedule without temporary stop for requester.") end
   end
-  schedule.records[#schedule.records + 1] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
+  if itype == "virtual" then
+    schedule.records[#schedule.records + 1] = NewScheduleRecord(to, "circuit", false, iname)
+  else
+    schedule.records[#schedule.records + 1] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
+  end
 
   -- log("DEBUG: schedule = "..serpent.block(schedule))
   selectedTrain.schedule = schedule
@@ -692,6 +760,7 @@ function ProcessRequest(reqIndex, request)
     shipment = shipment}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[selectedTrain.id].capacity
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[selectedTrain.id].fluid_capacity
+  global.Dispatcher.availableTrains_total_artillery_capacity = global.Dispatcher.availableTrains_total_artillery_capacity - global.Dispatcher.availableTrains[selectedTrain.id].artillery
   global.Dispatcher.availableTrains[selectedTrain.id] = nil
 
   -- train is no longer available => set depot to yellow

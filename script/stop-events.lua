@@ -195,6 +195,7 @@ function RemoveStop(stopID, create_ghosts)
   if stop and stop.is_depot and stop.parked_train_id and global.Dispatcher.availableTrains[stop.parked_train_id] then
     global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[stop.parked_train_id].capacity
     global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[stop.parked_train_id].fluid_capacity
+    global.Dispatcher.availableTrains_total_artillery_capacity = global.Dispatcher.availableTrains_total_artillery_capacity - global.Dispatcher.availableTrains[stop.parked_train_id].artillery
     global.Dispatcher.availableTrains[stop.parked_train_id] = nil
   end
 

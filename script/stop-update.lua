@@ -37,6 +37,7 @@ local function remove_available_train(trainID)
   if debug_log then log("(UpdateStop) removing available train "..tostring(trainID).." from depot." ) end
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[trainID].capacity
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[trainID].fluid_capacity
+  global.Dispatcher.availableTrains_total_artillery_capacity = global.Dispatcher.availableTrains_total_artillery_capacity - global.Dispatcher.availableTrains[trainID].artillery
   global.Dispatcher.availableTrains[trainID] = nil
 end
 
@@ -128,9 +129,11 @@ function UpdateStop(stopID, stop)
 
   for _,v in pairs(signals) do
     if v.signal.name and v.signal.type then
-      if v.signal.type ~= signal_type_virtual then
+        if v.signal.type ~= signal_type_virtual then
         -- add item and fluid signals to new array
         signals_filtered[v.signal] = v.count
+      elseif global.TrainSignals[v.signal.name] then
+         signals_filtered[v.signal] = v.count
       elseif ControlSignals[v.signal.name] then
         -- read out control signals
         if v.signal.name == ISDEPOT and v.count > 0 then
@@ -247,8 +250,10 @@ function UpdateStop(stopID, stop)
             local traincount = 0
             if signal_type == "fluid" then
               traincount = stop.parked_train.get_fluid_count(signal_name)
-            else
+            elseif signal_type == "item" then
               traincount = stop.parked_train.get_item_count(signal_name)
+            elseif signal_type == "virtual" then
+              traincount = GetTrainSignalCount(stop.parked_train, signal.name)
             end
 
             if delivery.to_id == stop.entity.unit_number then
