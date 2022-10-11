@@ -402,6 +402,7 @@ end
 
 local temp_wait_condition = {{type = "time", compare_type = "and", ticks = 0}}
 
+-- creates a temporary stop for train schedules; unlike ProcessDelivery this has to consider that the stop entity might be gone
 local function new_temporary_stop(train, stop_id)
   local stop = global.LogisticTrainStops[stop_id]
   if not stop or not stop.entity.valid then return nil end -- the actual station is gone, don't add anything
@@ -416,6 +417,7 @@ local function new_temporary_stop(train, stop_id)
   return { wait_conditions = temp_wait_condition, rail = rail, rail_direction = rail_direction, temporary = true }
 end
 
+-- reassigns a delivery from one train to another; only returns true if the old train was actually executing a delivery; also adds relevant temp-stops for trains on a different surface
 function ReassignDelivery(old_train_id, new_train)
   local delivery = update_delivery(old_train_id, new_train)
   if not delivery then return false end
@@ -425,7 +427,7 @@ function ReassignDelivery(old_train_id, new_train)
   local new_records = {}
   local count = 0
 
-  local function add_record(record)
+  local function add_record(record) -- avoids repetetive code below
     if record then
       count = count + 1
       new_records[count] = record

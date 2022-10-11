@@ -330,7 +330,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
       and (stop.min_carriages == 0 or max_length == 0 or stop.min_carriages <= max_length)
       and (stop.max_carriages == 0 or min_length == 0 or stop.max_carriages >= min_length) then --check if provider can actually service trains from requester
         local surface_connections = find_surface_connections(surface, stop.entity.surface, force, matched_networks)
-        if surface_connections then -- for normal intra-surface deliveries this is an empty table - which is considered "true"
+        if surface_connections then -- for normal intra-surface deliveries this is an empty table - which is truthy
           local activeDeliveryCount = #stop.active_deliveries
           local from_network_id_string = format("0x%x", band(stop.network_id))
           if activeDeliveryCount and (stop.max_trains == 0 or activeDeliveryCount < stop.max_trains) then

@@ -1,11 +1,14 @@
+-- removes all data about surface connections; connection owners won't be notified
 function ClearAllSurfaceConnections()
   global.ConnectedSurfaces = {}
 end
 
+-- returns the string "number1|number2" in consistent order: the smaller number is always placed first
 local function sorted_pair(number1, number2)
   return (number1 < number2) and (number1..'|'..number2) or (number2..'|'..number1)
 end
 
+-- same as flib.get_or_insert(a_table, key, {}) but avoids the garbage collector overhead of passing an empty table that isn't used when the key exists
 local function lazy_subtable(a_table, key)
   local subtable = a_table[key]
   if not subtable then
@@ -15,6 +18,7 @@ local function lazy_subtable(a_table, key)
   return subtable
 end
 
+-- removes the surface connection between the given entities from global.SurfaceConnections. Does nothing if the connection doesn't exist.
 function DisconnectSurfaces(entity1, entity2)
   if not (entity1 and entity1.valid and entity2 and entity2.valid) then
     return -- this gets automatically cleaned up in find_surface_connections()
@@ -28,12 +32,13 @@ function DisconnectSurfaces(entity1, entity2)
   end
 end
 
+-- adds a surface connection between the given entities; the network_id will be used in delivery processing to discard providers that don't match the surface connection's network_id
 function ConnectSurfaces(entity1, entity2, network_id)
   if not (entity1 and entity1.valid and entity2 and entity2.valid) then
-    error("both entities must be valid")
+    printmsg({"ltn-message.error-invalid-surface-connection-entities"})
   end
   if entity1.surface == entity2.surface then
-    error("connecting entities on the same surface is nonsensical")
+    printmsg({"ltn-message.error-same-surface-connection-entities"})
   end
 
   local surface_pair_key = sorted_pair(entity1.surface.index, entity2.surface.index)
