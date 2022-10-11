@@ -34,6 +34,9 @@ local function initialize(oldVersion, newVersion)
   
   ---- initialize stops
   global.LogisticTrainStops = global.LogisticTrainStops or {}
+  -- a nested table of connections per surface { [surface_pair_key] = { [entity_pair_key] = { entity1, entity2, network_id }, ... }, ... }
+  -- used to decide if providers from another surface are valid sources of items
+  -- entity_key_pairs are automatically dropped during delivery processing if at least one of the referenced entities becomes invalid
   global.ConnectedSurfaces = global.ConnectedSurfaces or {}
 
   -- clean obsolete global

@@ -48,7 +48,22 @@ function ConnectSurfaces(entity1, entity2, network_id)
   }
 end
 
-script.on_event(defines.events.on_surface_deleted, function(event)
+-- remove entity references when deleting surfaces
+function OnSurfaceRemoved(event)
+  -- stop references
+  local surfaceID = event.surface_index
+  log("removing LTN stops on surface "..tostring(surfaceID) )
+  local surface = game.surfaces[surfaceID]
+  if surface then
+    local train_stops = surface.find_entities_filtered{type = "train-stop"}
+    for _, entity in pairs(train_stops) do
+      if ltn_stop_entity_names[entity.name] then
+        RemoveStop(entity.unit_number)
+      end
+    end
+  end
+
+  -- surface connections; surface_index will either be the first half of the key or the second
   local first_surface = "^"..event.surface_index.."|"
   local second_surface = "|"..event.surface_index.."$"
 
@@ -57,4 +72,4 @@ script.on_event(defines.events.on_surface_deleted, function(event)
       global.ConnectedSurfaces[surface_pair_key] = nil
     end
   end
-end)
+end
