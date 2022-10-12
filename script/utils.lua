@@ -64,7 +64,7 @@ function Make_Train_RichText(train, train_name)
 end
 
 -- same as flib.get_or_insert(a_table, key, {}) but avoids the garbage collector overhead of passing an empty table that isn't used when the key exists
-local function Get_Or_Create(a_table, key)
+function Get_Or_Create(a_table, key)
   local subtable = a_table[key]
   if not subtable then
     subtable = {}
