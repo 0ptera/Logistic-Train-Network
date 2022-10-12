@@ -414,11 +414,21 @@ local function new_temporary_stop(train, stop_id)
   local train_surface = train.carriages[1].surface -- locomotive might not work here, a new train on another surface could still be incomplete
   if train_surface ~= stop.entity.surface then return nil end -- the engine does not allow this
 
+  if debug then log("(ReassignDelivery) adding new temp-stop to rail "..rail.unit_number.." to schedule of train "..train.id) end
   return { wait_conditions = temp_wait_condition, rail = rail, rail_direction = rail_direction, temporary = true }
 end
 
 -- reassigns a delivery from one train to another; only returns true if the old train was actually executing a delivery; also adds relevant temp-stops for trains on a different surface
 function ReassignDelivery(old_train_id, new_train)
+  -- avoid any work in update_delivery if the delivery doesn't exist
+  if not (old_train_id and global.Dispatcher.Deliveries[old_train_id]) then return false end
+
+  if not (new_train.schedule and new_train.schedule.records and next(new_train.schedule.records)) then
+    if message_level >= 1 then printmsg({"ltn-message.error-reassign-without-schedule", Make_Train_RichText(new_train, "")}) end
+    if debug_log then log("(ReassignDelivery) new train "..new_train.id.." has no schedule") end
+    return
+  end
+
   local delivery = update_delivery(old_train_id, new_train)
   if not delivery then return false end
 

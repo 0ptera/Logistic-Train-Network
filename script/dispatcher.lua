@@ -276,6 +276,7 @@ end
 
 ---- ProcessRequest ----
 
+-- returns the string "number1|number2" in consistent order: the smaller number is always placed first
 local function sorted_pair(number1, number2)
   return (number1 < number2) and (number1..'|'..number2) or (number2..'|'..number1)
 end
@@ -300,14 +301,15 @@ local function find_surface_connections(surface1, surface2, force, network_id)
         matching_connections[count] = connection
       end
     else
-      surface_connections[entity_pair_key] = nil -- cleanup invalid connections
+      if debug_log then log("dropping invalid surface connection "..entity_pair_key.." between surfaces "..surface_pair_key) end
+      surface_connections[entity_pair_key] = nil
     end
   end
 
   return count > 0 and matching_connections or nil
 end
 
--- return a list ordered priority > #active_deliveries > item-count of {entity, network_id, priority, activeDeliveryCount, item, count, providing_threshold, providing_threshold_stacks, min_carriages, max_carriages, locked_slots}
+-- return a list ordered priority > #active_deliveries > item-count of {entity, network_id, priority, activeDeliveryCount, item, count, providing_threshold, providing_threshold_stacks, min_carriages, max_carriages, locked_slots, surface_connections}
 local function getProviders(requestStation, item, req_count, min_length, max_length)
   local stations = {}
   local providers = global.Dispatcher.Provided[item]
@@ -334,7 +336,7 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
           local activeDeliveryCount = #stop.active_deliveries
           local from_network_id_string = format("0x%x", band(stop.network_id))
           if activeDeliveryCount and (stop.max_trains == 0 or activeDeliveryCount < stop.max_trains) then
-            if debug_log then log("found "..count.."("..tostring(stop.providing_threshold)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.provider_priority..", active Deliveries: "..activeDeliveryCount.." min_carriages: "..stop.min_carriages..", max_carriages: "..stop.max_carriages..", locked Slots: "..stop.locked_slots) end
+            if debug_log then log("found "..count.."("..tostring(stop.providing_threshold)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.provider_priority..", active Deliveries: "..activeDeliveryCount.." min_carriages: "..stop.min_carriages..", max_carriages: "..stop.max_carriages..", locked Slots: "..stop.locked_slots..", #surface_connections: "..(#surface_connections)) end
             stations[#stations +1] = {
               entity = stop.entity,
               network_id = matched_networks,

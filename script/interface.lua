@@ -153,9 +153,12 @@ Raised after dispatcher assigned delivery to a train
     event.train
     event.from
     event.from_id
+    event.from_stop
     event.to
     event.to_id
+    event.to_stop
     event.shipment = { [item], count }
+    event.surface_connections = { { entity1, entity2, network_id } }
   })
 
 
