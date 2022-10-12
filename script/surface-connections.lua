@@ -13,12 +13,10 @@ function DisconnectSurfaces(entity1, entity2)
     -- ensure received data is valid and usable
   -- ensure received data is valid and usable
   if not( entity1 and entity1.valid and entity1.surface and entity1.surface.index and game.surfaces[entity1.surface.index] ) then
-    if message_level >= 1 then printmsg({"ltn-message.error-surface-connection-invalid-entity", 1}) end
     if debug_log then log("(DisconnectSurfaces) Recieved entity1 was invalid.") end
     return
   end
   if not( entity2 and entity2.valid and entity2.surface and entity2.surface.index and game.surfaces[entity2.surface.index] ) then
-    if message_level >= 1 then printmsg({"ltn-message.error-surface-connection-invalid-entity", 2}) end
     if debug_log then log("(DisconnectSurfaces) Recieved entity2 was invalid.") end
     return
   end
@@ -37,23 +35,19 @@ end
 function ConnectSurfaces(entity1, entity2, network_id)
   -- ensure received data is valid and usable
   if not( entity1 and entity1.valid and entity1.surface and entity1.surface.index and game.surfaces[entity1.surface.index] ) then
-    if message_level >= 1 then printmsg({"ltn-message.error-surface-connection-invalid-entity", 1}) end
     if debug_log then log("(ConnectSurfaces) Recieved entity1 was invalid.") end
     return
   end
   if not( entity2 and entity2.valid and entity2.surface and entity2.surface.index and game.surfaces[entity2.surface.index] ) then
-    if message_level >= 1 then printmsg({"ltn-message.error-surface-connection-invalid-entity", 2}) end
     if debug_log then log("(ConnectSurfaces) Recieved entity2 was invalid.") end
     return
   end
   if not( network_id and tonumber(network_id, 10) ) then
-    if message_level >= 1 then printmsg({"ltn-message.error-surface-connection-invalid-networkid"}) end
     if debug_log then log("(ConnectSurfaces) Recieved network_id was no valid integer.") end
     return
   end
 
   if entity1.surface == entity2.surface then
-    if message_level >= 2 then printmsg({"ltn-message.warning-surface-connection-identical", entity1.surface.name}) end
     if debug_log then
       log(format("(ConnectSurfaces) Entities [%d] and [%d] are on the same surface %s [%d].",
       entity1.unit_number,
