@@ -438,7 +438,7 @@ function ReassignDelivery(old_train_id, new_train)
 
   if not (new_train.schedule and new_train.schedule.records and next(new_train.schedule.records)) then
     if message_level >= 2 then printmsg({"ltn-message.warning-reassign-without-schedule", Make_Train_RichText(new_train, nil)}) end
-    if debug_log then log(format("(ReassignDelivery) new train [%d] has no schedule", new_train.id) end
+    if debug_log then log(format("(ReassignDelivery) new train [%d] has no schedule", new_train.id)) end
     return false
   end
 
