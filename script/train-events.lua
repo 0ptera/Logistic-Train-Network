@@ -42,7 +42,7 @@ function TrainArrives(train)
     local is_provider = false
 
     -- if message_level >= 3 then printmsg({"ltn-message.train-arrived", tostring(trainName), stop_name}, trainForce, false) end
-    if message_level >= 3 then printmsg({"ltn-message.train-arrived", Make_Train_RichText(train, trainName), format("[train-stop=%d]", stopID)}, trainForce, false) end
+    if message_level >= 3 then printmsg({"ltn-message.train-arrived", Make_Train_RichText(train, nil), format("[train-stop=%d]", stopID)}, trainForce, false) end
     if debug_log then log(format("(TrainArrives) Train [%d] \"%s\": arrived at LTN-stop [%d] \"%s\"; train_faces_stop: %s", train.id, trainName, stopID, stop_name, stop.parked_train_faces_stop )) end
 
     if stop.error_code == 0 then
@@ -414,19 +414,32 @@ local function new_temporary_stop(train, stop_id)
   local train_surface = train.carriages[1].surface -- locomotive might not work here, a new train on another surface could still be incomplete
   if train_surface ~= stop.entity.surface then return nil end -- the engine does not allow this
 
-  if debug then log("(ReassignDelivery) adding new temp-stop to rail "..rail.unit_number.." to schedule of train "..train.id) end
+  if debug then log(format("adding new temp-stop at rail [%d] to train [%d] ",rail.unit_number , train.id)) end
   return { wait_conditions = temp_wait_condition, rail = rail, rail_direction = rail_direction, temporary = true }
 end
 
--- reassigns a delivery from one train to another; only returns true if the old train was actually executing a delivery; also adds relevant temp-stops for trains on a different surface
+-- reassigns existing delivery from one train to another and adds relevant temp-stops on a different surface
+-- returns true if the old train was executing a delivery
 function ReassignDelivery(old_train_id, new_train)
-  -- avoid any work in update_delivery if the delivery doesn't exist
-  if not (old_train_id and global.Dispatcher.Deliveries[old_train_id]) then return false end
+  -- skip when no delivery exist
+  if not (old_train_id and global.Dispatcher.Deliveries[old_train_id]) then
+    if debug_log then log(format("(ReassignDelivery) train [%d] not found in deliveries.", old_train_id)) end
+    return false
+  end
+
+  -- TODO: also check if new_train has correct type; LuaTrain
+  -- check if new train is valid
+  if not (new_train and new_train.valid) then
+    if message_level >= 1 then printmsg({"ltn-message.error-reassign-invalid-train"}) end
+    if debug_log then log("(ReassignDelivery) new train is invalid.") end
+    return false
+  end
+
 
   if not (new_train.schedule and new_train.schedule.records and next(new_train.schedule.records)) then
-    if message_level >= 1 then printmsg({"ltn-message.error-reassign-without-schedule", Make_Train_RichText(new_train, "")}) end
-    if debug_log then log("(ReassignDelivery) new train "..new_train.id.." has no schedule") end
-    return
+    if message_level >= 2 then printmsg({"ltn-message.warning-reassign-without-schedule", Make_Train_RichText(new_train, nil)}) end
+    if debug_log then log(format("(ReassignDelivery) new train [%d] has no schedule", new_train.id) end
+    return false
   end
 
   local delivery = update_delivery(old_train_id, new_train)
@@ -437,7 +450,7 @@ function ReassignDelivery(old_train_id, new_train)
   local new_records = {}
   local count = 0
 
-  local function add_record(record) -- avoids repetetive code below
+  local function add_record(record) -- avoids repetitive code below
     if record then
       count = count + 1
       new_records[count] = record

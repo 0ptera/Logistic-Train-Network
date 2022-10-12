@@ -37,13 +37,19 @@ end
 -- adds a surface connection between the given entities; the network_id will be used in delivery processing to discard providers that don't match the surface connection's network_id
 function ConnectSurfaces(entity1, entity2, network_id)
   if not (entity1 and entity1.valid and entity2 and entity2.valid) then
-    if message_level >= 1 then printmsg({"ltn-message.error-invalid-surface-connection"}) end
+    if message_level >= 1 then printmsg({"ltn-message.error-surface-connection-invalid"}) end
     if debug_log then log("(ConnectSurfaces) Entities are invalid") end
     return
   end
   if entity1.surface == entity2.surface then
-    if message_level >= 1 then printmsg({"ltn-message.error-same-surface-connection", entity1.surface.name}) end
-    if debug_log then log("(ConnectSurfaces) Entities are on the same surface "..entity1.unit_number..", "..entity2.unit_number) end
+    if message_level >= 2 then printmsg({"ltn-message.warning-surface-connection-identical", entity1.surface.name}) end
+    if debug_log then
+      log(format("(ConnectSurfaces) Entities [%d] and [%d] are on the same surface %s [%d].",
+      entity1.unit_number,
+      entity2.unit_number,
+      entity1.surface.name,
+      entity1.surface.index))
+    end
     return
   end
 
@@ -51,7 +57,15 @@ function ConnectSurfaces(entity1, entity2, network_id)
   local surface_connections = lazy_subtable(global.ConnectedSurfaces, surface_pair_key)
 
   local entity_pair_key = sorted_pair(entity1.unit_number, entity2.unit_number)
-  if debug_log then log("Creating surface connection for entities "..entity_pair_key.." between surfaces "..surface_pair_key) end
+  if debug_log then
+    log(format("(ConnectSurfaces) Creating surface connection between [%d] on %s [%d] and [%d] on %s [%d].",
+    entity1.unit_number,
+    entity1.surface.name,
+    entity1.surface.index,
+    entity2.unit_number,
+    entity2.surface.name,
+    entity2.surface.index))
+  end
   surface_connections[entity_pair_key] = {
     -- enforce a consistent order for repeated calls with the same two entities
     entity1 = entity1.unit_number <= entity2.unit_number and entity1 or entity2,
@@ -64,7 +78,7 @@ end
 function OnSurfaceRemoved(event)
   -- stop references
   local surfaceID = event.surface_index
-  log("removing LTN stops and surface connections on surface "..tostring(surfaceID) )
+  log(format("Removing LTN stops and surface connections on surface [%d].", surfaceID) )
   local surface = game.surfaces[surfaceID]
   if surface then
     local train_stops = surface.find_entities_filtered{type = "train-stop"}

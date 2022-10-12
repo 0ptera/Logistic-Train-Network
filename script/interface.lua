@@ -40,44 +40,15 @@ remote.add_interface("logistic-train-network", {
   on_requester_unscheduled_cargo = function() return on_requester_unscheduled_cargo_alert end,
   on_requester_remaining_cargo = function() return on_requester_remaining_cargo_alert end,
 
-  -- Designates two entities on different surfaces as forming a surface connection.
-  -- Logically those surfaces are combined into one LTN, that is, deliveries will be created between providers on one surface and requesters on the other.
-  -- The connection has a network_id that acts as an additional mask that is applied to potential providers,
-  -- so using -1 here would apply no further restrictions and using 0 would make the connection unusable.
-  -- Both entities must be from the same force as the requester and the provider for deliveries to go through the connection.
-  -- The connection is bi-directional but not transitive, i.e. surface A -> B implies B -> A, but A -> B and B -> C does not imply A -> C.
-  -- Calling this function again with the same two entities will effectively update the network_id of the connection.
-  --
-  -- LTN has no notion of how a train actually moves between surfaces.
-  -- It is the caller's responsibility to modify the train schedule accordingly, most appropriately in an on_delivery_created_event.
-  -- Its field 'surface_connections' will be the table of connections { entity1, entity2, network_id } that had a matching network_id and force.
-  -- For intra-surface deliveries that field will be an empty table.
-  --
-  -- Trains will be sourced from the provider surface only and should return to it after leaving the requester.
-  -- This is to avoid creating an imbalance in the train pools per surface.
-  connect_surfaces = ConnectSurfaces, -- function(entity1 :: LuaEntity, entity2 :: LuaEntity, network_id :: uint)
-
-  -- Explicitly severs the surface connection that is formed by the two given entities.
-  -- Active deliveries will not be affected.
-  -- Calling this function for two entities that are not connected has no effect.
-  -- It is not necessary to call this function if one or both of the entities are deleted.
+  -- surface connections
+  connect_surfaces = ConnectSurfaces, -- function(entity1 :: LuaEntity, entity2 :: LuaEntity, network_id :: int32)
   disconnect_surfaces = DisconnectSurfaces, -- function(entity1 :: LuaEntity, entity2 :: LuaEntity)
-
-  -- Clears all surface connections.
-  -- Active deliveries will not be affected
-  -- This function exists mostly for debugging purposes, there is no event that is raised to notify connection owners.
-  -- TODO remove this or raise a corresponding event? Turn it into a /command?
   clear_all_surface_connections = ClearAllSurfaceConnections,
 
   -- Re-assigns a delivery to a different train.
-  -- Scripts should call this function if they create a train based on another train, for example when moving a train to a different surface.
-  -- It is the caller's responsibility to make sure that the new train's schedule matches the old one's before calling this function.
-  -- Otherwise LTN won't be able to add missing temporary stops for logistic stops that are now on the same surface as the train.
-  -- Calling this function with an old_train_id that is not executing a delivery has no effect.
-  -- If it is the function will return a truthy value.
-  -- It is not necessary to call this function when coupling trains via script, LTN is already aware of that through Factorio events.
   reassign_delivery = ReassignDelivery, -- function(old_train_id :: unit, new_train :: LuaTrain) :: boolean
 })
+
 
 --[[ register events from LTN:
 if remote.interfaces["logistic-train-network"] then
@@ -91,7 +62,7 @@ end
 on_stops_updated
 Raised every UpdateInterval, after delivery generation
 -> Contains:
-event.logistic_train_stops = {  [stop_id],  {
+event.logistic_train_stops = { [stop_id], {
     -- stop data
     active_deliveries,
     entity,
@@ -238,5 +209,41 @@ Raised when trains leave requester with remaining cargo
   event.train
   event.station
   remaining_load = { [item], count } }
+
+--]]
+
+--[[ REMOTE CALLS
+
+usage:
+if remote.interfaces["logistic-train-network"] then
+  remote.call("logistic-train-network", "<name>", <parameters>?)
+end
+
+connect_surfaces(entity1 :: LuaEntity, entity2 :: LuaEntity, network_id :: int32)
+  Designates two entities on different surfaces as forming a surface connection.
+  Connections are bi-directional but not transitive, i.e. surface A -> B implies B -> A, but A -> B and B -> C does not imply A -> C.
+  LTN will generate deliveries between depot and provider on one surface and requester on the other.
+  Network_id acts as additional mask for potential providers.
+  It is the caller's responsibility to ensure:
+  1) trains are moved between surfaces
+  2) deliveries are updated to the new train after surface transition, see reassign_delivery()
+  3) trains return to their original surface depot
+
+disconnect_surfaces(entity1 :: LuaEntity, entity2 :: LuaEntity)
+  Removes a surface connection formed by the two given entities.
+  Active deliveries will not be affected.
+  It's not necessary to call this function when deleting one or both entities.
+
+clear_all_surface_connections()
+  Clears all surface connections.
+  Active deliveries will not be affected
+  This function exists for debugging purposes, no event is raised to notify connection owners.
+
+reassign_delivery(old_train_id :: unit, new_train :: LuaTrain) :: boolean
+  Re-assigns a delivery to a different train.
+  Should be called after creating a train based on another train, for example after moving a train to a different surface.
+  It is the caller's responsibility to make sure that the new train's schedule matches the old one's before calling this function. Otherwise LTN won't be able to add missing temporary stops for logistic stops that are now on the same surface as the train.
+  Calls with an old_train_id without delivery have no effect.
+  Don't call this function when coupling trains via script, LTN already handles that through Factorio events.
 
 --]]

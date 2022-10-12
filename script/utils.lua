@@ -57,7 +57,7 @@ end
 function Make_Train_RichText(train, train_name)
   local loco = Get_Main_Locomotive(train)
   if loco and loco.valid then
-    return format("[train=%d] %s", loco.unit_number, train_name)
+    return format("[train=%d] %s", loco.unit_number, train_name or loco.backer_name)
   else
     return format("[train=] %s", train_name)
   end
