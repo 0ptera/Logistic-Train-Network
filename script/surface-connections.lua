@@ -8,16 +8,6 @@ local function sorted_pair(number1, number2)
   return (number1 < number2) and (number1..'|'..number2) or (number2..'|'..number1)
 end
 
--- same as flib.get_or_insert(a_table, key, {}) but avoids the garbage collector overhead of passing an empty table that isn't used when the key exists
-local function lazy_subtable(a_table, key)
-  local subtable = a_table[key]
-  if not subtable then
-    subtable = {}
-    a_table[key] = subtable
-  end
-  return subtable
-end
-
 -- removes the surface connection between the given entities from global.SurfaceConnections. Does nothing if the connection doesn't exist.
 function DisconnectSurfaces(entity1, entity2)
     -- ensure received data is valid and usable
@@ -75,7 +65,7 @@ function ConnectSurfaces(entity1, entity2, network_id)
   end
 
   local surface_pair_key = sorted_pair(entity1.surface.index, entity2.surface.index)
-  local surface_connections = lazy_subtable(global.ConnectedSurfaces, surface_pair_key)
+  local surface_connections = Get_Or_Create(global.ConnectedSurfaces, surface_pair_key)
 
   local entity_pair_key = sorted_pair(entity1.unit_number, entity2.unit_number)
   if debug_log then
