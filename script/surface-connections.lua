@@ -20,8 +20,17 @@ end
 
 -- removes the surface connection between the given entities from global.SurfaceConnections. Does nothing if the connection doesn't exist.
 function DisconnectSurfaces(entity1, entity2)
-  if not (entity1 and entity1.valid and entity2 and entity2.valid) then
-    return -- this gets automatically cleaned up in find_surface_connections()
+    -- ensure received data is valid and usable
+  -- ensure received data is valid and usable
+  if not( entity1 and entity1.valid and entity1.surface and entity1.surface.index and game.surfaces[entity1.surface.index] ) then
+    if message_level >= 1 then printmsg({"ltn-message.error-surface-connection-invalid-entity", 1}) end
+    if debug_log then log("(DisconnectSurfaces) Recieved entity1 was invalid.") end
+    return
+  end
+  if not( entity2 and entity2.valid and entity2.surface and entity2.surface.index and game.surfaces[entity2.surface.index] ) then
+    if message_level >= 1 then printmsg({"ltn-message.error-surface-connection-invalid-entity", 2}) end
+    if debug_log then log("(DisconnectSurfaces) Recieved entity2 was invalid.") end
+    return
   end
 
   local surface_pair_key = sorted_pair(entity1.surface.index, entity2.surface.index)
@@ -36,11 +45,23 @@ end
 
 -- adds a surface connection between the given entities; the network_id will be used in delivery processing to discard providers that don't match the surface connection's network_id
 function ConnectSurfaces(entity1, entity2, network_id)
-  if not (entity1 and entity1.valid and entity2 and entity2.valid) then
-    if message_level >= 1 then printmsg({"ltn-message.error-surface-connection-invalid"}) end
-    if debug_log then log("(ConnectSurfaces) Entities are invalid") end
+  -- ensure received data is valid and usable
+  if not( entity1 and entity1.valid and entity1.surface and entity1.surface.index and game.surfaces[entity1.surface.index] ) then
+    if message_level >= 1 then printmsg({"ltn-message.error-surface-connection-invalid-entity", 1}) end
+    if debug_log then log("(ConnectSurfaces) Recieved entity1 was invalid.") end
     return
   end
+  if not( entity2 and entity2.valid and entity2.surface and entity2.surface.index and game.surfaces[entity2.surface.index] ) then
+    if message_level >= 1 then printmsg({"ltn-message.error-surface-connection-invalid-entity", 2}) end
+    if debug_log then log("(ConnectSurfaces) Recieved entity2 was invalid.") end
+    return
+  end
+  if not( network_id and tonumber(network_id, 10) ) then
+    if message_level >= 1 then printmsg({"ltn-message.error-surface-connection-invalid-networkid"}) end
+    if debug_log then log("(ConnectSurfaces) Recieved network_id was no valid integer.") end
+    return
+  end
+
   if entity1.surface == entity2.surface then
     if message_level >= 2 then printmsg({"ltn-message.warning-surface-connection-identical", entity1.surface.name}) end
     if debug_log then

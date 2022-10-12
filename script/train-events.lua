@@ -421,23 +421,21 @@ end
 -- reassigns existing delivery from one train to another and adds relevant temp-stops on a different surface
 -- returns true if the old train was executing a delivery
 function ReassignDelivery(old_train_id, new_train)
-  -- skip when no delivery exist
+  -- check if delivery exists for given train id
   if not (old_train_id and global.Dispatcher.Deliveries[old_train_id]) then
+    if message_level >= 1 then printmsg({"ltn-message.error-reassign-invalid-trainid"}) end
     if debug_log then log(format("(ReassignDelivery) train [%d] not found in deliveries.", old_train_id)) end
     return false
   end
-
-  -- TODO: also check if new_train has correct type; LuaTrain
   -- check if new train is valid
-  if not (new_train and new_train.valid) then
+  if not (new_train and new_train.valid and new_train.object_name == "LuaTrain") then
     if message_level >= 1 then printmsg({"ltn-message.error-reassign-invalid-train"}) end
-    if debug_log then log("(ReassignDelivery) new train is invalid.") end
+    if debug_log then log("(ReassignDelivery) Recieved new_train was invalid.") end
     return false
   end
 
-
   if not (new_train.schedule and new_train.schedule.records and next(new_train.schedule.records)) then
-    if message_level >= 2 then printmsg({"ltn-message.warning-reassign-without-schedule", Make_Train_RichText(new_train, nil)}) end
+    if message_level >= 1 then printmsg({"ltn-message.error-reassign-without-schedule", Make_Train_RichText(new_train, nil)}) end
     if debug_log then log(format("(ReassignDelivery) new train [%d] has no schedule", new_train.id)) end
     return false
   end
