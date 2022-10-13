@@ -283,9 +283,9 @@ local function sorted_pair(number1, number2)
   return (number1 < number2) and (number1..'|'..number2) or (number2..'|'..number1)
 end
 
--- return a list of matching { entity1, entity2, network_id } each connecting the two surfaces. The list will be empty if surface1 == surface2 and it will be nil if there are no matching connections.
+-- return a list of matching { entity1, entity2, network_id } each connecting the two surfaces. The list will be empty if surface1 == surface2 and it will be nil if there are no matching connections. The second return value will be the number of entries in the list.
 local function find_surface_connections(surface1, surface2, force, network_id)
-  if surface1 == surface2 then return {} end
+  if surface1 == surface2 then return {}, 0 end
 
   local surface_pair_key = sorted_pair(surface1.index, surface2.index)
   local surface_connections = global.ConnectedSurfaces[surface_pair_key]
@@ -306,7 +306,11 @@ local function find_surface_connections(surface1, surface2, force, network_id)
     end
   end
 
-  return count > 0 and matching_connections or nil
+  if count > 0 then
+    return matching_connections, count
+  else
+    return nil, nil
+  end
 end
 
 -- return a list ordered priority > #active_deliveries > item-count of {entity, network_id, priority, activeDeliveryCount, item, count, providing_threshold, providing_threshold_stacks, min_carriages, max_carriages, locked_slots, surface_connections}
@@ -335,10 +339,9 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
         local activeDeliveryCount = #stop.active_deliveries
         if activeDeliveryCount and (stop.max_trains == 0 or activeDeliveryCount < stop.max_trains) then
           -- check if surface transition is possible
-          local surface_connections = find_surface_connections(surface, stop.entity.surface, force, matched_networks)
+          local surface_connections, surface_connections_count = find_surface_connections(surface, stop.entity.surface, force, matched_networks)
           if surface_connections then -- for same surfaces surface_connections = {}
             local from_network_id_string = format("0x%x", band(stop.network_id))
-            local surface_connections_count = #surface_connections
             if debug_log then log("found "..count.."("..tostring(stop.providing_threshold)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.provider_priority..", active Deliveries: "..activeDeliveryCount..", min_carriages: "..stop.min_carriages..", max_carriages: "..stop.max_carriages..", locked Slots: "..stop.locked_slots..", #surface_connections: "..(surface_connections_count)) end
             stations[#stations +1] = {
               entity = stop.entity,
