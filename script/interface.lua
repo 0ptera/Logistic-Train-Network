@@ -100,7 +100,8 @@ Raised every UpdateInterval, after delivery generation
   event.update_interval = int -- time in ticks LTN needed to run all updates, varies depending on number of stops and requests
   event.provided_by_stop = { [stop_id], { [item], count } }
   event.requests_by_stop = { [stop_id], { [item], count } }
-  event.deliveries = { [train_id], {force, train, from, to, network_id, started, shipment = { [item], count } } }
+  event.new_deliveries = { [train_id], {force, train, from, to, network_id, started, surface_connections = { entity1, entity2, network_id }, shipment = { [item], count } } }
+  event.deliveries = { [train_id], {force, train, from, to, network_id, started, surface_connections = { entity1, entity2, network_id }, shipment = { [item], count } } }
   event.available_trains = { [train_id], { capacity, fluid_capacity, force, depot_priority, network_id, train } }
 
 
@@ -116,21 +117,6 @@ Raised when no train was found to handle a request
   (optional) event.min_carriages
   (optional) event.max_carriages
   (optional) event.shipment = { [item], count }
-
-
-on_delivery_created
-Raised after dispatcher assigned delivery to a train
-    event.train_id
-    event.train
-    event.from
-    event.from_id
-    event.from_stop
-    event.to
-    event.to_id
-    event.to_stop
-    event.shipment = { [item], count }
-    event.surface_connections = { { entity1, entity2, network_id } }
-  })
 
 
 on_delivery_pickup_complete

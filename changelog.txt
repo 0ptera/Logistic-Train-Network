@@ -1,4 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.18.0
+Date: 2022-10-13
+  Features:
+    - Create deliveries across surfaces, train surface transitions have to be handled by 3rd party mods
+    - added remote call connect_surfaces
+    - added remote call disconnect_surfaces
+    - added remote call clear_all_surface_connections
+    - added remote call reassign_delivery
+  Changes:
+    - added on_dispatcher_updated.new_deliveries as replacement for on_delivery_created
+    - removed event on_delivery_created, running in same tick as dispatcher produced microstutter
+---------------------------------------------------------------------------------------------------
 Version: 1.17.1
 Date: 2022-10-10
   Features:

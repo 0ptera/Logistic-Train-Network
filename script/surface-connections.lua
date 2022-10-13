@@ -10,7 +10,6 @@ end
 
 -- removes the surface connection between the given entities from global.SurfaceConnections. Does nothing if the connection doesn't exist.
 function DisconnectSurfaces(entity1, entity2)
-    -- ensure received data is valid and usable
   -- ensure received data is valid and usable
   if not( entity1 and entity1.valid and entity1.surface and entity1.surface.index and game.surfaces[entity1.surface.index] ) then
     if debug_log then log("(DisconnectSurfaces) Recieved entity1 was invalid.") end
