@@ -726,17 +726,7 @@ function ProcessRequest(reqIndex, request)
 
     if debug_log then log("  "..loadingListItem..", "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks ") end
   end
-  global.Dispatcher.new_Deliveries[selectedTrain.id] = {
-    force = requestForce,
-    train = selectedTrain,
-    started = game.tick,
-    from = from,
-    from_id = fromID,
-    to = to,
-    to_id = toID,
-    network_id = providerData.network_id,
-    surface_connections = providerData.surface_connections,
-    shipment = shipment}
+  table.insert(global.Dispatcher.new_Deliveries, selectedTrain.id)
   global.Dispatcher.Deliveries[selectedTrain.id] = {
     force = requestForce,
     train = selectedTrain,

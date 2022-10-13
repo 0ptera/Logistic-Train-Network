@@ -100,7 +100,7 @@ Raised every UpdateInterval, after delivery generation
   event.update_interval = int -- time in ticks LTN needed to run all updates, varies depending on number of stops and requests
   event.provided_by_stop = { [stop_id], { [item], count } }
   event.requests_by_stop = { [stop_id], { [item], count } }
-  event.new_deliveries = { [train_id], {force, train, from, to, network_id, started, surface_connections = { entity1, entity2, network_id }, shipment = { [item], count } } }
+  event.new_deliveries = array of train_ids
   event.deliveries = { [train_id], {force, train, from, to, network_id, started, surface_connections = { entity1, entity2, network_id }, shipment = { [item], count } } }
   event.available_trains = { [train_id], { capacity, fluid_capacity, force, depot_priority, network_id, train } }
 
