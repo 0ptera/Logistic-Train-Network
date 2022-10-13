@@ -88,7 +88,7 @@ event.logistic_train_stops = { [stop_id], {
     no_warnings,
 
     -- parked train data
-    parked_train,
+    parked_train : LuaTrain,
     parked_train_id,
     parked_train_faces_stop,
 }}
@@ -97,12 +97,28 @@ event.logistic_train_stops = { [stop_id], {
 on_dispatcher_updated
 Raised every UpdateInterval, after delivery generation
 -> Contains:
-  event.update_interval = int -- time in ticks LTN needed to run all updates, varies depending on number of stops and requests
-  event.provided_by_stop = { [stop_id], { [item], count } }
-  event.requests_by_stop = { [stop_id], { [item], count } }
-  event.new_deliveries = array of train_ids
-  event.deliveries = { [train_id], {force, train, from, to, network_id, started, surface_connections = { entity1, entity2, network_id }, shipment = { [item], count } } }
-  event.available_trains = { [train_id], { capacity, fluid_capacity, force, depot_priority, network_id, train } }
+  update_interval = int -- time in ticks LTN needed to run all updates, varies depending on number of stops and requests
+  provided_by_stop = { [stop_id : int], { [item : string], count : int } }
+  requests_by_stop = { [stop_id : int], { [item : string], count : int } }
+  new_deliveries = { int } -- train_ids of deliveries created this dispatcher cycle
+  deliveries = { [train_id : int], {
+    force : LuaForce,
+    train : LuaTrain,
+    from : string,
+    to : string,
+    network_id: int,
+    started : int,
+    surface_connections = { entity1 : LuaEntity, entity2 : LuaEntity, network_id : int },
+    shipment = { [item : string], count : int }
+  } }
+  available_trains = { [train_id : int], {
+    capacity : int,
+    fluid_capacity : int,
+    force : LuaForce,
+    depot_priority : int,
+    network_id : int,
+    train : LuaTrain
+  } }
 
 
 on_dispatcher_no_train_found
