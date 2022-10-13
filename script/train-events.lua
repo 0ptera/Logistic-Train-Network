@@ -414,7 +414,7 @@ local function new_temporary_stop(train, stop_id)
   local train_surface = train.carriages[1].surface -- locomotive might not work here, a new train on another surface could still be incomplete
   if train_surface ~= stop.entity.surface then return nil end -- the engine does not allow this
 
-  if debug then log(format("adding new temp-stop at rail [%d] to train [%d] ",rail.unit_number , train.id)) end
+  if debug_log then log(format("adding new temp-stop at rail [%d] to train [%d] ",rail.unit_number , train.id)) end
   return { wait_conditions = temp_wait_condition, rail = rail, rail_direction = rail_direction, temporary = true }
 end
 
