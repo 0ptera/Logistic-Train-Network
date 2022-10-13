@@ -726,7 +726,7 @@ function ProcessRequest(reqIndex, request)
 
     if debug_log then log("  "..loadingListItem..", "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks ") end
   end
-  table.insert(global.Dispatcher.new_Deliveries, selectedTrain.id)
+  global.Dispatcher.new_Deliveries[#global.Dispatcher.new_Deliveries] = selectedTrain.id
   global.Dispatcher.Deliveries[selectedTrain.id] = {
     force = requestForce,
     train = selectedTrain,
