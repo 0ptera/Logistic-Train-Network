@@ -62,35 +62,35 @@ end
 on_stops_updated
 Raised every UpdateInterval, after delivery generation
 -> Contains:
-event.logistic_train_stops = { [stop_id], {
+logistic_train_stops = { [stop_id : int], {
     -- stop data
-    active_deliveries,
-    entity,
-    input,
-    output,
-    lamp_control,
-    error_code,
+    active_deliveries : int,
+    entity : LuaEntity,
+    input : LuaEntity,
+    output : LuaEntity,
+    lamp_control : LuaEntity,
+    error_code : int,
 
     -- control signals
-    is_depot,
-    depot_priority,
-    network_id,
-    max_carriages,
-    min_carriages,
-    max_trains,
-    providing_threshold,
-    providing_threshold_stacks,
-    provider_priority,
-    requesting_threshold,
-    requesting_threshold_stacks,
-    requester_priority,
-    locked_slots,
-    no_warnings,
+    is_depot : bool,
+    depot_priority : int,
+    network_id : int,
+    max_carriages : int,
+    min_carriages : int,
+    max_trains : int,
+    providing_threshold : int,
+    providing_threshold_stacks : int,
+    provider_priority : int,
+    requesting_threshold : int,
+    requesting_threshold_stacks : int,
+    requester_priority : int,
+    locked_slots : int,
+    no_warnings : bool,
 
     -- parked train data
     parked_train : LuaTrain,
-    parked_train_id,
-    parked_train_faces_stop,
+    parked_train_id : int,
+    parked_train_faces_stop : bool,
 }}
 
 
@@ -124,39 +124,39 @@ Raised every UpdateInterval, after delivery generation
 on_dispatcher_no_train_found
 Raised when no train was found to handle a request
 -> Contains:
-  event.to = requester.backer_name
-  event.to_id = requester.unit_number
-  event.network_id
-  (optional) event.item
-  (optional) event.from
-  (optional) event.from_id
-  (optional) event.min_carriages
-  (optional) event.max_carriages
-  (optional) event.shipment = { [item], count }
+  to : string -- requester.backer_name
+  to_id : int -- requester.unit_number
+  network_id : int
+  (optional) item : string -- <type,name>
+  (optional) from : string
+  (optional) from_id : string
+  (optional) min_carriages : int
+  (optional) max_carriages : int
+  (optional) shipment = { [item : string], count : int }
 
 
 on_delivery_pickup_complete
 Raised when a train leaves provider stop
 -> Contains:
-  event.train_id
-  event.train
-  event.planned_shipment= { [item], count }
-  event.actual_shipment = { [item], count } -- shipment updated to train inventory
+  train_id : int
+  train : LuaTrain
+  planned_shipment= { [item : string], count : int }
+  actual_shipment = { [item : string], count : int } -- shipment updated to train inventory
 
 
 on_delivery_completed
 Raised when train leaves requester stop
 -> Contains:
-  event.train_id
-  event.train
-  event.shipment= { [item], count }
+  train_id : int
+  train : LuaTrain
+  shipment= { [item : string], count : int }
 
 
 on_delivery_failed
 Raised when rolling stock of a train gets removed, the delivery timed out, train enters depot stop with active delivery
 -> Contains:
-  event.train_id
-  event.shipment= { [item], count } }
+  train_id : int
+  shipment= { [item : string], count : int } }
 
 
 ----  Alerts ----
@@ -164,53 +164,53 @@ Raised when rolling stock of a train gets removed, the delivery timed out, train
 on_dispatcher_no_train_found
 Raised when depot was empty
 -> Contains:
-  event.to
-  event.to_id
-  event.network_id
-  event.item
+  to : string
+  to_id : int
+  network_id : int
+  item : string -- <type,name>
 
 on_dispatcher_no_train_found
 Raised when no matching train was found
 -> Contains:
-  event.to
-  event.to_id
-  event.network_id
-  event.from
-  event.from_id
-  event.min_carriages
-  event.max_carriages
-  event.shipment
+  to : string
+  to_id : int
+  network_id : int
+  from : string
+  from_id : int
+  min_carriages : int
+  max_carriages : int
+  shipment = { [item : string], count : int } }
 
 on_provider_missing_cargo
 Raised when trains leave provider with less than planned load
 -> Contains:
-  event.train
-  event.station
-  planned_shipment = { [item], count } }
-  actual_shipment = { [item], count } }
+  train : LuaTrain
+  station : LuaEntity
+  planned_shipment = { [item : string], count : int } }
+  actual_shipment = { [item : string], count : int } }
 
 on_provider_unscheduled_cargo
 Raised when trains leave provider with wrong cargo
 -> Contains:
-  event.train
-  event.station
-  planned_shipment = { [item], count } }
-  unscheduled_load = { [item], count } }
+  train : LuaTrain
+  station : LuaEntity
+  planned_shipment = { [item : string], count : int } }
+  unscheduled_load = { [item : string], count : int } }
 
 on_requester_unscheduled_cargo
 Raised when trains arrive at requester with wrong cargo
 -> Contains:
-  event.train
-  event.station
-  planned_shipment = { [item], count } }
-  unscheduled_load = { [item], count } }
+  train : LuaTrain
+  station : LuaEntity
+  planned_shipment = { [item : string], count : int } }
+  unscheduled_load = { [item : string], count : int } }
 
 on_requester_remaining_cargo
 Raised when trains leave requester with remaining cargo
 -> Contains:
-  event.train
-  event.station
-  remaining_load = { [item], count } }
+  train : LuaTrain
+  station : LuaEntity
+  remaining_load = { [item : string], count : int } }
 
 --]]
 
