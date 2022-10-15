@@ -105,7 +105,9 @@ Raised every UpdateInterval, after delivery generation
     force : LuaForce,
     train : LuaTrain,
     from : string,
+    from_id : int,
     to : string,
+    to_id : integer,
     network_id: int,
     started : int,
     surface_connections = { entity1 : LuaEntity, entity2 : LuaEntity, network_id : int },
@@ -115,6 +117,7 @@ Raised every UpdateInterval, after delivery generation
     capacity : int,
     fluid_capacity : int,
     force : LuaForce,
+    surface : LuaSurface,
     depot_priority : int,
     network_id : int,
     train : LuaTrain
@@ -129,7 +132,7 @@ Raised when no train was found to handle a request
   network_id : int
   (optional) item : string -- <type,name>
   (optional) from : string
-  (optional) from_id : string
+  (optional) from_id : integer
   (optional) min_carriages : int
   (optional) max_carriages : int
   (optional) shipment = { [item : string], count : int }
