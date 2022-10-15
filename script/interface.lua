@@ -46,7 +46,7 @@ remote.add_interface("logistic-train-network", {
   clear_all_surface_connections = ClearAllSurfaceConnections,
 
   -- Re-assigns a delivery to a different train.
-  reassign_delivery = ReassignDelivery, -- function(old_train_id :: unit, new_train :: LuaTrain) :: boolean
+  reassign_delivery = ReassignDelivery, -- function(old_train_id :: uint, new_train :: LuaTrain) :: bool
 })
 
 
@@ -62,35 +62,35 @@ end
 on_stops_updated
 Raised every UpdateInterval, after delivery generation
 -> Contains:
-logistic_train_stops = { [stop_id : int], {
+logistic_train_stops = { [stop_id :: uint], {
     -- stop data
-    active_deliveries : int,
-    entity : LuaEntity,
-    input : LuaEntity,
-    output : LuaEntity,
-    lamp_control : LuaEntity,
-    error_code : int,
+    active_deliveries :: int,
+    entity :: LuaEntity,
+    input :: LuaEntity,
+    output :: LuaEntity,
+    lamp_control :: LuaEntity,
+    error_code :: int,
 
     -- control signals
-    is_depot : bool,
-    depot_priority : int,
-    network_id : int,
-    max_carriages : int,
-    min_carriages : int,
-    max_trains : int,
-    providing_threshold : int,
-    providing_threshold_stacks : int,
-    provider_priority : int,
-    requesting_threshold : int,
-    requesting_threshold_stacks : int,
-    requester_priority : int,
-    locked_slots : int,
-    no_warnings : bool,
+    is_depot :: bool,
+    depot_priority :: int32,
+    network_id :: int32,
+    max_carriages :: int32,
+    min_carriages :: int32,
+    max_trains :: int32,
+    providing_threshold :: int32,
+    providing_threshold_stacks :: int32,
+    provider_priority :: int32,
+    requesting_threshold :: int32,
+    requesting_threshold_stacks :: int32,
+    requester_priority :: int32,
+    locked_slots :: int32,
+    no_warnings :: bool,
 
     -- parked train data
-    parked_train : LuaTrain,
-    parked_train_id : int,
-    parked_train_faces_stop : bool,
+    parked_train :: LuaTrain,
+    parked_train_id :: uint,
+    parked_train_faces_stop :: bool,
 }}
 
 
@@ -98,68 +98,68 @@ on_dispatcher_updated
 Raised every UpdateInterval, after delivery generation
 -> Contains:
   update_interval = int -- time in ticks LTN needed to run all updates, varies depending on number of stops and requests
-  provided_by_stop = { [stop_id : int], { [item : string], count : int } }
-  requests_by_stop = { [stop_id : int], { [item : string], count : int } }
-  new_deliveries = { int } -- train_ids of deliveries created this dispatcher cycle
-  deliveries = { [train_id : int], {
-    force : LuaForce,
-    train : LuaTrain,
-    from : string,
-    from_id : int,
-    to : string,
-    to_id : integer,
-    network_id: int,
-    started : int,
-    surface_connections = { entity1 : LuaEntity, entity2 : LuaEntity, network_id : int },
-    shipment = { [item : string], count : int }
+  provided_by_stop = { [stop_id :: uint], { [item :: string], count :: int } }
+  requests_by_stop = { [stop_id :: uint], { [item :: string], count :: int } }
+  new_deliveries = { uint } -- train_ids of deliveries created this UpdateInterval
+  deliveries = { [train_id :: uint], {
+    force :: LuaForce,
+    train :: LuaTrain,
+    from :: string,
+    from_id :: uint,
+    to :: string,
+    to_id :: uint,
+    network_id: int32,
+    started :: uint, -- tick this delivery was created on
+    surface_connections = { entity1 :: LuaEntity, entity2 :: LuaEntity, network_id :: int32 },
+    shipment = { [item :: string], count :: int }
   } }
-  available_trains = { [train_id : int], {
-    capacity : int,
-    fluid_capacity : int,
-    force : LuaForce,
-    surface : LuaSurface,
-    depot_priority : int,
-    network_id : int,
-    train : LuaTrain
+  available_trains = { [train_id :: uint], {
+    capacity :: int,
+    fluid_capacity :: int,
+    force :: LuaForce,
+    surface :: LuaSurface,
+    depot_priority :: int32,
+    network_id :: int32,
+    train :: LuaTrain
   } }
 
 
 on_dispatcher_no_train_found
 Raised when no train was found to handle a request
 -> Contains:
-  to : string -- requester.backer_name
-  to_id : int -- requester.unit_number
-  network_id : int
-  (optional) item : string -- <type,name>
-  (optional) from : string
-  (optional) from_id : integer
-  (optional) min_carriages : int
-  (optional) max_carriages : int
-  (optional) shipment = { [item : string], count : int }
+  to :: string -- requester.backer_name
+  to_id :: uint -- requester.unit_number
+  network_id :: int32
+  (optional) item :: string
+  (optional) from :: string
+  (optional) from_id :: uint
+  (optional) min_carriages :: int32
+  (optional) max_carriages :: int32
+  (optional) shipment = { [item :: string], count :: int }
 
 
 on_delivery_pickup_complete
 Raised when a train leaves provider stop
 -> Contains:
-  train_id : int
-  train : LuaTrain
-  planned_shipment= { [item : string], count : int }
-  actual_shipment = { [item : string], count : int } -- shipment updated to train inventory
+  train_id :: uint
+  train :: LuaTrain
+  planned_shipment= { [item :: string], count :: int }
+  actual_shipment = { [item :: string], count :: int } -- shipment updated to train inventory
 
 
 on_delivery_completed
 Raised when train leaves requester stop
 -> Contains:
-  train_id : int
-  train : LuaTrain
-  shipment= { [item : string], count : int }
+  train_id :: uint
+  train :: LuaTrain
+  shipment= { [item :: string], count :: int }
 
 
 on_delivery_failed
 Raised when rolling stock of a train gets removed, the delivery timed out, train enters depot stop with active delivery
 -> Contains:
-  train_id : int
-  shipment= { [item : string], count : int } }
+  train_id :: uint
+  shipment= { [item :: string], count :: int } }
 
 
 ----  Alerts ----
@@ -167,53 +167,53 @@ Raised when rolling stock of a train gets removed, the delivery timed out, train
 on_dispatcher_no_train_found
 Raised when depot was empty
 -> Contains:
-  to : string
-  to_id : int
-  network_id : int
-  item : string -- <type,name>
+  to :: string
+  to_id :: uint
+  network_id :: int32
+  item :: string -- <type,name>
 
 on_dispatcher_no_train_found
 Raised when no matching train was found
 -> Contains:
-  to : string
-  to_id : int
-  network_id : int
-  from : string
-  from_id : int
-  min_carriages : int
-  max_carriages : int
-  shipment = { [item : string], count : int } }
+  to :: string
+  to_id :: uint
+  network_id :: int32
+  from :: string
+  from_id :: uint
+  min_carriages :: int32
+  max_carriages :: int32
+  shipment = { [item :: string], count :: int } }
 
 on_provider_missing_cargo
 Raised when trains leave provider with less than planned load
 -> Contains:
-  train : LuaTrain
-  station : LuaEntity
-  planned_shipment = { [item : string], count : int } }
-  actual_shipment = { [item : string], count : int } }
+  train :: LuaTrain
+  station :: LuaEntity
+  planned_shipment = { [item :: string], count :: int } }
+  actual_shipment = { [item :: string], count :: int } }
 
 on_provider_unscheduled_cargo
 Raised when trains leave provider with wrong cargo
 -> Contains:
-  train : LuaTrain
-  station : LuaEntity
-  planned_shipment = { [item : string], count : int } }
-  unscheduled_load = { [item : string], count : int } }
+  train :: LuaTrain
+  station :: LuaEntity
+  planned_shipment = { [item :: string], count :: int } }
+  unscheduled_load = { [item :: string], count :: int } }
 
 on_requester_unscheduled_cargo
 Raised when trains arrive at requester with wrong cargo
 -> Contains:
-  train : LuaTrain
-  station : LuaEntity
-  planned_shipment = { [item : string], count : int } }
-  unscheduled_load = { [item : string], count : int } }
+  train :: LuaTrain
+  station :: LuaEntity
+  planned_shipment = { [item :: string], count :: int } }
+  unscheduled_load = { [item :: string], count :: int } }
 
 on_requester_remaining_cargo
 Raised when trains leave requester with remaining cargo
 -> Contains:
-  train : LuaTrain
-  station : LuaEntity
-  remaining_load = { [item : string], count : int } }
+  train :: LuaTrain
+  station :: LuaEntity
+  remaining_load = { [item :: string], count :: int } }
 
 --]]
 
@@ -244,7 +244,7 @@ clear_all_surface_connections()
   Active deliveries will not be affected
   This function exists for debugging purposes, no event is raised to notify connection owners.
 
-reassign_delivery(old_train_id :: unit, new_train :: LuaTrain) :: boolean
+reassign_delivery(old_train_id :: uint, new_train :: LuaTrain) :: bool
   Re-assigns a delivery to a different train.
   Should be called after creating a train based on another train, for example after moving a train to a different surface.
   It is the caller's responsibility to make sure that the new train's schedule matches the old one's before calling this function. Otherwise LTN won't be able to add missing temporary stops for logistic stops that are now on the same surface as the train.
