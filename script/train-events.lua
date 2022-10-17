@@ -440,6 +440,24 @@ function ReassignDelivery(old_train_id, new_train)
   local delivery = update_delivery(old_train_id, new_train)
   if not delivery then return false end
 
+  -- Comparing stop names is not enough to find the provider and the requester,
+  -- they might share names with each other or another stop in the schedule.
+  -- So use a heuristic that also looks at the wait conditions
+  local item, _ = next(delivery.shipment)
+  local itype, iname = match(item, match_string)
+
+  local function get_wait_count_comparator(record)
+    if record.wait_conditions then
+      for _, wait_condition in pairs(record.wait_conditions) do
+        local condition = wait_condition.condition
+        if condition and condition.constant and (wait_condition.type == "item_count" or wait_condition.type == "fluid_count") then
+          local signal = condition.first_signal
+          return signal and signal.type == itype and signal.name == iname and condition.comparator
+        end
+      end
+    end
+  end
+
   local current = new_train.schedule.current
   local previous_is_temp_stop = false
   local new_records = {}
@@ -455,11 +473,15 @@ function ReassignDelivery(old_train_id, new_train)
   for old_position, old_record in pairs(new_train.schedule.records) do
     -- only add temporary stops in front of logistic stops that haven't been reached, yet
 
-    if old_record.station == delivery.from and old_position >= current and not previous_is_temp_stop then
+    if old_position >= current and not previous_is_temp_stop
+    and old_record.station == delivery.from
+    and get_wait_count_comparator(old_record) == "≥" then
       add_record(new_temporary_stop(new_train, delivery.from_id))
     end
 
-    if old_record.station == delivery.to and old_position >= current and not previous_is_temp_stop then
+    if old_position >= current and not previous_is_temp_stop
+    and old_record.station == delivery.to
+    and get_wait_count_comparator(old_record) == "=" then
       add_record(new_temporary_stop(new_train, delivery.to_id))
     end
 
