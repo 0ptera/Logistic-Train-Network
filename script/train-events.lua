@@ -400,51 +400,40 @@ local function update_delivery(old_train_id, new_train)
   return delivery
 end
 
-local temp_wait_condition = {{type = "time", compare_type = "and", ticks = 0}}
-
--- creates a temporary stop for train schedules; unlike ProcessDelivery this has to consider that the stop entity might be gone
-local function new_temporary_stop(train, stop_id)
-  local stop = global.LogisticTrainStops[stop_id]
-  if not stop or not stop.entity.valid then return nil end -- the actual station is gone, don't add anything
-
-  local rail = stop.entity.connected_rail
-  local rail_direction = stop.entity.connected_rail_direction
-  if not rail or not rail_direction then return nil end
-
-  local train_surface = train.carriages[1].surface -- locomotive might not work here, a new train on another surface could still be incomplete
-  if train_surface ~= stop.entity.surface then return nil end -- the engine does not allow this
-
-  if debug_log then log(format("adding new temp-stop at rail [%d] to train [%d] ",rail.unit_number , train.id)) end
-  return { wait_conditions = temp_wait_condition, rail = rail, rail_direction = rail_direction, temporary = true }
-end
-
--- reassigns existing delivery from one train to another and adds relevant temp-stops on a different surface
--- returns true if the old train was executing a delivery
-function ReassignDelivery(old_train_id, new_train)
-  -- check if delivery exists for given train id
-  if not (old_train_id and global.Dispatcher.Deliveries[old_train_id]) then
-    if debug_log then log(format("(ReassignDelivery) train [%d] not found in deliveries.", old_train_id)) end
-    return false
-  end
-  -- check if new train is valid
-  if not (new_train and new_train.valid and new_train.object_name == "LuaTrain") then
-    if debug_log then log("(ReassignDelivery) Recieved new_train was invalid.") end
-    return false
+---Finds the next logistic stop in the schedule of the given train. Returns nil if the train is not executing a delivery or has no further logistic stops in its schedule.
+---@param train LuaTrain
+---@param from_position integer? the position in the schedule to search from, `schedule.current` if omitted. Starts from the next position if the train is currently stopping at that station.
+---@return integer? position the position of next logistic stop in the schedule
+---@return integer? id the unit_number of the logistic stop
+---@return "provider"|"requester"|nil type
+function GetNextLogisticStop(train, from_position)
+  if not (train and train.valid) then
+    if debug_log then log("(GetNextLogisticStop) train not valid") end
+    return
   end
 
-  if not (new_train.schedule and new_train.schedule.records and next(new_train.schedule.records)) then
-    if debug_log then log(format("(ReassignDelivery) new train [%d] has no schedule", new_train.id)) end
-    return false
+  local delivery = global.Dispatcher.Deliveries[train.id]
+  if not delivery then
+    if debug_log then log("(GetNextLogisticStop) train [%d] not found in deliveries.", train.id) end
+    return
   end
 
-  local delivery = update_delivery(old_train_id, new_train)
-  if not delivery then return false end
+  if not train.schedule then
+    if debug_log then log("(GetNextLogisticStop) train [%d] has no schedule.", train.id) end
+    return
+  end
 
   -- Comparing stop names is not enough to find the provider and the requester,
   -- they might share names with each other or another stop in the schedule.
   -- So use a heuristic that also looks at the wait conditions
   local item, _ = next(delivery.shipment)
   local itype, iname = match(item, match_string)
+  local records = train.schedule.records
+
+  local position = from_position or train.schedule.current or 0
+  if (position == 0 or train.state == defines.train_state.wait_station) then
+    position = position + 1
+  end
 
   local function get_wait_count_comparator(record)
     if record.wait_conditions then
@@ -458,43 +447,81 @@ function ReassignDelivery(old_train_id, new_train)
     end
   end
 
-  local current = new_train.schedule.current
-  local previous_is_temp_stop = false
-  local new_records = {}
-  local count = 0
-
-  local function add_record(record) -- avoids repetitive code below
-    if record then
-      count = count + 1
-      new_records[count] = record
+  local record = records[position]
+  while record do
+    if record.station == delivery.from and get_wait_count_comparator(record) == "≥" then
+      return position, delivery.from_id, "provider"
     end
+    if record.station == delivery.to and get_wait_count_comparator(record) == "=" then
+      return position, delivery.to_id, "requester"
+    end
+
+    position = position + 1
+    record = records[position]
+  end
+end
+
+local temp_wait_condition = {{type = "time", compare_type = "and", ticks = 0}}
+
+---Ensures the next logistic stop in the schedule has a temporary stop if is on the same surface as the train.
+---@param train LuaTrain
+---@param from_position integer? the position in the schedule to search from, `schedule.current` if omitted. Starts from the next position if the train is currently stopping at that station.
+---@return integer? stop_position the position of the logistic stop that was handled, nil if there is no further logistic stop or next logistic stop is not on the same surface.
+function UpdateSchedule(train, from_position)
+  local stop_position, stop_id = GetNextLogisticStop(train, from_position)
+  if not stop_position then return end
+
+  --unlike ProcessDelivery we need to consider that the stop entity might be gone
+  local stop = global.LogisticTrainStops[stop_id]
+  if not stop or not stop.entity.valid then
+    if debug_log then log(format("(UpdateSchedule) skipping stop [%d] for train [%d], stop-entity not valid", stop_id, train.id)) end
+    return stop_position 
   end
 
-  for old_position, old_record in pairs(new_train.schedule.records) do
-    -- only add temporary stops in front of logistic stops that haven't been reached, yet
+  local rail = stop.entity.connected_rail
+  local rail_direction = stop.entity.connected_rail_direction
+  if not rail or not rail_direction then
+    if debug_log then log(format("(UpdateSchedule) skipping stop [%d] for train [%d], not connected to a rail", stop_id, train.id)) end
 
-    if old_position >= current and not previous_is_temp_stop
-    and old_record.station == delivery.from
-    and get_wait_count_comparator(old_record) == "≥" then
-      add_record(new_temporary_stop(new_train, delivery.from_id))
-    end
-
-    if old_position >= current and not previous_is_temp_stop
-    and old_record.station == delivery.to
-    and get_wait_count_comparator(old_record) == "=" then
-      add_record(new_temporary_stop(new_train, delivery.to_id))
-    end
-
-    add_record(old_record)
-
-    previous_is_temp_stop = old_record.temporary
+    return stop_position
   end
 
-  new_train.schedule = {
-    current = current,
-    records = new_records,
-  }
-  return true
+  -- the engine does not allow temp_stops on different surfaces
+  -- locomotive might not work here, a new train on another surface could still be incomplete
+  if train.carriages[1].surface ~= stop.entity.surface then
+    if debug_log then log(format("(UpdateSchedule) stop [%d] is on a different surface than train [%d]", stop_id, train.id)) end
+    return nil
+  end
+
+  -- insert temp stop in schedule
+  local schedule = train.schedule
+  local previous_record = schedule.records[stop_position-1]
+  if previous_record and previous_record.temporary then return stop_position end -- schedule already up-to-date for stop_position
+
+  if debug_log then log(format("(UpdateSchedule) adding new temp-stop before stop [%d] at rail [%d] to train [%d] ", stop_id, rail.unit_number, train.id)) end
+  table.insert(schedule.records, stop_position, { wait_conditions = temp_wait_condition, rail = rail, rail_direction = rail_direction, temporary = true })
+  train.schedule = schedule
+  return stop_position + 1
+end
+
+---reassigns an existing delivery from one train to another
+---@param old_train_id integer
+---@param new_train LuaTrain
+---@return boolean reassigned true if the old train was executing a delivery, false otherwise
+function ReassignDelivery(old_train_id, new_train)
+  -- check if delivery exists for given train id
+  if not (old_train_id and global.Dispatcher.Deliveries[old_train_id]) then
+    if debug_log then log(format("(ReassignDelivery) train [%d] not found in deliveries.", old_train_id)) end
+    return false
+  end
+  -- check if new train is valid
+  if not (new_train and new_train.valid and new_train.object_name == "LuaTrain") then
+    if debug_log then log("(ReassignDelivery) Received new_train was invalid.") end
+    return false
+  end
+
+  local delivery = update_delivery(old_train_id, new_train)
+  return delivery and true
 end
 
 function OnTrainCreated(event)

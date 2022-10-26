@@ -47,6 +47,8 @@ remote.add_interface("logistic-train-network", {
 
   -- Re-assigns a delivery to a different train.
   reassign_delivery = ReassignDelivery, -- function(old_train_id :: uint, new_train :: LuaTrain) :: bool
+  update_schedule = UpdateSchedule, -- function(train :: LuaTrain, from_position :: uint?) :: uint
+  get_next_logistic_stop = GetNextLogisticStop, -- function(train :: LuaTrain, from_position :: uint?) :: uint?, uint?, string?
 })
 
 
