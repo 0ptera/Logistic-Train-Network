@@ -47,8 +47,8 @@ remote.add_interface("logistic-train-network", {
 
   -- Re-assigns a delivery to a different train.
   reassign_delivery = ReassignDelivery, -- function(old_train_id :: uint, new_train :: LuaTrain) :: bool
-  update_schedule = UpdateSchedule, -- function(train :: LuaTrain, from_position :: uint?) :: uint
-  get_next_logistic_stop = GetNextLogisticStop, -- function(train :: LuaTrain, from_position :: uint?) :: uint?, uint?, string?
+  get_or_create_next_temp_stop = GetOrCreateNextTempStop, -- function(train :: LuaTrain, schedule_index :: uint?) :: uint
+  get_next_logistic_stop = GetNextLogisticStop, -- function(train :: LuaTrain, schedule_index :: uint?) :: uint?, uint?, string?
 })
 
 
@@ -249,8 +249,21 @@ clear_all_surface_connections()
 reassign_delivery(old_train_id :: uint, new_train :: LuaTrain) :: bool
   Re-assigns a delivery to a different train.
   Should be called after creating a train based on another train, for example after moving a train to a different surface.
-  It is the caller's responsibility to make sure that the new train's schedule matches the old one's before calling this function. Otherwise LTN won't be able to add missing temporary stops for logistic stops that are now on the same surface as the train.
   Calls with an old_train_id without delivery have no effect.
   Don't call this function when coupling trains via script, LTN already handles that through Factorio events.
+  This function does not add missing temp stops. See get_or_create_next_temp_stop for that.
+
+get_or_create_next_temp_stop(train :: LuaTrain, schedule_index :: uint?) :: uint
+  Ensures the next logistic stop in the schedule has a temporary stop if it is on the same surface as the train.
+  If no schedule_index is given, the search for the next logistic stop starts from train.schedule.current
+  In case the train is currently stopping at that index, the search starts at the next higher index.
+  The result will be the schedule index of the temp stop of the next logistic stop or nil if there is no further logistic stop.
+  
+get_next_logistic_stop(train :: LuaTrain, schedule_index :: uint?) :: uint?, uint?, string?
+  Finds the next logistic stop in the schedule of the given train.
+  If no schedule_index is given, the search starts from train.schedule.current.
+  In case the train is currently stopping at that index, the search starts at the next higher index.
+  The result will be three values stop_schedule_index, stop_id and either the string "provider" or "requester".
+  If there is no further logistic stop in the schedule, the result will be nil.
 
 --]]
