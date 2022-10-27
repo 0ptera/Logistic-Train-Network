@@ -19,7 +19,7 @@ require "script.stop-update"
 require "script.dispatcher"
 require "script.stop-events"
 require "script.train-events"
-require "script.train-interface"
+require "script.train-interface" -- requires train-events
 require "script.surface-interface" -- requires stop-events
 require "script.interface" -- ties into other modules
 require "script.init" -- requires other modules loaded first

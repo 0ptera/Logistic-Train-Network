@@ -129,7 +129,7 @@ function ReassignDelivery(old_train_id, new_train)
     return false
   end
 
-  local delivery = update_delivery(old_train_id, new_train)
+  local delivery = Update_Delivery(old_train_id, new_train)
   return delivery and true
 end
 

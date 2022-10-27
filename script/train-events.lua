@@ -361,7 +361,7 @@ function OnTrainStateChanged(event)
 end
 
 -- updates or removes delivery references
-local function update_delivery(old_train_id, new_train)
+function Update_Delivery(old_train_id, new_train)
   local delivery = global.Dispatcher.Deliveries[old_train_id]
 
   -- expanded RemoveDelivery(old_train_id) to also update
@@ -405,10 +405,10 @@ function OnTrainCreated(event)
   -- on_train_created always sets train.state to 9 manual, scripts have to set the train back to its former state.
 
   if event.old_train_id_1 then
-    update_delivery(event.old_train_id_1, event.train)
+    Update_Delivery(event.old_train_id_1, event.train)
   end
 
   if event.old_train_id_2 then
-    update_delivery(event.old_train_id_2, event.train)
+    Update_Delivery(event.old_train_id_2, event.train)
   end
 end
