@@ -760,21 +760,7 @@ function ProcessRequest(reqIndex, request)
     end
   end
 
-  -- script.raise_event(on_delivery_created_event, {
-  --   train_id = selectedTrain.id,
-  --   train = selectedTrain,
-  --   from = from,
-  --   from_id = fromID,
-  --   from_stop = providerData.entity,
-  --   to = to,
-  --   to_id = toID,
-  --   to_stop = requestStation.entity,
-  --   shipment = shipment,
-  --   surface_connections = providerData.surface_connections,
-  -- })
-
-  -- return train ID = delivery ID
-  return selectedTrain.id
+  return selectedTrain.id -- deliveries are indexed by train.id
 end
 
 
