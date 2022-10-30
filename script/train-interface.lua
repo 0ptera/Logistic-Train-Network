@@ -36,7 +36,7 @@ function GetNextLogisticStop(train, schedule_index)
   local records = train.schedule.records
 
   local record_index = schedule_index or train.schedule.current or 2 -- defaulting to 1 is pointless because that's the depot
-  if (train.state == defines.train_state.wait_station) then
+  if record_index == train.schedule.current and train.state == defines.train_state.wait_station then
     record_index = record_index + 1
   end
 
