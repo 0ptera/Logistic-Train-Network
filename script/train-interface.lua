@@ -18,24 +18,27 @@ function GetNextLogisticStop(train, schedule_index)
   end
 
   if not train.schedule then
-    if debug_log then log("(GetNextLogisticStop) train [%d] has no schedule.", train.id) end
+    if debug_log then log(format("(GetNextLogisticStop) train [%d] has no schedule.", train.id)) end
     return
   end
 
   local delivery = global.Dispatcher.Deliveries[train.id]
   if not delivery then
-    if debug_log then log("(GetNextLogisticStop) train [%d] not found in deliveries.", train.id) end
+    if debug_log then log(format("(GetNextLogisticStop) train [%d] not found in deliveries.", train.id)) end
+    return
+  end
+
+  local item = next(delivery.shipment)
+  if not item then
+    -- this can happen when the train was unable to load anything at the provider
+    if debug_log then log(format("(GetNextLogisticStop) train [%d] no longer has a shipment list.", train.id)) end
     return
   end
 
   -- Comparing stop names is not enough to find the provider and the requester,
   -- they might share names with each other or another stop in the schedule.
   -- So use a heuristic that also looks at the wait conditions
-  local item = next(delivery.shipment)
-  local itype, iname
-  if item then -- delivery.shipment can be empty when the train was unable to load anything at the provider
-    itype, iname = match(item, match_string)
-  end
+  local itype, iname = match(item, match_string)
   local records = train.schedule.records
 
   local record_index = schedule_index or train.schedule.current or 2 -- defaulting to 1 is pointless because that's the depot
@@ -49,8 +52,7 @@ function GetNextLogisticStop(train, schedule_index)
         local condition = wait_condition.condition
         if condition and condition.constant and (wait_condition.type == "item_count" or wait_condition.type == "fluid_count") then
           local signal = condition.first_signal
-          -- in the rare case delivery.shipment is empty there is no expected signal to check against
-          return signal and (not item or (signal.type == itype and signal.name == iname)) and condition.comparator
+          return signal and signal.type == itype and signal.name == iname and condition.comparator
         end
       end
     end
