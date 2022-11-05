@@ -35,6 +35,11 @@ local function initialize(oldVersion, newVersion)
   ---- initialize stops
   global.LogisticTrainStops = global.LogisticTrainStops or {}
 
+  -- table of connections per surface used to decide if providers from another surface are valid sources
+  -- { [surface1.index|surface2.index] = { [entity1.unit_number|entity2.unit_number] = { entity1, entity2, network_id } }
+  -- entity_key_pairs are automatically removed during delivery processing if at least one of the referenced entities becomes invalid
+  global.ConnectedSurfaces = global.ConnectedSurfaces or {}
+
   -- clean obsolete global
   global.Dispatcher.Requested = nil
   global.Dispatcher.Orders = nil
@@ -256,7 +261,6 @@ local function registerEvents()
   script.on_event( defines.events.on_built_entity, OnEntityCreated, filters_on_built )
   script.on_event( defines.events.on_robot_built_entity, OnEntityCreated, filters_on_built )
   script.on_event( {defines.events.script_raised_built, defines.events.script_raised_revive, defines.events.on_entity_cloned}, OnEntityCreated )
-
 
   script.on_event( defines.events.on_pre_player_mined_item, OnEntityRemoved, filters_on_mined )
   script.on_event( defines.events.on_robot_pre_mined, OnEntityRemoved, filters_on_mined )

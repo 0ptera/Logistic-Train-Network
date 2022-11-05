@@ -57,8 +57,18 @@ end
 function Make_Train_RichText(train, train_name)
   local loco = Get_Main_Locomotive(train)
   if loco and loco.valid then
-    return format("[train=%d] %s", loco.unit_number, train_name)
+    return format("[train=%d] %s", loco.unit_number, train_name or loco.backer_name)
   else
     return format("[train=] %s", train_name)
   end
+end
+
+-- same as flib.get_or_insert(a_table, key, {}) but avoids the garbage collector overhead of passing an empty table that isn't used when the key exists
+function Get_Or_Create(a_table, key)
+  local subtable = a_table[key]
+  if not subtable then
+    subtable = {}
+    a_table[key] = subtable
+  end
+  return subtable
 end

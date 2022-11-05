@@ -42,7 +42,7 @@ function TrainArrives(train)
     local is_provider = false
 
     -- if message_level >= 3 then printmsg({"ltn-message.train-arrived", tostring(trainName), stop_name}, trainForce, false) end
-    if message_level >= 3 then printmsg({"ltn-message.train-arrived", Make_Train_RichText(train, trainName), format("[train-stop=%d]", stopID)}, trainForce, false) end
+    if message_level >= 3 then printmsg({"ltn-message.train-arrived", Make_Train_RichText(train, nil), format("[train-stop=%d]", stopID)}, trainForce, false) end
     if debug_log then log(format("(TrainArrives) Train [%d] \"%s\": arrived at LTN-stop [%d] \"%s\"; train_faces_stop: %s", train.id, trainName, stopID, stop_name, stop.parked_train_faces_stop )) end
 
     if stop.error_code == 0 then
@@ -361,7 +361,7 @@ function OnTrainStateChanged(event)
 end
 
 -- updates or removes delivery references
-local function update_delivery(old_train_id, new_train)
+function Update_Delivery(old_train_id, new_train)
   local delivery = global.Dispatcher.Deliveries[old_train_id]
 
   -- expanded RemoveDelivery(old_train_id) to also update
@@ -396,6 +396,8 @@ local function update_delivery(old_train_id, new_train)
     TrainLeaves(old_train_id) -- removal only, new train is added when on_train_state_changed fires with wait_station afterwards
   end
   global.Dispatcher.Deliveries[old_train_id] = nil
+
+  return delivery
 end
 
 function OnTrainCreated(event)
@@ -403,10 +405,10 @@ function OnTrainCreated(event)
   -- on_train_created always sets train.state to 9 manual, scripts have to set the train back to its former state.
 
   if event.old_train_id_1 then
-    update_delivery(event.old_train_id_1, event.train)
+    Update_Delivery(event.old_train_id_1, event.train)
   end
 
   if event.old_train_id_2 then
-    update_delivery(event.old_train_id_2, event.train)
+    Update_Delivery(event.old_train_id_2, event.train)
   end
 end

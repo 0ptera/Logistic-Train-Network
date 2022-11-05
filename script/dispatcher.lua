@@ -156,6 +156,7 @@ function OnTick(event)
         update_interval = tick - global.tick_interval_start,
         provided_by_stop = global.Dispatcher.Provided_by_Stop,
         requests_by_stop = global.Dispatcher.Requests_by_Stop,
+        new_deliveries = global.Dispatcher.new_Deliveries,
         deliveries = global.Dispatcher.Deliveries,
         available_trains = global.Dispatcher.availableTrains,
       })
@@ -171,6 +172,7 @@ function OnTick(event)
     global.Dispatcher.Requests = {}
     global.Dispatcher.Provided_by_Stop = {}
     global.Dispatcher.Requests_by_Stop = {}
+    global.Dispatcher.new_Deliveries = {}
   end
 end
 
@@ -276,7 +278,42 @@ end
 
 ---- ProcessRequest ----
 
--- return a list ordered priority > #active_deliveries > item-count of {entity, network_id, priority, activeDeliveryCount, item, count, providing_threshold, providing_threshold_stacks, min_carriages, max_carriages, locked_slots}
+-- returns the string "number1|number2" in consistent order: the smaller number is always placed first
+local function sorted_pair(number1, number2)
+  return (number1 < number2) and (number1..'|'..number2) or (number2..'|'..number1)
+end
+
+-- return a list of matching { entity1, entity2, network_id } each connecting the two surfaces. The list will be empty if surface1 == surface2 and it will be nil if there are no matching connections. The second return value will be the number of entries in the list.
+local function find_surface_connections(surface1, surface2, force, network_id)
+  if surface1 == surface2 then return {}, 0 end
+
+  local surface_pair_key = sorted_pair(surface1.index, surface2.index)
+  local surface_connections = global.ConnectedSurfaces[surface_pair_key]
+  if not surface_connections then return nil end
+
+  local matching_connections = {}
+  local count=0
+  for entity_pair_key, connection in pairs(surface_connections) do
+    if connection.entity1.valid and connection.entity2.valid then
+      if btest(network_id, connection.network_id)
+      and connection.entity1.force == force and connection.entity2.force == force then
+        count = count + 1
+        matching_connections[count] = connection
+      end
+    else
+      if debug_log then log("removing invalid surface connection "..entity_pair_key.." between surfaces "..surface_pair_key) end
+      surface_connections[entity_pair_key] = nil
+    end
+  end
+
+  if count > 0 then
+    return matching_connections, count
+  else
+    return nil, nil
+  end
+end
+
+-- return a list ordered priority > #active_deliveries > item-count of {entity, network_id, priority, activeDeliveryCount, item, count, providing_threshold, providing_threshold_stacks, min_carriages, max_carriages, locked_slots, surface_connections}
 local function getProviders(requestStation, item, req_count, min_length, max_length)
   local stations = {}
   local providers = global.Dispatcher.Provided[item]
@@ -294,28 +331,34 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
       -- log("DEBUG: comparing 0x"..format("%x", band(requestStation.network_id)).." & 0x"..format("%x", band(stop.network_id)).." = 0x"..format("%x", band(matched_networks)) )
 
       if stop.entity.force == force
-      and stop.entity.surface == surface
       and matched_networks ~= 0
       -- and count >= stop.providing_threshold
       and (stop.min_carriages == 0 or max_length == 0 or stop.min_carriages <= max_length)
-      and (stop.max_carriages == 0 or min_length == 0 or stop.max_carriages >= min_length) then --check if provider can actually service trains from requester
+      and (stop.max_carriages == 0 or min_length == 0 or stop.max_carriages >= min_length) then
+        --check if provider can accept more trains
         local activeDeliveryCount = #stop.active_deliveries
-        local from_network_id_string = format("0x%x", band(stop.network_id))
         if activeDeliveryCount and (stop.max_trains == 0 or activeDeliveryCount < stop.max_trains) then
-          if debug_log then log("found "..count.."("..tostring(stop.providing_threshold)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.provider_priority..", active Deliveries: "..activeDeliveryCount.." min_carriages: "..stop.min_carriages..", max_carriages: "..stop.max_carriages..", locked Slots: "..stop.locked_slots) end
-          stations[#stations +1] = {
-            entity = stop.entity,
-            network_id = matched_networks,
-            priority = stop.provider_priority,
-            activeDeliveryCount = activeDeliveryCount,
-            item = item,
-            count = count,
-            providing_threshold = stop.providing_threshold,
-            providing_threshold_stacks = stop.providing_threshold_stacks,
-            min_carriages = stop.min_carriages,
-            max_carriages = stop.max_carriages,
-            locked_slots = stop.locked_slots,
-          }
+          -- check if surface transition is possible
+          local surface_connections, surface_connections_count = find_surface_connections(surface, stop.entity.surface, force, matched_networks)
+          if surface_connections then -- for same surfaces surface_connections = {}
+            local from_network_id_string = format("0x%x", band(stop.network_id))
+            if debug_log then log("found "..count.."("..tostring(stop.providing_threshold)..")".."/"..req_count.." ".. item.." at "..stop.entity.backer_name.." {"..from_network_id_string.."}, priority: "..stop.provider_priority..", active Deliveries: "..activeDeliveryCount..", min_carriages: "..stop.min_carriages..", max_carriages: "..stop.max_carriages..", locked Slots: "..stop.locked_slots..", #surface_connections: "..(surface_connections_count)) end
+            stations[#stations +1] = {
+              entity = stop.entity,
+              network_id = matched_networks,
+              priority = stop.provider_priority,
+              activeDeliveryCount = activeDeliveryCount,
+              item = item,
+              count = count,
+              providing_threshold = stop.providing_threshold,
+              providing_threshold_stacks = stop.providing_threshold_stacks,
+              min_carriages = stop.min_carriages,
+              max_carriages = stop.max_carriages,
+              locked_slots = stop.locked_slots,
+              surface_connections = surface_connections,
+              surface_connections_count = surface_connections_count,
+            }
+          end
         end
       end
     end
@@ -324,12 +367,16 @@ local function getProviders(requestStation, item, req_count, min_length, max_len
   sort(stations, function(a, b)
     if a.priority ~= b.priority then --sort by priority, will result in train queues if trainlimit is not set
       return a.priority > b.priority
+    elseif a.surface_connections_count ~= b.surface_connections_count then --sort providers without surface transition to top
+      return min(a.surface_connections_count, 1) < min(b.surface_connections_count, 1)
     elseif a.activeDeliveryCount ~= b.activeDeliveryCount then --sort by #deliveries
       return a.activeDeliveryCount < b.activeDeliveryCount
     else
       return a.count > b.count --finally sort by item count
     end
   end)
+
+  if debug_log then log ("(getProviders) sorted providers: "..serpent.block(stations)) end
   return stations
 end
 
@@ -511,11 +558,6 @@ function ProcessRequest(reqIndex, request)
   local matched_network_id_string = format("0x%x", band(providerData.network_id))
 
   if message_level >= 3 then printmsg({"ltn-message.provider-found", from_gps, tostring(providerData.priority), tostring(providerData.activeDeliveryCount), providerData.count, "[" .. itype .. "=" .. iname .. "]"}, requestForce, true) end
-  -- if debug_log then
-    -- for n, provider in pairs (providers) do
-      -- log("Provider["..n.."] "..provider.entity.backer_name..": Priority "..tostring(provider.priority)..", "..tostring(provider.activeDeliveryCount).." deliveries, "..tostring(provider.count).." "..item.." available.")
-    -- end
-  -- end
 
   -- limit deliverySize to count at provider
   local deliverySize = count
@@ -628,14 +670,18 @@ function ProcessRequest(reqIndex, request)
   schedule.records[#schedule.records + 1] = NewScheduleRecord(depot.entity.backer_name, "inactivity", depot_inactivity)
 
   -- make train go to specific stations by setting a temporary waypoint on the rail the station is connected to
-  if from_rail and from_rail_direction then
+  -- schedules cannot have temporary stops on a different surface, those need to be added when the delivery is updated with a train on a different surface
+  if from_rail and from_rail_direction
+  and depot.entity.surface == from_rail.surface then
     schedule.records[#schedule.records + 1] = NewTempScheduleRecord(from_rail, from_rail_direction)
   else
     if debug_log then log("(ProcessRequest) Warning: creating schedule without temporary stop for provider.") end
   end
   schedule.records[#schedule.records + 1] = NewScheduleRecord(from, "item_count", "≥", loadingList)
 
-  if to_rail and to_rail_direction then
+  if to_rail and to_rail_direction
+  and depot.entity.surface == to_rail.surface
+  and (from_rail and to_rail.surface == from_rail.surface) then
     schedule.records[#schedule.records + 1] = NewTempScheduleRecord(to_rail, to_rail_direction)
   else
     if debug_log then log("(ProcessRequest) Warning: creating schedule without temporary stop for requester.") end
@@ -680,6 +726,7 @@ function ProcessRequest(reqIndex, request)
 
     if debug_log then log("  "..loadingListItem..", "..loadingList[i].count.." in "..loadingList[i].stacks.." stacks ") end
   end
+  global.Dispatcher.new_Deliveries[#global.Dispatcher.new_Deliveries+1] = selectedTrain.id
   global.Dispatcher.Deliveries[selectedTrain.id] = {
     force = requestForce,
     train = selectedTrain,
@@ -689,6 +736,7 @@ function ProcessRequest(reqIndex, request)
     to = to,
     to_id = toID,
     network_id = providerData.network_id,
+    surface_connections = providerData.surface_connections,
     shipment = shipment}
   global.Dispatcher.availableTrains_total_capacity = global.Dispatcher.availableTrains_total_capacity - global.Dispatcher.availableTrains[selectedTrain.id].capacity
   global.Dispatcher.availableTrains_total_fluid_capacity = global.Dispatcher.availableTrains_total_fluid_capacity - global.Dispatcher.availableTrains[selectedTrain.id].fluid_capacity
@@ -712,18 +760,7 @@ function ProcessRequest(reqIndex, request)
     end
   end
 
-  script.raise_event(on_delivery_created_event, {
-    train_id = selectedTrain.id,
-    train = selectedTrain,
-    from = from,
-    from_id = fromID,
-    to = to,
-    to_id = toID,
-    shipment = shipment
-  })
-
-  -- return train ID = delivery ID
-  return selectedTrain.id
+  return selectedTrain.id -- deliveries are indexed by train.id
 end
 
 

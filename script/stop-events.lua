@@ -258,23 +258,6 @@ function OnEntityRemoved(event, create_ghosts)
   end
 end
 
-
--- remove stop references when deleting surfaces
-function OnSurfaceRemoved(event)
-  local surfaceID = event.surface_index
-  log("removing LTN stops on surface "..tostring(surfaceID) )
-  local surface = game.surfaces[surfaceID]
-  if surface then
-    local train_stops = surface.find_entities_filtered{type = "train-stop"}
-    for _, entity in pairs(train_stops) do
-      if ltn_stop_entity_names[entity.name] then
-        RemoveStop(entity.unit_number)
-      end
-    end
-  end
-end
-
-
 --rename stop
 local function renamedStop(targetID, old_name, new_name)
   -- find identical stop names
