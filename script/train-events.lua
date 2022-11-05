@@ -287,7 +287,7 @@ function TrainLeaves(trainID)
 
       elseif delivery.to_id == stop.entity.unit_number then
         -- reset schedule before API events
-        if requester_delivery_reset then
+        if requester_delivery_reset and train.schedule then
           local schedule = {current = 1, records = {}}
           schedule.records[1] = NewScheduleRecord(train.schedule.records[1].station, "inactivity", depot_inactivity)
           train.schedule = schedule

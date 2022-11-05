@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.18.0
-Date: 2022-10-27
+Date: 2022-11-05
   Features:
     - Create deliveries across surfaces, train surface transitions have to be handled by 3rd party mods
     - added remote call connect_surfaces
@@ -12,6 +12,8 @@ Date: 2022-10-27
   Changes:
     - added on_dispatcher_updated.new_deliveries as replacement for on_delivery_created
     - removed event on_delivery_created, running in same tick as dispatcher produced microstutter
+  Bugfixes:
+    - crash when deleting all stops in train schedule, if train is parked at requester and "Delivery completes at requester" enabled #312
 ---------------------------------------------------------------------------------------------------
 Version: 1.17.1
 Date: 2022-10-10
