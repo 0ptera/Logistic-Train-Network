@@ -187,9 +187,14 @@ function TrainLeaves(trainID)
   local stopID = stoppedTrain.stopID
   local stop = global.LogisticTrainStops[stopID]
   if not stop then
-    -- stop became invalid
-    if debug_log then log(format("(TrainLeaves) Error: StopID [%d] wasn't found in global.LogisticTrainStops", stopID )) end
+    if debug_log then log(format("(TrainLeaves) Error: StopID [%d] not found in global.LogisticTrainStops", stopID )) end
     global.StoppedTrains[trainID] = nil
+    return
+  end
+  if not stop.entity.valid or not stop.input.valid or not stop.output.valid or not stop.lamp_control.valid then
+    if debug_log then log(format("(TrainLeaves) Error: StopID [%d] contains invalid entity. Processing skipped, train inventory not updated.", stopID )) end
+    global.StoppedTrains[trainID] = nil
+    -- don't call RemoveStop here as RemoveStop calls TrainLeaves again
     return
   end
   local stop_name = stop.entity.backer_name

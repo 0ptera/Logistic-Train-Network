@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.18.1
+Date: 2022-12-13
+  Bugfixes:
+    - crash when on_train_changed_state is raised for trains stopped at invalid stops. Should only happen if scripts remove stops without raising script_raised_destroy.
+---------------------------------------------------------------------------------------------------
 Version: 1.18.0
 Date: 2022-11-05
   Features:
