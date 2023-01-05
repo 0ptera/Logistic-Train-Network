@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.18.2
+Date: 2023-01-05
+  Bugfixes:
+    - skip over not existing position signals with error message instead of crashing outright
+---------------------------------------------------------------------------------------------------
 Version: 1.18.1
 Date: 2022-12-13
   Bugfixes:

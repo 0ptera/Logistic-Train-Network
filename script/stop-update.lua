@@ -381,33 +381,53 @@ function UpdateStopOutput(trainStop, ignore_existing_cargo)
     if #carriages < 32 then --prevent circuit network integer overflow error
       if trainStop.parked_train_faces_stop then --train faces forwards >> iterate normal
         for i=1, #carriages do
-          local type = carriages[i].type
-          if encoded_positions_by_type[type] then
-            encoded_positions_by_type[type] = encoded_positions_by_type[type] + 2^(i-1)
+          local signal_type = format("ltn-position-any-%s", carriages[i].type)
+          if game.virtual_signal_prototypes[signal_type] then
+            if encoded_positions_by_type[signal_type] then
+              encoded_positions_by_type[signal_type] = encoded_positions_by_type[signal_type] + 2^(i-1)
+            else
+              encoded_positions_by_type[signal_type] = 2^(i-1)
+            end
           else
-            encoded_positions_by_type[type] = 2^(i-1)
+            if message_level >= 1 then printmsg({"ltn-message.error-invalid-position-signal", signal_type}) end
+            log(format("Error: signal \"%s\" not found!", signal_type))
           end
-          local name = carriages[i].name
-          if encoded_positions_by_name[name] then
-            encoded_positions_by_name[name] = encoded_positions_by_name[name] + 2^(i-1)
+          local signal_name = format("ltn-position-%s", carriages[i].name)
+          if game.virtual_signal_prototypes[signal_name] then
+            if encoded_positions_by_name[signal_name] then
+              encoded_positions_by_name[signal_name] = encoded_positions_by_name[signal_name] + 2^(i-1)
+            else
+              encoded_positions_by_name[signal_name] = 2^(i-1)
+            end
           else
-            encoded_positions_by_name[name] = 2^(i-1)
+            if message_level >= 1 then printmsg({"ltn-message.error-invalid-position-signal", signal_name}) end
+            log(format("Error: signal \"%s\" not found!", signal_name))
           end
         end
       else --train faces backwards >> iterate backwards
         n = 0
         for i=#carriages, 1, -1 do
-          local type = carriages[i].type
-          if encoded_positions_by_type[type] then
-            encoded_positions_by_type[type] = encoded_positions_by_type[type] + 2^n
+          local signal_type = format("ltn-position-any-%s", carriages[i].type)
+          if game.virtual_signal_prototypes[signal_type] then
+            if encoded_positions_by_type[signal_type] then
+              encoded_positions_by_type[signal_type] = encoded_positions_by_type[signal_type] + 2^n
+            else
+              encoded_positions_by_type[signal_type] = 2^n
+            end
           else
-            encoded_positions_by_type[type] = 2^n
+            if message_level >= 1 then printmsg({"ltn-message.error-invalid-position-signal", signal_type}) end
+            log(format("Error: signal \"%s\" not found!", signal_type))
           end
-          local name = carriages[i].name
-          if encoded_positions_by_name[name] then
-            encoded_positions_by_name[name] = encoded_positions_by_name[name] + 2^n
+          local signal_name = format("ltn-position-%s", carriages[i].name)
+          if game.virtual_signal_prototypes[signal_name] then
+            if encoded_positions_by_name[signal_name] then
+              encoded_positions_by_name[signal_name] = encoded_positions_by_name[signal_name] + 2^n
+            else
+              encoded_positions_by_name[signal_name] = 2^n
+            end
           else
-            encoded_positions_by_name[name] = 2^n
+            if message_level >= 1 then printmsg({"ltn-message.error-invalid-position-signal", signal_name}) end
+            log(format("Error: signal \"%s\" not found!", signal_name))
           end
           n=n+1
         end
@@ -415,11 +435,11 @@ function UpdateStopOutput(trainStop, ignore_existing_cargo)
 
       for k ,v in pairs (encoded_positions_by_type) do
         index = index+1
-        table.insert(signals, {index = index, signal = {type="virtual",name="ltn-position-any-"..k}, count = v })
+        table.insert(signals, {index = index, signal = {type="virtual",name=k}, count = v })
       end
       for k ,v in pairs (encoded_positions_by_name) do
         index = index+1
-        table.insert(signals, {index = index, signal = {type="virtual",name="ltn-position-"..k}, count = v })
+        table.insert(signals, {index = index, signal = {type="virtual",name=k}, count = v })
       end
     end
 
