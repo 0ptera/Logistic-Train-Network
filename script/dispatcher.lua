@@ -688,10 +688,6 @@ function ProcessRequest(reqIndex, request)
   end
   schedule.records[#schedule.records + 1] = NewScheduleRecord(to, "item_count", "=", loadingList, 0)
 
-  -- log("DEBUG: schedule = "..serpent.block(schedule))
-  selectedTrain.schedule = schedule
-
-
   local shipment = {}
   if debug_log then log("Creating Delivery: "..totalStacks.." stacks, "..from.." >> "..to) end
   for i=1, #loadingList do
@@ -759,6 +755,9 @@ function ProcessRequest(reqIndex, request)
       end
     end
   end
+  
+  -- log("DEBUG: schedule = "..serpent.block(schedule))
+  selectedTrain.schedule = schedule
 
   return selectedTrain.id -- deliveries are indexed by train.id
 end
