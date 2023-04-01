@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.18.3
+Date: 2023-04-01
+  Bugfixes:
+    - get_next_logistic_stop returns nil when called from on_train_schedule_changed at delivery creation #319
+---------------------------------------------------------------------------------------------------
 Version: 1.18.2
 Date: 2023-01-05
   Bugfixes:
