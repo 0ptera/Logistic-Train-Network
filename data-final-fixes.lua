@@ -63,3 +63,10 @@ end
 
 data.raw["constant-combinator"]["logistic-train-stop-output"].item_slot_count = 4 + lococount + wagoncount + wagoncount_fluid + wagoncount_artillery + itemcount + fluidcount
 log(string.format("[LTN] found %d items, %d fluids, %d locomotives, %d cargo wagons, %d fluid wagons, %d artillery wagons.", itemcount, fluidcount, lococount, wagoncount, wagoncount_fluid, wagoncount_artillery))
+
+data.raw["train-stop"]["train-stop"].fast_replaceable_group = "train-stop"
+data.raw["train-stop"]["logistic-train-stop"].fast_replaceable_group = "train-stop"
+data.raw["train-stop"]["train-stop"].next_upgrade = "logistic-train-stop"
+data.raw["train-stop"]["logistic-train-stop"].next_upgrade = "train-stop"
+
+

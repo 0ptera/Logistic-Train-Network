@@ -11,4 +11,10 @@ require ("prototypes.items")
 require ("prototypes.entities")
 require ("prototypes.signals")
 require ("prototypes.hotkeys")
+require ("prototypes.upgrade-item")
+
 flib = nil
+
+
+  
+  
