@@ -39,4 +39,5 @@ if mods["cargo-ships"] then
         type = "unlock-recipe",
         recipe = "ltn-port"
     } )
+  table.insert(data.raw["technology"]["logistic-train-network"].prerequisites, "automated_water_transport")
 end
