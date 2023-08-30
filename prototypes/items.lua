@@ -35,6 +35,9 @@ data:extend({
 -- support for cargo ship ports
 if mods["cargo-ships"] then
   ltn_port =flib.copy_prototype(data.raw["item"]["port"], "ltn-port")
+  ltn_port.icon = "__LogisticTrainNetwork__/graphics/icons/port.png"
+  ltn_port.icon_size = 64
+  ltn_port.icon_mipmaps = 4
   ltn_port.order = ltn_port.order.."-c"
 
   data:extend({

@@ -215,6 +215,9 @@ if mods["cargo-ships"] then
   port.next_upgrade = "ltn-port"
 
   ltn_port = flib.copy_prototype(port, "ltn-port")
+  ltn_port.icon = "__LogisticTrainNetwork__/graphics/icons/port.png"
+  ltn_port.icon_size = 64
+  ltn_port.icon_mipmaps = 4
   ltn_port.next_upgrade = nil
   ltn_port.selection_box = {{-0.01, -0.6}, {1.9, 0.6}}
   -- ltn_port.collision_box = {{-0.01, -0.1}, {1.9, 0.4}}

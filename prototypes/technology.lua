@@ -34,9 +34,31 @@ data:extend({
 
 -- support for cargo ship ports
 if mods["cargo-ships"] then
-  table.insert( data.raw["technology"]["logistic-train-network"].effects,
-    {
-        type = "unlock-recipe",
-        recipe = "ltn-port"
-    } )
+    data:extend({
+      {
+        type = "technology",
+        name = "logistic-ship-network",
+        icon = "__LogisticTrainNetwork__/graphics/technology/lsn_technology.png",
+        icon_size = 128,
+        icon_mipmaps = 1,
+        prerequisites = {"circuit-network", "automated_water_transport" },
+        effects =
+        {
+          {
+            type = "unlock-recipe",
+            recipe = "ltn-port"
+          }
+        },
+        unit =
+        {
+          count = 300,
+          ingredients = {
+            {"automation-science-pack", 1},
+            {"logistic-science-pack", 1}
+          },
+          time = 30
+        },
+        order = "c-g-d"
+      }
+    })
 end
