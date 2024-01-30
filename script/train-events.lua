@@ -50,6 +50,8 @@ function TrainArrives(train)
         local delivery = global.Dispatcher.Deliveries[train.id]
         if delivery then
           -- delivery should have been removed when leaving requester. Handle like delivery timeout.
+          local from_entity = global.LogisticTrainStops[delivery.from_id] and global.LogisticTrainStops[delivery.from_id].entity
+          local to_entity = global.LogisticTrainStops[delivery.to_id] and global.LogisticTrainStops[delivery.to_id].entity
           if message_level >= 1 then
             printmsg({
               "ltn-message.delivery-removed-depot",
